@@ -1,0 +1,6 @@
+{
+  "name": "3D RPG Horde Survivor - Co-op Multiplayer",
+  "description": "A 3D co-op RPG game with wave horde survival and 3-Hero MMORPG Dungeon Raid mode, class-restricted equipment paperdoll inventory, enemy pack aggro, daily quests, and multi-phase boss encounters.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

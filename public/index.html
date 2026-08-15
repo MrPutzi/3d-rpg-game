@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>3D RPG Horde Survivor - Co-op Multiplayer</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; cursor: crosshair; touch-action: none; }
+        #gui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        #teammate-arrows-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+        .panel { position: absolute; background: rgba(15, 20, 30, 0.85); border: 2px solid #3d4d65; border-radius: 8px; color: #fff; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); pointer-events: auto; backdrop-filter: blur(4px); }
+        
+        #hud-top-left { top: 10px; left: 10px; width: 220px; font-size: 0.85rem; }
+        #hud-top-center { top: 10px; left: 50%; transform: translateX(-50%); text-align: center; width: auto; min-width: 240px; max-width: 380px; box-sizing: border-box; }
+        #hud-bottom-right { bottom: 10px; right: 10px; text-align: right; font-size: 0.85rem; max-width: 220px; box-sizing: border-box; }
+        #hud-bottom-left { bottom: 10px; left: 10px; font-size: 0.85rem; max-width: 220px; }
+        #hud-teammates { top: 175px; left: 10px; width: 220px; font-size: 0.8rem; display: none; }
+        
+        .bar-container { width: 100%; height: 14px; background: #1a202c; margin-top: 4px; border-radius: 8px; overflow: hidden; border: 1px solid #4a5568;}
+        .health-bar { height: 100%; background: linear-gradient(90deg, #e74c3c, #ff6b6b); width: 100%; transition: width 0.2s; }
+        .mana-bar { height: 100%; background: linear-gradient(90deg, #2980b9, #3498db); width: 100%; transition: width 0.2s; }
+        .exp-bar { height: 100%; background: linear-gradient(90deg, #8e44ad, #9b59b6); width: 0%; transition: width 0.2s; }
+        .wave-bar { height: 100%; background: linear-gradient(90deg, #00b894, #00cec9); width: 0%; transition: width 0.3s; }
+        .boss-bar { height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); width: 100%; transition: width 0.2s; }
+        
+        h3, p { margin: 0 0 4px 0; }
+        
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(10, 12, 20, 0.92); display: none; flex-direction: column; justify-content: flex-start; align-items: center; pointer-events: auto; color: white; z-index: 10; overflow-y: auto; overflow-x: hidden; box-sizing: border-box; padding: 20px 10px 40px 10px; touch-action: pan-y; -webkit-overflow-scrolling: touch; backdrop-filter: blur(8px); }
+        .overlay h1 { font-size: 2rem; margin-bottom: 8px; color: #fff; text-shadow: 0 0 12px rgba(255,255,255,0.4); text-align: center; }
+        .overlay > p { font-size: 0.95rem; color: #cbd5e0; margin-bottom: 16px; text-align: center; max-width: 90%; }
+        
+        button { padding: 10px 18px; font-size: 0.95rem; font-weight: 600; background: #3182ce; color: white; border: none; border-radius: 8px; cursor: pointer; margin: 6px 4px; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        button:hover { background: #2b6cb0; transform: translateY(-2px); }
+        button:disabled { background: #2d3748 !important; color: #718096 !important; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .btn-gold { background: linear-gradient(135deg, #d4af37, #f1c40f); color: #1a1a1a; font-weight: bold; }
+        .btn-gold:hover { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+        .btn-emerald { background: linear-gradient(135deg, #00b894, #00cec9); color: #fff; }
+        .btn-emerald:hover { background: linear-gradient(135deg, #00cec9, #0984e3); }
+        
+        .class-grid { display: flex; gap: 15px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 600px; }
+        .class-card { background: #1a202c; border: 3px solid #4a5568; padding: 15px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; width: 100%; max-width: 250px; box-sizing: border-box; }
+        .class-card:hover { border-color: #3182ce; background: #2d3748; transform: translateY(-4px) scale(1.02); box-shadow: 0 6px 15px rgba(49,130,206,0.3); }
+        .class-card.selected { border-color: #fde047 !important; background: linear-gradient(145deg, #1e293b, #172554) !important; box-shadow: 0 0 22px rgba(253,224,71,0.5) !important; transform: translateY(-4px) scale(1.03); }
+        .class-card h2 { color: #38bdf8; margin: 0 0 8px 0; font-size: 1.25rem; }
+        .class-badge-selected { display: inline-block; background: #fde047; color: #0f172a; font-size: 0.68rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; margin-bottom: 4px; }
+        
+        .skill-grid { display: flex; gap: 12px; margin-top: 10px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 800px; }
+        .skill-card { background: #1e293b; border: 3px solid #f59e0b; padding: 14px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; width: 100%; max-width: 210px; box-sizing: border-box; }
+        .skill-card:hover { background: #334155; transform: translateY(-4px) scale(1.02); box-shadow: 0 0 16px rgba(245,158,11,0.4); }
+        .skill-card h2 { color: #fbbf24; margin: 0 0 8px 0; font-size: 1.1rem; }
+        .skill-card .level { color: #34d399; font-weight: bold; margin-bottom: 5px; font-size: 0.9rem;}
+        .skill-card p { font-size: 0.85rem; color: #e2e8f0; }
+
+        .active-skills-list { display: flex; flex-direction: column; gap: 4px; margin-top: 4px;}
+        .active-skill-item { background: rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; border-left: 3px solid #fbbf24;}
+
+        .item-log { position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); color: #34d399; font-weight: bold; text-shadow: 0 2px 6px rgba(0,0,0,0.9); font-size: 1.25rem; transition: opacity 0.2s; opacity: 0; pointer-events: none; z-index: 10; text-align: center; width: 100%; }
+        
+        #damage-vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(239,68,68,0.5) 100%); pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 4; }
+        
+        #mobile-controls { display: none; }
+        @media (max-width: 1024px) {
+            #mobile-controls { display: block; }
+            #hud-top-left { transform: scale(0.85); transform-origin: top left; }
+            #hud-bottom-right { bottom: 165px; right: 10px; font-size: 0.8rem; padding: 8px 10px; max-width: 170px; }
+            #hud-bottom-left { display: none; }
+            #hud-teammates { display: none !important; }
+            .joystick-zone { width: 120px; height: 120px; bottom: 25px; }
+            .joystick-knob { width: 50px; height: 50px; top: 35px; left: 35px; }
+            #minimap-container { top: 10px !important; right: 10px !important; width: 90px !important; height: 90px !important; }
+            #hud-top-center { transform: translateX(-50%); max-width: 260px; min-width: 0; padding: 8px 10px; font-size: 0.8rem; }
+            .top-action-bar { right: 105px !important; }
+        }
+
+        @media (max-width: 640px) {
+            #hud-top-left { transform: scale(0.78); transform-origin: top left; top: 6px; left: 6px; max-width: 170px; padding: 6px 8px; }
+            #hud-top-center { top: 6px; transform: translateX(-50%); max-width: 175px; min-width: 0; padding: 5px 8px; font-size: 0.72rem; }
+            #wave-badge { font-size: 0.88rem !important; }
+            #wave-sub-status { font-size: 0.72rem !important; }
+            #boss-name { font-size: 0.72rem !important; }
+            #boss-hp-text { font-size: 0.68rem !important; }
+            #ui-skip-prep-btn { padding: 3px 6px !important; font-size: 0.7rem !important; }
+            
+            #hud-bottom-right { bottom: 155px; right: 8px; font-size: 0.75rem; padding: 6px 8px; max-width: 145px; line-height: 1.25; }
+            #hud-bottom-right h3 { font-size: 0.82rem; margin-bottom: 1px; }
+            #hud-bottom-right p { margin: 0 0 2px 0; }
+
+            .top-action-bar { top: 6px; right: 82px !important; gap: 4px; }
+            .action-btn { padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; }
+            #minimap-container { top: 6px !important; right: 6px !important; width: 72px !important; height: 72px !important; }
+
+            .joystick-zone { width: 110px; height: 110px; bottom: 20px; }
+            .joystick-knob { width: 44px; height: 44px; top: 33px; left: 33px; }
+            #joystick-left { left: 12px; }
+            #joystick-right { right: 12px; }
+        }
+
+        @media (max-width: 420px) {
+            #hud-top-center { max-width: 135px; padding: 4px 6px; font-size: 0.68rem; }
+            #wave-badge { font-size: 0.8rem !important; }
+            #hud-bottom-right { max-width: 130px; font-size: 0.7rem; }
+            .action-btn { padding: 3px 6px; font-size: 0.7rem; }
+        }
+        
+        .joystick-zone { position: absolute; bottom: 35px; width: 135px; height: 135px; background: rgba(255,255,255,0.12); border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); z-index: 20; touch-action: none; pointer-events: auto; }
+        .joystick-knob { position: absolute; top: 37px; left: 37px; width: 60px; height: 60px; background: rgba(255,255,255,0.55); border-radius: 50%; pointer-events: none; transition: transform 0.05s; }
+        #joystick-left { left: 20px; }
+        #joystick-right { right: 20px; }
+        
+        .top-action-bar { position: absolute; top: 10px; right: 175px; display: flex; gap: 8px; z-index: 20; pointer-events: auto; }
+        .action-btn { background: rgba(15, 23, 42, 0.85); border: 2px solid #475569; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .action-btn:hover { background: #334155; border-color: #94a3b8; }
+        
+        .currency-display { font-size: 1rem; color: #38bdf8; margin-bottom: 10px; text-align: center; }
+        
+        /* Daily Quests Styling */
+        .quest-grid { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 680px; box-sizing: border-box; }
+        .quest-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #334155; border-radius: 12px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; transition: all 0.2s; position: relative; }
+        .quest-card:hover { border-color: #a855f7; transform: translateY(-2px); box-shadow: 0 6px 18px rgba(168,85,247,0.25); }
+        .quest-card.completed { border-color: #10b981; background: linear-gradient(145deg, #1e293b, #064e3b); }
+        .quest-card.claimed { border-color: #475569; opacity: 0.65; }
+        .quest-icon-wrap { font-size: 1.8rem; width: 44px; height: 44px; border-radius: 10px; background: rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .quest-content { flex: 1; min-width: 0; }
+        .quest-title-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+        .quest-title { font-weight: bold; font-size: 1rem; color: #f8fafc; }
+        .quest-reward-pill { font-size: 0.75rem; font-weight: 800; color: #c084fc; background: rgba(192,132,252,0.15); border: 1px solid #c084fc; padding: 2px 7px; border-radius: 6px; }
+        .quest-desc { font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px; }
+        .quest-prog-bar-wrap { width: 100%; background: #334155; height: 7px; border-radius: 4px; overflow: hidden; }
+        .quest-prog-bar-fill { height: 100%; background: linear-gradient(90deg, #a855f7, #c084fc); transition: width 0.3s; }
+        .quest-card.completed .quest-prog-bar-fill { background: linear-gradient(90deg, #10b981, #34d399); }
+        .quest-prog-text { font-size: 0.75rem; color: #cbd5e1; margin-top: 4px; font-weight: 600; display: flex; justify-content: space-between; }
+        .quest-action-col { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+        .btn-claim { background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 800; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; animation: pulse 1.5s infinite; }
+        .btn-claim:hover { background: #059669; }
+        .quest-claimed-badge { color: #34d399; font-weight: 800; font-size: 0.85rem; }
+
+        .quest-notify-badge { background: #ef4444; color: white; border-radius: 10px; font-size: 0.7rem; font-weight: 800; padding: 1px 6px; margin-left: 4px; }
+        
+        /* In-Game Shop Tabs & Grid & Enhancements */
+        .shop-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
+        .shop-tab-btn { padding: 8px 18px; border-radius: 8px; border: 2px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer; font-weight: bold; font-size: 0.92rem; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+        .shop-tab-btn:hover { background: #334155; color: white; }
+        .shop-tab-btn.active { background: #0284c7; color: white; border-color: #38bdf8; box-shadow: 0 0 14px rgba(56,189,248,0.4); }
+        
+        .shop-toolbar { display: flex; gap: 8px; align-items: center; justify-content: space-between; width: 100%; max-width: 900px; margin-bottom: 12px; flex-wrap: wrap; }
+        .shop-filter-group { display: flex; gap: 5px; flex-wrap: wrap; }
+        .shop-filter-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #94a3b8; font-size: 0.78rem; font-weight: bold; cursor: pointer; transition: 0.15s; }
+        .shop-filter-btn:hover { background: #1e293b; color: white; }
+        .shop-filter-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; }
+        .shop-search-input { background: #0f172a; border: 1px solid #475569; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; outline: none; width: 160px; transition: 0.2s; }
+        .shop-search-input:focus { border-color: #38bdf8; width: 190px; }
+
+        .shop-summary-bar { background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 8px; padding: 6px 14px; display: flex; gap: 16px; align-items: center; justify-content: center; font-size: 0.82rem; margin-bottom: 12px; max-width: 900px; width: 100%; box-sizing: border-box; }
+        .shop-summary-item { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; width: 100%; max-width: 920px; box-sizing: border-box; padding: 4px; justify-content: center; max-height: 52vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #38bdf8 #0f172a; }
+        .shop-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #334155; padding: 12px; border-radius: 12px; text-align: left; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); min-height: 170px; position: relative; }
+        .shop-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.5); border-color: #38bdf8; }
+        .shop-card.maxed { border-color: #eab308 !important; opacity: 0.88; background: linear-gradient(145deg, #1e293b, #172554); }
+        .shop-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .shop-card-icon { font-size: 1.4rem; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); flex-shrink: 0; }
+        .shop-card-title-group { flex: 1; min-width: 0; }
+        .shop-card h3 { margin: 0; font-size: 0.88rem; font-weight: bold; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .shop-card-cat-badge { font-size: 0.65rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 4px; display: inline-block; margin-top: 2px; }
+        
+        .shop-card .lvl-bar-container { width: 100%; background: #334155; height: 5px; border-radius: 3px; overflow: hidden; margin: 4px 0 6px 0; }
+        .shop-card .lvl-bar-fill { height: 100%; background: #34d399; transition: width 0.3s; }
+        .shop-card .lvl-text { font-size: 0.72rem; color: #94a3b8; font-weight: bold; display: flex; justify-content: space-between; }
+        
+        .shop-card p { font-size: 0.75rem; color: #cbd5e1; margin: 6px 0 10px 0; min-height: 36px; line-height: 1.35; }
+        .shop-card-footer { display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
+        .shop-card-buy-row { display: flex; gap: 6px; }
+        .shop-card button { padding: 7px 10px; font-size: 0.82rem; margin: 0; flex: 1; box-sizing: border-box; border-radius: 6px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
+        .btn-buy-max { padding: 7px 8px !important; flex: 0 0 auto !important; background: #0f766e !important; border-color: #14b8a6 !important; font-size: 0.75rem !important; }
+        .btn-buy-max:hover:not(:disabled) { background: #0d9488 !important; }
+
+        @media (max-width: 640px) {
+            .shop-tabs { gap: 6px; margin-bottom: 8px; }
+            .shop-tab-btn { padding: 6px 12px; font-size: 0.8rem; }
+            .shop-toolbar { justify-content: center; gap: 6px; }
+            .shop-search-input { width: 100%; }
+            .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 2px; max-height: 48vh; }
+            .shop-card { padding: 9px; min-height: 155px; border-radius: 8px; }
+            .shop-card-icon { font-size: 1.1rem; width: 28px; height: 28px; }
+            .shop-card h3 { font-size: 0.8rem; }
+            .shop-card p { font-size: 0.7rem; min-height: 30px; margin: 4px 0 8px 0; }
+            .shop-card button { padding: 5px 6px; font-size: 0.74rem; }
+            .class-grid { gap: 10px; }
+            .class-card { max-width: 100%; padding: 12px; }
+            .skill-grid { gap: 8px; }
+            .skill-card { max-width: calc(50% - 8px); padding: 10px; }
+        }
+
+        @media (max-width: 380px) {
+            .shop-grid { grid-template-columns: 1fr; gap: 6px; }
+            .shop-card { min-height: auto; }
+            .skill-card { max-width: 100%; }
+        }
+        
+        .mp-input { padding: 10px; font-size: 1rem; border-radius: 8px; border: 2px solid #38bdf8; background: #1e293b; color: white; text-align: center; margin-bottom: 10px; width: 100%; max-width: 260px; box-sizing: border-box; }
+        
+        /* Minimap styles */
+        #minimap-container { position: absolute; top: 10px; right: 10px; width: 145px; height: 145px; background: rgba(15,23,42,0.75); border: 2px solid #475569; border-radius: 50%; overflow: hidden; pointer-events: none; z-index: 5; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
+        #minimap-canvas { width: 100%; height: 100%; }
+
+        /* Boss Health HUD */
+        #boss-hud { margin-top: 6px; width: 100%; display: none; }
+        #boss-name { font-size: 0.85rem; font-weight: bold; color: #f87171; text-shadow: 0 0 6px rgba(248,113,113,0.6); }
+        
+        /* Banners */
+        #wave-clear-banner { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, rgba(16,185,129,0.9), rgba(5,150,105,0.95)); padding: 15px 30px; border-radius: 12px; border: 3px solid #a7f3d0; text-align: center; color: white; font-weight: bold; font-size: 1.5rem; box-shadow: 0 0 30px rgba(16,185,129,0.7); display: none; z-index: 25; pointer-events: none; animation: popIn 0.3s ease-out; }
+        #downed-banner { position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%); background: rgba(220,38,38,0.9); padding: 12px 24px; border-radius: 8px; border: 2px solid #fecaca; text-align: center; color: white; font-weight: bold; font-size: 1rem; display: none; z-index: 25; pointer-events: none; animation: pulse 1.5s infinite; }
+        
+        @keyframes popIn { from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0.8; transform: translateX(-50%) scale(0.97); } }
+        
+        .ult-bar { height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); width: 100%; transition: width 0.15s; }
+        .ult-ready-glow { animation: ultGlow 1.2s infinite alternate; box-shadow: 0 0 14px rgba(251,191,36,0.85); border-color: #fbbf24 !important; }
+        @keyframes ultGlow { from { box-shadow: 0 0 6px rgba(251,191,36,0.4); } to { box-shadow: 0 0 18px rgba(251,191,36,0.9); } }
+
+        /* Shrine Buffs HUD */
+        #hud-buffs { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; pointer-events: none; }
+        .buff-pill { background: rgba(15, 23, 42, 0.9); border: 2px solid #38bdf8; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: bold; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+        .buff-swiftness { border-color: #10b981; color: #6ee7b7; }
+        .buff-wrath { border-color: #ef4444; color: #fca5a5; }
+        .buff-vitality { border-color: #fbbf24; color: #fef08a; }
+
+        /* Mobile Ultimate Button */
+        #btn-ultimate-mobile { position: absolute; bottom: 170px; right: 25px; width: 62px; height: 62px; border-radius: 50%; background: linear-gradient(135deg, #1e293b, #0f172a); border: 3px solid #64748b; color: white; font-weight: bold; font-size: 0.85rem; display: none; align-items: center; justify-content: center; flex-direction: column; cursor: pointer; z-index: 25; touch-action: manipulation; box-shadow: 0 4px 12px rgba(0,0,0,0.7); pointer-events: auto; }
+        #btn-ultimate-mobile.ready { border-color: #fbbf24; background: linear-gradient(135deg, #d97706, #f59e0b); animation: ultGlow 1.2s infinite alternate; }
+        #btn-ultimate-mobile .ult-cd-text { font-size: 0.7rem; color: #cbd5e1; }
+
+        /* Mode Switcher Tabs */
+        .mode-toggle-group { display: flex; gap: 8px; margin: 10px 0 16px 0; background: rgba(15, 23, 42, 0.9); padding: 4px; border-radius: 10px; border: 1px solid #334155; }
+        .mode-btn { background: transparent; border: none; padding: 8px 18px; border-radius: 8px; color: #94a3b8; font-weight: bold; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+        .mode-btn:hover { color: #fff; }
+        .mode-btn.active { background: #0284c7; color: white; box-shadow: 0 0 12px rgba(2,132,199,0.5); }
+        .mode-btn.dungeon.active { background: linear-gradient(135deg, #9333ea, #7e22ce); box-shadow: 0 0 14px rgba(147,51,234,0.6); }
+
+        /* Party Member Frames HUD (Classic MMORPG Style) */
+        #hud-dungeon-party { position: absolute; top: 185px; left: 10px; width: 220px; display: none; flex-direction: column; gap: 6px; z-index: 5; pointer-events: auto; }
+        .party-member-card { background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 8px; padding: 6px 10px; backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
+        .party-member-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; font-weight: bold; margin-bottom: 2px; }
+        .party-member-bars { display: flex; flex-direction: column; gap: 2px; }
+
+        /* Dungeon Objective HUD */
+        #hud-dungeon-obj { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.92); border: 2px solid #8b5cf6; border-radius: 10px; padding: 8px 20px; text-align: center; color: white; z-index: 10; box-shadow: 0 4px 16px rgba(139,92,246,0.35); pointer-events: auto; display: none; min-width: 280px; }
+        .dungeon-room-badge { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1px; color: #c084fc; font-weight: 800; }
+        .dungeon-obj-title { font-size: 0.95rem; font-weight: bold; color: #fff; margin-top: 2px; }
+
+        /* Gear & Inventory System (MMORPG Paperdoll) */
+        .gear-container { display: flex; gap: 18px; width: 100%; max-width: 960px; box-sizing: border-box; justify-content: center; flex-wrap: wrap; }
+        .paperdoll-panel { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 16px; width: 340px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+        .paperdoll-slots { display: flex; flex-direction: column; gap: 8px; }
+        .gear-slot { display: flex; align-items: center; gap: 10px; background: rgba(15, 23, 42, 0.7); border: 2px dashed #475569; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: all 0.2s; min-height: 48px; }
+        .gear-slot:hover { border-color: #38bdf8; background: rgba(30, 41, 59, 0.9); }
+        .gear-slot-icon { font-size: 1.4rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border-radius: 6px; flex-shrink: 0; }
+        .gear-slot-info { flex: 1; min-width: 0; }
+        .gear-slot-name { font-size: 0.85rem; font-weight: bold; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gear-slot-stats { font-size: 0.72rem; color: #94a3b8; }
+        
+        .inventory-panel { background: #1e293b; border: 2px solid #334155; border-radius: 12px; padding: 16px; flex: 1; min-width: 320px; max-width: 580px; box-sizing: border-box; display: flex; flex-direction: column; }
+        .inv-filter-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+        .inv-filter-btn { padding: 4px 10px; font-size: 0.75rem; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #94a3b8; cursor: pointer; }
+        .inv-filter-btn.active { background: #0284c7; color: white; border-color: #38bdf8; }
+        .inv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; max-height: 360px; overflow-y: auto; padding: 4px; }
+        .inv-cell { width: 100%; aspect-ratio: 1; background: rgba(15, 23, 42, 0.85); border: 2px solid #334155; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; position: relative; }
+        .inv-cell:hover { transform: scale(1.06); box-shadow: 0 4px 12px rgba(0,0,0,0.6); }
+        .inv-cell.selected { outline: 2px solid #fde047; box-shadow: 0 0 12px rgba(253,224,71,0.5); }
+        .inv-cell-icon { font-size: 1.5rem; }
+        .inv-cell-lvl { position: absolute; bottom: 2px; right: 4px; font-size: 0.65rem; color: #cbd5e1; font-weight: bold; }
+        
+        /* Item Rarities */
+        .rarity-common { border-color: #94a3b8 !important; color: #e2e8f0; }
+        .rarity-rare { border-color: #38bdf8 !important; color: #38bdf8; }
+        .rarity-epic { border-color: #c084fc !important; color: #c084fc; box-shadow: inset 0 0 6px rgba(192,132,252,0.2); }
+        .rarity-legendary { border-color: #f59e0b !important; color: #fbbf24; box-shadow: inset 0 0 10px rgba(245,158,11,0.3); }
+
+        /* Item Detail & Comparison Card */
+        .item-detail-card { margin-top: 10px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; padding: 10px 14px; display: none; }
+        .item-detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .item-class-badge { font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase; }
+        .badge-warrior { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #ef4444; }
+        .badge-mage { background: rgba(56,189,248,0.2); color: #38bdf8; border: 1px solid #0284c7; }
+        .badge-archer { background: rgba(52,211,153,0.2); color: #34d399; border: 1px solid #10b981; }
+        .badge-all { background: rgba(251,191,36,0.2); color: #fde047; border: 1px solid #f59e0b; }
+
+        /* Loot Drop Pickup Card Modal */
+        #loot-pickup-modal { position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.95); border: 2px solid #fbbf24; border-radius: 12px; padding: 12px 18px; display: none; align-items: center; gap: 14px; z-index: 30; box-shadow: 0 8px 30px rgba(0,0,0,0.8); pointer-events: auto; backdrop-filter: blur(8px); max-width: 90%; }
+
+        /* Dungeon Victory Screen */
+        #dungeon-victory-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(20,24,40,0.95) 0%, rgba(5,6,12,0.98) 100%); display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; color: white; z-index: 35; }
+
+        @media (max-width: 1024px) {
+            #btn-ultimate-mobile { display: flex; }
+        }
+
+        @media (max-width: 640px) {
+            #btn-ultimate-mobile { bottom: 145px; right: 18px; width: 54px; height: 54px; font-size: 0.75rem; }
+            #hud-buffs { top: 60px; gap: 4px; }
+            .buff-pill { padding: 3px 8px; font-size: 0.7rem; }
+            .gear-container { flex-direction: column; align-items: center; }
+            .paperdoll-panel, .inventory-panel { width: 100%; }
+            #hud-dungeon-party { top: 160px; width: 170px; transform: scale(0.85); transform-origin: top left; }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="start-screen" class="overlay" style="display: flex;">
+        <h1 style="margin-bottom: 2px; letter-spacing: 0.5px;">⚔️ 3D RPG HORDE &amp; DUNGEON RAID</h1>
+        <p style="margin-bottom: 8px; color: #cbd5e1;">Master 3 distinct hero archetypes, raid 5-chamber dungeons with party AI, and conquer endless hordes with class-restricted gear!</p>
+        
+        <div class="currency-display" style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+            <span>✨ Essence: <strong id="start-essence" style="color: #c084fc;">0</strong></span>
+            <button onclick="openQuestsModal()" class="btn-emerald" style="padding:6px 14px; font-size:0.88rem; background: linear-gradient(135deg, #8b5cf6, #a855f7);">
+                📜 Daily Quests <span id="start-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
+            </button>
+            <button onclick="openShopModal('sanctuary')" class="btn-emerald" style="padding:6px 14px; font-size:0.88rem;">
+                🛒 Meta Sanctuary
+            </button>
+            <button onclick="openGearModal()" class="btn-gold" style="padding:6px 14px; font-size:0.88rem;">
+                🎒 Hero Equipment (I)
+            </button>
+        </div>
+
+        <!-- Mode Switcher -->
+        <div class="mode-toggle-group">
+            <button id="mode-btn-horde" class="mode-btn active" onclick="selectGameMode('horde')">🌊 Horde Survival</button>
+            <button id="mode-btn-dungeon" class="mode-btn dungeon" onclick="selectGameMode('dungeon')">🏰 3-Hero MMORPG Dungeon</button>
+        </div>
+
+        <div id="dungeon-info-banner" style="display: none; background: rgba(147, 51, 234, 0.18); border: 1px solid #a855f7; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 600px; text-align: center; font-size: 0.85rem; color: #e9d5ff; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
+            🗡️ <strong>Dungeon: Crypt of Overlord Malakor</strong> &bull; Traverse 5 chambers with a Tank, Healer, &amp; DPS party. Clear mob packs to unseal gates and conquer the final boss!
+        </div>
+
+        <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 600px; text-align: center; font-size: 0.85rem; color: #bae6fd;">
+            🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!
+        </div>
+        
+        <div style="margin: 4px 0 10px 0; display: flex; flex-direction: column; align-items: center; width: 100%;">
+            <p style="color: #38bdf8; margin-bottom: 4px; font-weight: bold; font-size: 0.85rem;">Multiplayer Room Code (leave blank for Solo + 2 AI Companions)</p>
+            <input type="text" id="room-input" class="mp-input" placeholder="Room Code (optional e.g. 777)">
+        </div>
+
+        <!-- Class Selection Cards -->
+        <div class="class-grid" id="start-hero-grid">
+            <!-- Warrior -->
+            <div class="class-card selected" id="hero-card-warrior" onclick="selectStartHero('Warrior')" ondblclick="startGame('Warrior')">
+                <span class="class-badge-selected" id="badge-warrior-selected">✓ ACTIVE HERO</span>
+                <h2 style="color:#f87171;">⚔️ Warrior</h2>
+                <div style="font-size:0.75rem; color:#fca5a5; font-weight:bold; margin-bottom:6px;">🛡️ TANK &amp; MELEE CLEAVE</div>
+                <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">Wields Heavy Greatswords &amp; Plate Armor</div>
+                <div style="background:rgba(15,23,42,0.8); border-radius:6px; padding:6px; text-align:left; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
+                    <div>❤️ <strong>Health:</strong> 160 HP <span style="color:#f87171;">(High)</span></div>
+                    <div>⚔️ <strong>Damage:</strong> 24 Slash + Wide Cleave</div>
+                    <div>🛡️ <strong>Base Armor:</strong> 4 DR</div>
+                    <div>👟 <strong>Speed:</strong> 12 m/s</div>
+                </div>
+                <div style="color:#f87171; font-size:0.75rem; font-weight:bold;">⚡ Ult: Earthquake Slam</div>
+                <div style="color:#94a3b8; font-size:0.72rem;">Radial shockwave dealing massive damage &amp; 3.5s stun</div>
+            </div>
+
+            <!-- Mage -->
+            <div class="class-card" id="hero-card-mage" onclick="selectStartHero('Mage')" ondblclick="startGame('Mage')">
+                <span class="class-badge-selected" id="badge-mage-selected" style="display:none;">✓ ACTIVE HERO</span>
+                <h2 style="color:#38bdf8;">🔮 Mage</h2>
+                <div style="font-size:0.75rem; color:#7dd3fc; font-weight:bold; margin-bottom:6px;">✨ RANGED SORCERY &amp; AOE</div>
+                <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">Wields Magic Staves &amp; Arcane Robes</div>
+                <div style="background:rgba(15,23,42,0.8); border-radius:6px; padding:6px; text-align:left; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
+                    <div>❤️ <strong>Health:</strong> 90 HP</div>
+                    <div>🔮 <strong>Mana:</strong> 100 Mana + Fast Regen</div>
+                    <div>⚔️ <strong>Damage:</strong> 32 Arcane Bolts (Piercing)</div>
+                    <div>👟 <strong>Speed:</strong> 14 m/s</div>
+                </div>
+                <div style="color:#38bdf8; font-size:0.75rem; font-weight:bold;">⚡ Ult: Frost Nova &amp; Blizzard</div>
+                <div style="color:#94a3b8; font-size:0.72rem;">Freezes all nearby foes solid with massive AoE burst</div>
+            </div>
+
+            <!-- Archer -->
+            <div class="class-card" id="hero-card-archer" onclick="selectStartHero('Archer')" ondblclick="startGame('Archer')">
+                <span class="class-badge-selected" id="badge-archer-selected" style="display:none;">✓ ACTIVE HERO</span>
+                <h2 style="color:#34d399;">🏹 Archer</h2>
+                <div style="font-size:0.75rem; color:#6ee7b7; font-weight:bold; margin-bottom:6px;">🎯 RAPID DPS &amp; MOBILITY</div>
+                <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">Wields Rapid Longbows &amp; Leather</div>
+                <div style="background:rgba(15,23,42,0.8); border-radius:6px; padding:6px; text-align:left; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
+                    <div>❤️ <strong>Health:</strong> 115 HP</div>
+                    <div>⚔️ <strong>Damage:</strong> 18 x 2 Rapid Arrows</div>
+                    <div>🎯 <strong>Crit Rate:</strong> 15% Base Crit</div>
+                    <div>👟 <strong>Speed:</strong> 16 m/s <span style="color:#34d399;">(Fastest)</span></div>
+                </div>
+                <div style="color:#34d399; font-size:0.75rem; font-weight:bold;">⚡ Ult: Arrow Barrage &amp; Dash</div>
+                <div style="color:#94a3b8; font-size:0.72rem;">Invulnerable evasion dash + 360° piercing arrow storm</div>
+            </div>
+        </div>
+
+        <!-- Big Launch Button -->
+        <button id="btn-start-launch" class="btn-gold" onclick="startGame(selectedStartHero)" style="font-size: 1.15rem; padding: 12px 36px; border-radius: 10px; margin-top: 14px; box-shadow: 0 0 20px rgba(245,158,11,0.5); width: 100%; max-width: 440px;">
+            ⚔️ START HORDE SURVIVAL (WARRIOR)
+        </button>
+
+        <!-- Controls Cheat Sheet -->
+        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 0.76rem; color: #94a3b8;">
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[WASD / Sticks] Move</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Mouse] Aim &amp; Attack</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Space / Q] Ultimate</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[I] Gear</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[B] Shop</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[L] Quests</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[E] Quick Loot</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Esc] Pause</span>
+        </div>
+    </div>
+
+    <!-- Equipment & Inventory Paperdoll Screen Modal (Single Character Focused) -->
+    <div id="gear-screen" class="overlay">
+        <h1 style="color: #fbbf24; margin-bottom: 2px;">🎒 ACTIVE HERO EQUIPMENT &amp; INVENTORY</h1>
+        <p style="margin-bottom: 12px; color: #cbd5e1; font-size: 0.88rem;">Equip weapons, armor, shields, and relics to empower your active character!</p>
+
+        <div class="gear-container">
+            <!-- Left: Equipped Slots (Paperdoll for Single Playing Hero) -->
+            <div class="paperdoll-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 8px;">
+                    <div>
+                        <div style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Active Character</div>
+                        <span id="gear-class-label" style="font-weight: 800; color: #38bdf8; font-size: 1.15rem;">Warrior</span>
+                        <span id="gear-level-label" style="color: #94a3b8; font-size: 0.85rem; margin-left: 6px;">Lvl 1</span>
+                    </div>
+                    <span id="gear-hero-badge" class="item-class-badge badge-warrior" style="font-size: 0.75rem; padding: 4px 8px;">🛡️ Warrior</span>
+                </div>
+
+                <div class="paperdoll-slots">
+                    <!-- Mainhand Weapon -->
+                    <div class="gear-slot" id="slot-weapon" onclick="handleSlotClick('weapon')">
+                        <div class="gear-slot-icon" id="slot-weapon-icon">🗡️</div>
+                        <div class="gear-slot-info">
+                            <div style="display:flex; justify-content:space-between;"><span style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Main Weapon</span><span id="slot-weapon-class" class="item-class-badge badge-warrior">Warrior</span></div>
+                            <div class="gear-slot-name" id="slot-weapon-name">Basic Iron Greatsword</div>
+                            <div class="gear-slot-stats" id="slot-weapon-stats">+12 Base Damage</div>
+                        </div>
+                    </div>
+                    <!-- Offhand / Shield / Quiver / Focus -->
+                    <div class="gear-slot" id="slot-offhand" onclick="handleSlotClick('offhand')">
+                        <div class="gear-slot-icon" id="slot-offhand-icon">🛡️</div>
+                        <div class="gear-slot-info">
+                            <div style="display:flex; justify-content:space-between;"><span style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Off-Hand</span><span id="slot-offhand-class" class="item-class-badge badge-warrior">Warrior</span></div>
+                            <div class="gear-slot-name" id="slot-offhand-name">Oak Guard Shield</div>
+                            <div class="gear-slot-stats" id="slot-offhand-stats">+15 Max HP, +2 Armor</div>
+                        </div>
+                    </div>
+                    <!-- Body Armor -->
+                    <div class="gear-slot" id="slot-armor" onclick="handleSlotClick('armor')">
+                        <div class="gear-slot-icon" id="slot-armor-icon">🥋</div>
+                        <div class="gear-slot-info">
+                            <div style="display:flex; justify-content:space-between;"><span style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Body Armor</span><span id="slot-armor-class" class="item-class-badge badge-warrior">Warrior</span></div>
+                            <div class="gear-slot-name" id="slot-armor-name">Chainmail Hauberk</div>
+                            <div class="gear-slot-stats" id="slot-armor-stats">+25 Max HP, +2 Armor</div>
+                        </div>
+                    </div>
+                    <!-- Helmet / Hood -->
+                    <div class="gear-slot" id="slot-helmet" onclick="handleSlotClick('helmet')">
+                        <div class="gear-slot-icon" id="slot-helmet-icon">🪖</div>
+                        <div class="gear-slot-info">
+                            <div style="display:flex; justify-content:space-between;"><span style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Headgear</span><span id="slot-helmet-class" class="item-class-badge badge-warrior">Warrior</span></div>
+                            <div class="gear-slot-name" id="slot-helmet-name">Steel Greathelm</div>
+                            <div class="gear-slot-stats" id="slot-helmet-stats">+20 Max HP, +2 Armor</div>
+                        </div>
+                    </div>
+                    <!-- Accessory / Relic / Ring -->
+                    <div class="gear-slot" id="slot-accessory" onclick="handleSlotClick('accessory')">
+                        <div class="gear-slot-icon" id="slot-accessory-icon">💍</div>
+                        <div class="gear-slot-info">
+                            <div style="display:flex; justify-content:space-between;"><span style="font-size:0.7rem; color:#94a3b8; text-transform:uppercase;">Relic / Ring</span><span id="slot-accessory-class" class="item-class-badge badge-all">All Classes</span></div>
+                            <div class="gear-slot-name" id="slot-accessory-name">Band of the Novice</div>
+                            <div class="gear-slot-stats" id="slot-accessory-stats">+10 HP, +3 Damage</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Stat Bonuses from Gear -->
+                <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; border-radius: 8px; padding: 8px 12px; font-size: 0.78rem;">
+                    <div style="color: #38bdf8; font-weight: bold; margin-bottom: 4px;">⚔️ Active Gear Stat Bonuses:</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; color: #cbd5e1;">
+                        <div>💥 Damage: <strong id="gear-sum-dmg" style="color:#fb923c;">+0</strong></div>
+                        <div>❤️ Max HP: <strong id="gear-sum-hp" style="color:#f87171;">+0</strong></div>
+                        <div>🛡️ Armor/Reduc: <strong id="gear-sum-armor" style="color:#94a3b8;">+0</strong></div>
+                        <div>⚡ Crit Rate: <strong id="gear-sum-crit" style="color:#fde047;">+0%</strong></div>
+                        <div>👟 Speed: <strong id="gear-sum-spd" style="color:#4ade80;">+0%</strong></div>
+                        <div>🔮 Mana/Regen: <strong id="gear-sum-mana" style="color:#38bdf8;">+0</strong></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Inventory Bag & Item Inspection -->
+            <div class="inventory-panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                    <span style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">🎒 Adventurer's Stash (<span id="inv-count">0</span> items)</span>
+                    <button class="inv-filter-btn" onclick="autoEquipBestGear()" style="background:#0f766e; border-color:#14b8a6; color:#fff; font-weight:bold; padding: 6px 12px;">⚡ Equip Best in Slot</button>
+                </div>
+
+                <!-- Filter Row -->
+                <div class="inv-filter-row">
+                    <button class="inv-filter-btn active" id="btn-filter-usable" onclick="filterInventory('usable', this)">✨ Usable by Hero</button>
+                    <button class="inv-filter-btn" onclick="filterInventory('weapon', this)">🗡️ Weapons</button>
+                    <button class="inv-filter-btn" onclick="filterInventory('armor', this)">🛡️ Armor &amp; Shields</button>
+                    <button class="inv-filter-btn" onclick="filterInventory('accessory', this)">💍 Relics</button>
+                    <button class="inv-filter-btn" onclick="filterInventory('all', this)">📦 All Items</button>
+                </div>
+
+                <!-- Bag Grid -->
+                <div class="inv-grid" id="inv-grid-container">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Item Detail & Action Card -->
+                <div class="item-detail-card" id="inv-item-detail">
+                    <div class="item-detail-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span id="detail-item-icon" style="font-size: 1.4rem;">🗡️</span>
+                            <div>
+                                <h3 id="detail-item-name" style="margin:0; font-size:0.95rem; font-weight:bold;">Item Name</h3>
+                                <span id="detail-item-slot" style="font-size:0.72rem; color:#94a3b8; text-transform:uppercase;">Weapon</span>
+                            </div>
+                        </div>
+                        <span id="detail-item-class" class="item-class-badge badge-warrior">Warrior Only</span>
+                    </div>
+                    <div id="detail-item-desc" style="font-size: 0.8rem; color: #e2e8f0; margin: 6px 0; line-height: 1.35;">+30 Damage, +5% Crit</div>
+                    <div id="detail-item-comparison" style="font-size: 0.75rem; color: #34d399; margin-bottom: 8px; font-weight: 600;"></div>
+                    
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                        <button id="btn-scrap-item" onclick="scrapSelectedItem()" style="background:#475569; padding: 6px 12px; font-size: 0.8rem; margin:0;">♻️ Scrap (+Gold &amp; Essence)</button>
+                        <button id="btn-equip-item" onclick="equipSelectedItem()" class="btn-emerald" style="padding: 6px 16px; font-size: 0.82rem; margin:0;">⚔️ Equip to Active Character</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; gap: 10px;">
+            <button onclick="closeGearModal()" style="background: #3b82f6; padding: 8px 24px; font-weight: bold; border-radius: 8px;">Return to Game (I)</button>
+        </div>
+    </div>
+
+    <!-- Live Quick-Loot Pickup Modal (appears when stepping on dropped equipment) -->
+    <div id="loot-pickup-modal">
+        <div id="loot-modal-icon" style="font-size: 2rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.08); border-radius: 8px;">🎁</div>
+        <div style="flex: 1; min-width: 160px;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span id="loot-modal-name" style="font-weight: 800; font-size: 0.95rem; color: #fbbf24;">Sun-Forged Claymore</span>
+                <span id="loot-modal-class" class="item-class-badge badge-warrior">Warrior Only</span>
+            </div>
+            <div id="loot-modal-stats" style="font-size: 0.78rem; color: #cbd5e1; margin-top: 2px;">+24 Damage, +5% Crit</div>
+            <div id="loot-modal-compare" style="font-size: 0.75rem; color: #34d399; font-weight: bold;">+12 DMG vs equipped</div>
+        </div>
+        <div style="display: flex; gap: 6px; flex-direction: column;">
+            <button id="btn-quick-equip" onclick="handleQuickEquipLoot()" class="btn-emerald" style="padding: 5px 12px; font-size: 0.8rem; margin: 0;">⚡ Equip Now (E)</button>
+            <button onclick="handleQuickBagLoot()" style="background: #334155; padding: 4px 10px; font-size: 0.75rem; margin: 0;">🎒 Stash to Bag</button>
+        </div>
+    </div>
+
+    <!-- Dungeon Victory Screen -->
+    <div id="dungeon-victory-screen">
+        <h1 style="color: #fbbf24; font-size: 2.5rem; text-shadow: 0 0 20px rgba(251,191,36,0.7); margin-bottom: 4px;">🏆 DUNGEON CONQUERED!</h1>
+        <p style="color: #e9d5ff; font-size: 1.1rem; margin-bottom: 16px;">Overlord Malakor and the dungeon horrors have been vanquished!</p>
+
+        <div style="background: rgba(15, 23, 42, 0.85); border: 2px solid #a855f7; border-radius: 12px; padding: 18px 24px; max-width: 440px; width: 90%; text-align: center; margin-bottom: 20px; box-shadow: 0 8px 30px rgba(168,85,247,0.4);">
+            <h3 style="color: #38bdf8; margin-bottom: 10px;">🎁 Raid Spoils &amp; Bounties</h3>
+            <div style="display: flex; justify-content: space-around; font-size: 1rem; margin-bottom: 14px;">
+                <div>🪙 Gold: <strong id="dv-gold" style="color:#fde047;">+500</strong></div>
+                <div>✨ Essence: <strong id="dv-essence" style="color:#c084fc;">+250</strong></div>
+                <div>💀 Kills: <strong id="dv-kills" style="color:#f87171;">45</strong></div>
+            </div>
+            <div id="dv-loot-rewards" style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <!-- Legendary / Epic loot drops -->
+            </div>
+        </div>
+
+        <button onclick="location.reload()" class="btn-gold" style="padding: 12px 32px; font-size: 1.1rem; border-radius: 10px;">Back to Sanctuary 🏰</button>
+    </div>
+
+    <!-- Unified In-Game / Meta Shop Screen (Accessible while alive!) -->
+    <div id="shop-screen" class="overlay">
+        <h1 style="color:#38bdf8; margin-bottom: 4px;">🛒 RUN & META SHOP</h1>
+        <p style="margin-bottom: 10px; color:#cbd5e1; font-size:0.9rem;">Power up your hero in real time with <strong>Gold</strong> or unlock permanent traits with <strong>Essence</strong>!</p>
+        
+        <div class="shop-tabs">
+            <button id="tab-btn-merchant" class="shop-tab-btn active" onclick="switchShopTab('merchant')">🪙 Run Merchant &bull; <span id="shop-gold" style="color:#fde047; font-weight:800;">0</span> Gold</button>
+            <button id="tab-btn-sanctuary" class="shop-tab-btn" onclick="switchShopTab('sanctuary')">✨ Sanctuary &bull; <span id="shop-essence" style="color:#a855f7; font-weight:800;">0</span> Essence</button>
+        </div>
+
+        <!-- Live Stat Summary Bar for Quick Insight -->
+        <div class="shop-summary-bar" id="shop-summary-bar">
+            <div class="shop-summary-item" style="color:#f87171;">❤️ HP: <span id="shop-sum-hp">100/100</span></div>
+            <div class="shop-summary-item" style="color:#38bdf8;">🛡️ Shield: <span id="shop-sum-shield">0</span></div>
+            <div class="shop-summary-item" style="color:#fb923c;">⚔️ Damage: <span id="shop-sum-dmg">25</span></div>
+            <div class="shop-summary-item" style="color:#4ade80;">👟 Speed: <span id="shop-sum-spd">+0%</span></div>
+            <div class="shop-summary-item" style="color:#fde047;">🕊️ Revives: <span id="shop-sum-rev">0</span></div>
+        </div>
+
+        <!-- Shop Filters & Search Toolbar -->
+        <div class="shop-toolbar">
+            <div class="shop-filter-group" id="shop-filter-buttons">
+                <!-- Populated dynamically based on tab -->
+            </div>
+            <input type="text" id="shop-search" class="shop-search-input" placeholder="🔍 Search upgrades..." oninput="handleShopSearch(this.value)">
+        </div>
+
+        <!-- Run Items Merchant Tab -->
+        <div id="merchant-tab-content" style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <div class="shop-grid" id="merchant-options"></div>
+        </div>
+
+        <!-- Meta Upgrades Tab -->
+        <div id="sanctuary-tab-content" style="width: 100%; display: none; flex-direction: column; align-items: center;">
+            <div class="shop-grid" id="sanctuary-options"></div>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="closeShopModal()" style="background:#ef4444; padding: 8px 24px; font-weight:bold; border-radius:8px;">Back to Game (B)</button>
+        </div>
+    </div>
+
+    <!-- Daily Quests Screen Modal -->
+    <div id="quests-screen" class="overlay">
+        <h1 style="color:#c084fc; margin-bottom: 4px;">📜 DAILY QUESTS</h1>
+        <p style="margin-bottom: 12px; color:#cbd5e1; font-size:0.9rem;">Complete daily challenges to earn bonus <strong>Essence</strong> for permanent Sanctuary upgrades!</p>
+        
+        <div style="display: flex; gap: 15px; align-items: center; justify-content: space-between; width: 100%; max-width: 680px; margin-bottom: 14px; background: rgba(15,23,42,0.8); padding: 8px 16px; border-radius: 8px; border: 1px solid #334155; box-sizing: border-box;">
+            <div style="font-size: 0.85rem; color: #94a3b8;">
+                ⏳ Resets in: <strong id="quest-reset-timer" style="color:#fde047;">--:--:--</strong>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <span style="font-size:0.85rem; color:#cbd5e1;">Essence: <strong id="quest-essence-display" style="color:#c084fc;">0</strong> ✨</span>
+                <button id="btn-claim-all-quests" onclick="claimAllQuests()" class="btn-emerald" style="padding: 5px 12px; font-size: 0.8rem; margin: 0; display:none;">
+                    🎁 Claim All
+                </button>
+            </div>
+        </div>
+
+        <div class="quest-grid" id="quests-list-container">
+            <!-- Populated dynamically by game.js -->
+        </div>
+
+        <div style="margin-top: 18px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="closeQuestsModal()" style="background:#475569; padding: 8px 24px; font-weight:bold; border-radius:8px;">Close</button>
+            <button onclick="closeQuestsModal(); openShopModal('sanctuary');" class="btn-emerald" style="padding: 8px 20px; font-weight:bold; border-radius:8px;">Open Sanctuary 🛒</button>
+        </div>
+    </div>
+
+    <!-- Pause Screen -->
+    <div id="pause-screen" class="overlay">
+        <h1>GAME PAUSED</h1>
+        <p>Take a breath or tweak your setup</p>
+        <button onclick="openQuestsModal()" style="background: linear-gradient(135deg, #8b5cf6, #a855f7); padding:10px 20px;">📜 Daily Quests</button>
+        <button onclick="openShopModal('merchant')" class="btn-gold" style="padding:10px 20px;">🛒 Open In-Game Shop</button>
+        <button onclick="resumeGame()">Resume Game</button>
+        <button onclick="location.reload()" style="background: #ef4444;">Quit to Menu</button>
+    </div>
+
+    <!-- Level Up Screen -->
+    <div id="skill-screen" class="overlay">
+        <h1 style="color: #fbbf24;">⚡ LEVEL UP!</h1>
+        <p>Select a skill upgrade (Max 4 unique skills per run)</p>
+        <div class="skill-grid" id="skill-options"></div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="overlay">
+        <h1 style="color:#ef4444;">💀 YOU DIED</h1>
+        <p>You survived to Wave <span id="go-wave">1</span> (Level <span id="go-level">1</span>)</p>
+        <p>Total Score: <span id="go-score">0</span> &bull; Kills: <span id="go-kills">0</span></p>
+        <p style="color:#38bdf8;">Gold banked as Essence: +<span id="go-gold-banked">0</span> (Total Essence: <span id="go-essence">0</span>)</p>
+        <button onclick="location.reload()" class="btn-emerald">Play Again</button>
+    </div>
+
+    <!-- HUD -->
+    <canvas id="teammate-arrows-canvas"></canvas>
+    <div id="gui">
+        <!-- Top Action Bar (Shop & Pause buttons) -->
+        <div class="top-action-bar">
+            <button class="action-btn btn-gold" onclick="toggleGearModal()" title="Open Hero Equipment & Stash (Hotkey: I)">
+                🎒 Gear (I)
+            </button>
+            <button class="action-btn btn-emerald" onclick="toggleShopModal()" title="Open live shop (Hotkey: B)">
+                🛒 Shop (B)
+            </button>
+            <button class="action-btn" onclick="toggleQuestsModal()" style="background: rgba(139, 92, 246, 0.25); border-color: #8b5cf6;" title="Daily Quests">
+                📜 Quests <span id="top-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
+            </button>
+            <button class="action-btn" onclick="toggleAudio()" id="audio-toggle-btn" title="Mute/Unmute Audio">
+                🔊
+            </button>
+            <button class="action-btn" onclick="togglePause()" title="Pause (ESC)">
+                ⏸️
+            </button>
+        </div>
+
+        <!-- Dungeon Objective HUD (Dungeon Mode) -->
+        <div id="hud-dungeon-obj">
+            <div class="dungeon-room-badge" id="dungeon-room-name">🏰 Room 1: Crypt Entrance</div>
+            <div class="dungeon-obj-title" id="dungeon-obj-text">Defeat the Skeletal Vanguard (0/4)</div>
+        </div>
+
+        <!-- Dungeon 3-Hero Party Frames (Classic MMORPG) -->
+        <div id="hud-dungeon-party">
+            <div class="party-member-card" id="party-card-0">
+                <div class="party-member-header">
+                    <span id="party-name-0">👑 You (Warrior)</span>
+                    <span id="party-status-0" style="color:#4ade80;">READY</span>
+                </div>
+                <div class="party-member-bars">
+                    <div class="bar-container" style="height:6px;"><div id="party-hp-0" class="health-bar" style="width:100%;"></div></div>
+                    <div class="bar-container" style="height:4px;"><div id="party-mana-0" class="mana-bar" style="width:100%;"></div></div>
+                </div>
+            </div>
+            <div class="party-member-card" id="party-card-1">
+                <div class="party-member-header">
+                    <span id="party-name-1">🔮 Elidyr (Mage)</span>
+                    <span id="party-status-1" style="color:#4ade80;">READY</span>
+                </div>
+                <div class="party-member-bars">
+                    <div class="bar-container" style="height:6px;"><div id="party-hp-1" class="health-bar" style="width:100%;"></div></div>
+                    <div class="bar-container" style="height:4px;"><div id="party-mana-1" class="mana-bar" style="width:100%;"></div></div>
+                </div>
+            </div>
+            <div class="party-member-card" id="party-card-2">
+                <div class="party-member-header">
+                    <span id="party-name-2">🏹 Lyra (Archer)</span>
+                    <span id="party-status-2" style="color:#4ade80;">READY</span>
+                </div>
+                <div class="party-member-bars">
+                    <div class="bar-container" style="height:6px;"><div id="party-hp-2" class="health-bar" style="width:100%;"></div></div>
+                    <div class="bar-container" style="height:4px;"><div id="party-mana-2" class="mana-bar" style="width:100%;"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="minimap-container"><canvas id="minimap-canvas"></canvas></div>
+
+        <!-- Top Left Player Stats -->
+        <div id="hud-top-left" class="panel">
+            <h3 style="font-size: 0.95rem; margin-bottom: 2px;"><span id="ui-class">Player</span> &bull; Lvl <span id="ui-level">1</span></h3>
+            <div style="display:flex; justify-content:space-between;"><span>HP:</span><span><span id="ui-hp">100</span>/<span id="ui-maxhp">100</span></span></div>
+            <div class="bar-container"><div id="hp-bar" class="health-bar"></div></div>
+            
+            <div id="mana-box" style="margin-top: 4px;">
+                <div style="display:flex; justify-content:space-between;"><span>Mana:</span><span><span id="ui-mana">50</span>/<span id="ui-maxmana">50</span></span></div>
+                <div class="bar-container" id="mana-bar-container"><div id="mana-bar" class="mana-bar"></div></div>
+            </div>
+
+            <div style="margin-top: 4px; display:flex; justify-content:space-between;"><span>EXP:</span><span><span id="ui-exp">0</span>/<span id="ui-exp-needed">100</span></span></div>
+            <div class="bar-container"><div id="exp-bar" class="exp-bar"></div></div>
+
+            <!-- Ultimate Gauge -->
+            <div id="ult-box" style="margin-top: 5px; cursor: pointer;" onclick="useUltimate()" title="Activate Ultimate Ability (Hotkey: SPACE or Q)">
+                <div style="display:flex; justify-content:space-between; font-weight: bold; font-size:0.78rem; color:#fde047;">
+                    <span id="ui-ult-name">⚡ ULT [SPACE]</span>
+                    <span id="ui-ult-status">READY!</span>
+                </div>
+                <div class="bar-container" style="height: 10px; border-color: #f59e0b;"><div id="ult-bar" class="ult-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Active Shrine Buffs Display -->
+        <div id="hud-buffs"></div>
+
+        <!-- Top Center Wave Counter & Boss Bar -->
+        <div id="hud-top-center" class="panel">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <span id="wave-badge" style="font-weight: 800; font-size: 1.1rem; color: #38bdf8;">🌊 WAVE <span id="ui-wave">1</span></span>
+                <span id="wave-sub-status" style="font-size: 0.85rem; color: #cbd5e1;">(0/20)</span>
+            </div>
+            <div class="bar-container" style="height: 8px; margin-top: 4px;"><div id="wave-bar" class="wave-bar"></div></div>
+            <div id="wave-action-area" style="margin-top: 4px; display: none;">
+                <button id="ui-skip-prep-btn" onclick="skipIntermission()" class="btn-emerald" style="padding: 4px 10px; font-size: 0.8rem; margin: 0;">⚔️ Start Next Wave</button>
+            </div>
+            
+            <!-- Boss Bar -->
+            <div id="boss-hud">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span id="boss-name">⚠️ BOSS: Gorgar the Orc Warlord</span>
+                    <span id="boss-hp-text" style="font-size:0.75rem; color:#fca5a5;">100%</span>
+                </div>
+                <div class="bar-container" style="height: 10px; margin-top: 2px;"><div id="boss-bar" class="boss-bar"></div></div>
+            </div>
+        </div>
+        
+        <!-- Teammates HUD Panel (Multiplayer) -->
+        <div id="hud-teammates" class="panel">
+            <h3 style="font-size: 0.85rem; color: #38bdf8; margin-bottom: 4px;">🤝 Teammates (<span id="ui-team-count">0</span>)</h3>
+            <div id="teammates-list"></div>
+        </div>
+
+        <!-- Active Skills Panel -->
+        <div id="hud-bottom-left" class="panel">
+            <h3 style="font-size: 0.9rem; margin-bottom: 2px;">⚡ Skills (<span id="ui-skill-count">0</span>/3)</h3>
+            <div class="active-skills-list" id="ui-skills-list"></div>
+        </div>
+
+        <!-- Bottom Right Score & Resources -->
+        <div id="hud-bottom-right" class="panel">
+            <h3 style="font-size: 0.95rem; margin-bottom: 2px;">Score: <span id="ui-score" style="color:#34d399;">0</span></h3>
+            <p>🪙 Gold: <span id="ui-gold" style="color: #fbbf24; font-weight: bold;">0</span></p>
+            <p>💀 Kills: <span id="ui-kills">0</span></p>
+        </div>
+
+        <div id="item-log" class="item-log"></div>
+        
+        <!-- Banners -->
+        <div id="wave-clear-banner">
+            <div>🎉 WAVE CLEARED!</div>
+            <div id="wave-clear-bonus" style="font-size: 1rem; color: #fef08a; margin-top: 4px;">+100 Gold &bull; +80 EXP</div>
+        </div>
+
+        <div id="downed-banner">
+            💀 YOU ARE DOWNED!<br>
+            <span style="font-size: 0.85rem; font-weight: normal;">Teammates can stand near you to revive, or wait for wave completion!</span>
+        </div>
+        
+        <!-- Mobile Dual Joysticks & Ultimate Button -->
+        <div id="mobile-controls">
+            <div id="joystick-left" class="joystick-zone">
+                <div id="knob-left" class="joystick-knob"></div>
+            </div>
+            <div id="joystick-right" class="joystick-zone">
+                <div id="knob-right" class="joystick-knob"></div>
+            </div>
+            <button id="btn-ultimate-mobile" onclick="useUltimate()">
+                <span>⚡ ULT</span>
+                <span id="mobile-ult-cd" class="ult-cd-text">READY</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="damage-vignette"></div>
+
+    <script src="game.js"></script>
+</body>
+</html>
