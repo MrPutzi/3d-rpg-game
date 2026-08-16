@@ -133,6 +133,56 @@ const SFX = {
         [600, 800, 1000, 1200].forEach((f, i) => {
             setTimeout(() => this.playTone(f, 'sine', 0.2, 0.2), i * 50);
         });
+    },
+    meteor() {
+        this.playTone(90, 'sawtooth', 0.8, 0.35);
+        setTimeout(() => this.playTone(60, 'square', 0.7, 0.4), 100);
+        setTimeout(() => this.playTone(40, 'sawtooth', 0.9, 0.45), 220);
+    },
+    prismaticNova() {
+        [523, 659, 784, 988, 1318].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'triangle', 0.22, 0.2), i * 40);
+        });
+    },
+    thunderClap() {
+        this.playTone(110, 'sawtooth', 0.4, 0.35);
+        setTimeout(() => this.playTone(55, 'square', 0.6, 0.45), 60);
+    },
+    sniper() {
+        this.playTone(1400, 'sine', 0.1, 0.3);
+        setTimeout(() => this.playTone(700, 'sawtooth', 0.25, 0.35), 40);
+    },
+    teleport() {
+        [440, 660, 880, 1320].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'sine', 0.15, 0.22), i * 35);
+        });
+    },
+    dash() {
+        this.playTone(340, 'triangle', 0.12, 0.25);
+        setTimeout(() => this.playTone(180, 'sine', 0.15, 0.2), 30);
+    },
+    caltrops() {
+        this.playTone(880, 'triangle', 0.08, 0.18);
+        setTimeout(() => this.playTone(520, 'square', 0.15, 0.2), 40);
+    },
+    blackHole() {
+        this.playTone(70, 'sawtooth', 1.0, 0.4);
+        setTimeout(() => this.playTone(120, 'sine', 0.8, 0.35), 200);
+        setTimeout(() => this.playTone(45, 'square', 0.9, 0.45), 500);
+    },
+    colossus() {
+        this.playTone(80, 'sawtooth', 0.5, 0.4);
+        setTimeout(() => this.playTone(40, 'square', 0.8, 0.5), 80);
+    },
+    talentPick() {
+        [587, 740, 880, 1175].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'triangle', 0.2, 0.25), i * 60);
+        });
+    },
+    reroll() {
+        [440, 494, 523, 659].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'sine', 0.08, 0.18), i * 35);
+        });
     }
 };
 
@@ -194,9 +244,15 @@ const PLAYER = {
     fireCooldown: 0,
     ultCooldown: 0,
     ultMaxCooldown: 20,
+    tacticalCooldown: 0,
+    tacticalMaxCooldown: 6,
+    tacticalName: 'Shield Charge',
+    pendingLevelUps: 0,
+    bloodlustStacks: 0,
+    bloodlustTimer: 0,
     invulnerableTimer: 0,
     skills: [], // { id, level }
-    activeSkillIds: [] // max 3
+    activeSkillIds: [] // max 5
 };
 
 const EFFECTS = {
@@ -227,7 +283,8 @@ const ITEM_DATABASE = {
     war_wep_3: { id: 'war_wep_3', name: 'Bloodthorn Battleaxe', slot: 'weapon', classReq: 'Warrior', rarity: 'rare', icon: '🪓', stats: { damage: 25, lifesteal: 2 }, desc: 'Jagged axe that hungers for the blood of fallen foes.' },
     war_wep_4: { id: 'war_wep_4', name: 'Obsidian Cleaver', slot: 'weapon', classReq: 'Warrior', rarity: 'epic', icon: '🔪', stats: { damage: 38, maxHp: 50, armor: 4 }, desc: 'Carved from volcanic rock, shatter-resistant and brutal.' },
     war_wep_5: { id: 'war_wep_5', name: 'Doomhammer of the Titan', slot: 'weapon', classReq: 'Warrior', rarity: 'epic', icon: '🔨', stats: { damage: 48, maxHp: 75, crit: 8 }, desc: 'Colossal warhammer that cracks the earth with every swing.' },
-    war_wep_6: { id: 'war_wep_6', name: 'Excalibur of Light', slot: 'weapon', classReq: 'Warrior', rarity: 'legendary', icon: '✨', stats: { damage: 70, maxHp: 110, crit: 12, lifesteal: 4, startingShield: 50 }, desc: 'Legendary holy blade of ancient kings radiating radiant fury.' },
+    war_wep_6: { id: 'war_wep_6', name: 'Excalibur of Light', slot: 'weapon', classReq: 'Warrior', rarity: 'legendary', icon: '✨', stats: { damage: 70, maxHp: 110, crit: 12, lifesteal: 4, startingShield: 50 }, desc: 'Legendary holy blade radiating radiant fury.' },
+    war_wep_7: { id: 'war_wep_7', name: "Ragnarok's Fury Blade", slot: 'weapon', classReq: 'Warrior', rarity: 'legendary', icon: '🔥', stats: { damage: 105, maxHp: 180, crit: 16, lifesteal: 6, startingShield: 80 }, desc: 'Mythic primordial blade forged in the fires of world-ending cataclysm.' },
 
     // --- WARRIOR OFFHANDS (Shields) ---
     war_off_1: { id: 'war_off_1', name: 'Oak Buckler', slot: 'offhand', classReq: 'Warrior', rarity: 'common', icon: '🛡️', stats: { armor: 3, maxHp: 20 }, desc: 'Simple reinforced wooden buckler.' },
@@ -240,6 +297,7 @@ const ITEM_DATABASE = {
     war_arm_2: { id: 'war_arm_2', name: 'Ironclad Plate', slot: 'armor', classReq: 'Warrior', rarity: 'rare', icon: '🛡️', stats: { armor: 8, maxHp: 55 }, desc: 'Solid forged iron plate worn by vanguard champions.' },
     war_arm_3: { id: 'war_arm_3', name: 'Dragonplate Cuirass', slot: 'armor', classReq: 'Warrior', rarity: 'epic', icon: '🐉', stats: { armor: 14, maxHp: 100, damage: 10 }, desc: 'Scales of an ancient red drake forged into impervious armor.' },
     war_arm_4: { id: 'war_arm_4', name: 'Dreadnought Juggernaut Suit', slot: 'armor', classReq: 'Warrior', rarity: 'legendary', icon: '👑', stats: { armor: 22, maxHp: 180, startingShield: 80, lifesteal: 3 }, desc: 'Titanium dreadnought shell making the warrior an unstoppable fortress.' },
+    war_arm_5: { id: 'war_arm_5', name: 'Aegis of the Sun Titan', slot: 'armor', classReq: 'Warrior', rarity: 'legendary', icon: '☀️', stats: { armor: 30, maxHp: 260, startingShield: 120, damage: 20 }, desc: 'Mythic gold-forged battleplate radiating an impenetrable sun barrier.' },
 
     // --- WARRIOR HELMETS (Greathelms / Visors) ---
     war_helm_1: { id: 'war_helm_1', name: 'Steel Greathelm', slot: 'helmet', classReq: 'Warrior', rarity: 'common', icon: '🪖', stats: { armor: 2, maxHp: 15 }, desc: 'Heavy full-face steel helmet.' },
@@ -254,6 +312,7 @@ const ITEM_DATABASE = {
     mag_wep_4: { id: 'mag_wep_4', name: "Archmage's Astral Scepter", slot: 'weapon', classReq: 'Mage', rarity: 'epic', icon: '🔮', stats: { damage: 45, maxMana: 80, crit: 10 }, desc: 'Forged from celestial meteor metal and arcane crystals.' },
     mag_wep_5: { id: 'mag_wep_5', name: 'Nether Void Staff', slot: 'weapon', classReq: 'Mage', rarity: 'epic', icon: '🌌', stats: { damage: 56, maxMana: 100, lifesteal: 3 }, desc: 'Draws raw nether energy tearing through magic resistances.' },
     mag_wep_6: { id: 'mag_wep_6', name: 'Staff of the World Tree', slot: 'weapon', classReq: 'Mage', rarity: 'legendary', icon: '🌳', stats: { damage: 78, maxMana: 150, maxHp: 60, crit: 14, lifesteal: 4 }, desc: 'Living branch of the cosmos granting boundless arcane mastery.' },
+    mag_wep_7: { id: 'mag_wep_7', name: 'Singularity Void Staff', slot: 'weapon', classReq: 'Mage', rarity: 'legendary', icon: '🕳️', stats: { damage: 110, maxMana: 220, maxHp: 80, crit: 20, lifesteal: 6 }, desc: 'Mythic cosmic relic channeling gravitational dark hole collapses.' },
 
     // --- MAGE OFFHANDS (Tomes / Orbs / Grimoires) ---
     mag_off_1: { id: 'mag_off_1', name: 'Mystic Tome', slot: 'offhand', classReq: 'Mage', rarity: 'common', icon: '📖', stats: { maxMana: 25, damage: 5 }, desc: 'Leatherbound grimoire of fundamental runes.' },
@@ -266,6 +325,7 @@ const ITEM_DATABASE = {
     mag_arm_2: { id: 'mag_arm_2', name: 'Spellweaver Silk', slot: 'armor', classReq: 'Mage', rarity: 'rare', icon: '👘', stats: { maxMana: 40, maxHp: 36, armor: 3 }, desc: 'Infused with mana-resistant silken fibers.' },
     mag_arm_3: { id: 'mag_arm_3', name: 'Archmage Vestments', slot: 'armor', classReq: 'Mage', rarity: 'epic', icon: '🧙', stats: { maxMana: 85, maxHp: 70, armor: 6, startingShield: 45 }, desc: 'Gilded robes worn by high council grand arcanists.' },
     mag_arm_4: { id: 'mag_arm_4', name: 'Celestial Robes of Nether', slot: 'armor', classReq: 'Mage', rarity: 'legendary', icon: '🌌', stats: { maxMana: 140, maxHp: 105, armor: 10, startingShield: 90, damage: 16 }, desc: 'Star-woven fabric reflecting ethereal starlight.' },
+    mag_arm_5: { id: 'mag_arm_5', name: 'Cosmic Singularity Mantle', slot: 'armor', classReq: 'Mage', rarity: 'legendary', icon: '✨', stats: { maxMana: 200, maxHp: 160, armor: 16, startingShield: 130, damage: 24 }, desc: 'Mythic star-spun robes providing colossal arcane warding.' },
 
     // --- MAGE HELMETS (Wizard Hats / Cowls / Diadems) ---
     mag_helm_1: { id: 'mag_helm_1', name: "Scholar's Cowl", slot: 'helmet', classReq: 'Mage', rarity: 'common', icon: '🧢', stats: { maxMana: 15, damage: 4 }, desc: 'Simple fabric hood keeping focus sharp.' },
@@ -280,6 +340,7 @@ const ITEM_DATABASE = {
     arc_wep_4: { id: 'arc_wep_4', name: 'Phoenix Stormbow', slot: 'weapon', classReq: 'Archer', rarity: 'epic', icon: '🔥', stats: { damage: 36, speed: 14, crit: 13 }, desc: 'Imbued with the speed and fiery feathers of a phoenix.' },
     arc_wep_5: { id: 'arc_wep_5', name: 'Dragonbone Compound Bow', slot: 'weapon', classReq: 'Archer', rarity: 'epic', icon: '🐉', stats: { damage: 46, maxHp: 40, crit: 15 }, desc: 'Crafted from black dragon ribcage with immense draw tension.' },
     arc_wep_6: { id: 'arc_wep_6', name: 'Bow of the Windrunner', slot: 'weapon', classReq: 'Archer', rarity: 'legendary', icon: '💨', stats: { damage: 66, speed: 22, crit: 20, lifesteal: 3 }, desc: 'Legendary bow whispered to shoot arrows faster than sound itself.' },
+    arc_wep_7: { id: 'arc_wep_7', name: 'Artemis Astral Recurve', slot: 'weapon', classReq: 'Archer', rarity: 'legendary', icon: '🌟', stats: { damage: 95, speed: 30, crit: 26, lifesteal: 5, maxHp: 70 }, desc: 'Mythic celestial bow raining starlight arrows with unmatched velocity.' },
 
     // --- ARCHER OFFHANDS (Quivers) ---
     arc_off_1: { id: 'arc_off_1', name: 'Leather Quiver', slot: 'offhand', classReq: 'Archer', rarity: 'common', icon: '🎒', stats: { damage: 4, speed: 4 }, desc: 'Clean leather back-quiver.' },
@@ -292,6 +353,7 @@ const ITEM_DATABASE = {
     arc_arm_2: { id: 'arc_arm_2', name: "Scout's Leather Vest", slot: 'armor', classReq: 'Archer', rarity: 'rare', icon: '🦺', stats: { maxHp: 42, armor: 5, speed: 6 }, desc: 'Reinforced chest piece offering mobility and protection.' },
     arc_arm_3: { id: 'arc_arm_3', name: 'Shadowstalker Garb', slot: 'armor', classReq: 'Archer', rarity: 'epic', icon: '🥋', stats: { maxHp: 80, armor: 9, speed: 11, crit: 7 }, desc: 'Midnight camouflage making the wearer whisper quiet.' },
     arc_arm_4: { id: 'arc_arm_4', name: 'Windrunner Jerkin', slot: 'armor', classReq: 'Archer', rarity: 'legendary', icon: '🍃', stats: { maxHp: 135, armor: 14, speed: 20, crit: 11, startingShield: 55 }, desc: 'Legendary ranger mantle that deflects incoming projectiles.' },
+    arc_arm_5: { id: 'arc_arm_5', name: 'Zephyr Dragon Garb', slot: 'armor', classReq: 'Archer', rarity: 'legendary', icon: '🐉', stats: { maxHp: 200, armor: 20, speed: 28, crit: 18, startingShield: 90 }, desc: 'Mythic dragon leather making movement effortless and swift.' },
 
     // --- ARCHER HELMETS (Hoods / Coifs / Goggles) ---
     arc_helm_1: { id: 'arc_helm_1', name: "Ranger's Coif", slot: 'helmet', classReq: 'Archer', rarity: 'common', icon: '🧢', stats: { maxHp: 14, crit: 3 }, desc: 'Fitted leather coif shielding from brush.' },
@@ -307,7 +369,10 @@ const ITEM_DATABASE = {
     acc_5: { id: 'acc_5', name: 'Ring of Arcane Surge', slot: 'accessory', classReq: 'All', rarity: 'rare', icon: '💍', stats: { maxMana: 60, damage: 10 }, desc: 'A sapphire ring that constantly expands maximum mana reservoirs.' },
     acc_6: { id: 'acc_6', name: 'Aegis Colossus Ring', slot: 'accessory', classReq: 'All', rarity: 'epic', icon: '💍', stats: { startingShield: 70, armor: 8, maxHp: 45 }, desc: 'Generates a fortified defensive barrier upon battle engagement.' },
     acc_7: { id: 'acc_7', name: 'Heart of the Titan', slot: 'accessory', classReq: 'All', rarity: 'legendary', icon: '❤️', stats: { maxHp: 130, damage: 22, armor: 10, startingShield: 60 }, desc: 'A petrified heart of an ancient colossus radiating vitality.' },
-    acc_8: { id: 'acc_8', name: 'Eye of Eternity', slot: 'accessory', classReq: 'All', rarity: 'legendary', icon: '👁️', stats: { damage: 32, crit: 16, speed: 14, lifesteal: 4, maxHp: 90, maxMana: 70 }, desc: 'Cosmic artifact granting mastery across all archetypes and martial arts.' }
+    acc_8: { id: 'acc_8', name: 'Eye of Eternity', slot: 'accessory', classReq: 'All', rarity: 'legendary', icon: '👁️', stats: { damage: 32, crit: 16, speed: 14, lifesteal: 4, maxHp: 90, maxMana: 70 }, desc: 'Cosmic artifact granting mastery across all archetypes and martial arts.' },
+    acc_9: { id: 'acc_9', name: 'Infinity Gauntlet Ring', slot: 'accessory', classReq: 'All', rarity: 'legendary', icon: '💎', stats: { damage: 45, maxHp: 120, maxMana: 100, crit: 20, speed: 18, lifesteal: 5 }, desc: 'Mythic cosmic relic containing the infinite power of all elements.' },
+    acc_10: { id: 'acc_10', name: 'Chrono Hourglass', slot: 'accessory', classReq: 'All', rarity: 'legendary', icon: '⏳', stats: { speed: 20, maxHp: 75, damage: 28, crit: 12 }, desc: 'Mythic relic that warps spacetime, reducing all Tactical and Ultimate cooldowns by 35%.' },
+    acc_11: { id: 'acc_11', name: "Philosopher's Stone", slot: 'accessory', classReq: 'All', rarity: 'legendary', icon: '🔮', stats: { maxHp: 100, damage: 40, maxMana: 90, lifesteal: 4 }, desc: 'Legendary alchemical catalyst greatly amplifying hero power and essence conversion.' }
 };
 
 function loadSave() {
@@ -1546,7 +1611,7 @@ function applyPermanentUpgrades() {
     PERM.chestLootBonus = (u.relicAppraiser || 0) * 0.25;
 }
 
-function rollDamage() {
+function rollDamage(targetEnemy = null) {
     let dmg = PLAYER.damage;
     if (BUFFS.wrath > 0) dmg *= 2.2;
     let isCrit = false;
@@ -1555,8 +1620,15 @@ function rollDamage() {
 
     if (PLAYER.class === 'Archer') {
         const a11 = (PLAYER.skills.find(s => s.id === 'a11') || {level: 0}).level;
-        critChance += a11 * 0.08;
-        critMult += a11 * 0.35;
+        critChance += a11 * 0.10;
+        critMult += a11 * 0.45;
+
+        // Eagle Eye Execution (Archer a14)
+        const a14 = (PLAYER.skills.find(s => s.id === 'a14') || {level: 0}).level;
+        if (a14 > 0 && targetEnemy && targetEnemy.hp <= targetEnemy.maxHp * 0.45) {
+            dmg = Math.round(dmg * (1.5 + a14 * 0.35));
+            critChance += 0.35;
+        }
     }
 
     if (Math.random() < critChance || BUFFS.wrath > 0) {
@@ -1599,53 +1671,68 @@ function checkPlayerDeath() {
 const CLASSES = {
     Mage: {
         baseHp: 80, baseMana: 100, baseSpeed: 16, baseDamage: 30, color: 0x38bdf8,
+        tacticalName: 'Arcane Blink',
+        tacticalIcon: '✨',
+        tacticalDesc: 'Teleports forward 16m, freezing starting area and restoring 35 Mana.',
         skills: [
-            { id: 'm1', name: 'Explosive Magic', desc: 'Projectiles blast +80% larger area & +5 dmg per rank', max: 5 },
-            { id: 'm2', name: 'Split Spell', desc: 'Fires +1 additional arcane bolt in a spread per rank', max: 5 },
-            { id: 'm3', name: 'Arcane Aura', desc: 'Passively pulses magical AoE damage around you', max: 5 },
-            { id: 'm4', name: 'Homing Orbs', desc: 'Arcane missiles aggressively steer toward enemies', max: 5 },
-            { id: 'm5', name: 'Haste & Flow', desc: '+15% Move Speed & +20% Cast Rate per rank', max: 5 },
-            { id: 'm6', name: 'Vampiric Drain', desc: 'Restores +5 HP upon killing an enemy with magic', max: 5 },
-            { id: 'm7', name: 'Chain Lightning', desc: 'Hits arc lightning bolts to up to 3 nearby foes for 60% dmg', max: 5 },
-            { id: 'm8', name: 'Meteor Shower', desc: 'Periodically calls down falling fiery meteors dealing 90 AoE dmg', max: 5 },
-            { id: 'm9', name: 'Arcane Orbiters', desc: 'Summons 2 swirling mana crystals that shred colliding enemies', max: 5 },
-            { id: 'm10', name: 'Glacier Spear', desc: 'Piercing frost lance that chills and freezes enemies for 2.5s', max: 5 },
-            { id: 'm11', name: 'Mana Siphon', desc: 'Hits restore +5 Mana & increases passive mana regen by +12/s', max: 5 },
-            { id: 'm12', name: 'Prismatic Nova', desc: 'Emits a 360-degree expanding magical shockwave every 5s', max: 5 }
+            { id: 'm1', name: 'Explosive Magic', icon: '💥', rarity: 'common', desc: 'Projectiles blast +80% larger area & +6 dmg per rank', max: 5 },
+            { id: 'm2', name: 'Split Spell', icon: '🔱', rarity: 'common', desc: 'Fires +1 additional arcane bolt in a spread per rank', max: 5 },
+            { id: 'm3', name: 'Arcane Aura', icon: '🔮', rarity: 'rare', desc: 'Passively pulses magical AoE damage and starlight sparkles', max: 5 },
+            { id: 'm4', name: 'Homing Orbs', icon: '🎯', rarity: 'rare', desc: 'Arcane missiles aggressively steer toward enemies', max: 5 },
+            { id: 'm5', name: 'Haste & Flow', icon: '⚡', rarity: 'common', desc: '+15% Move Speed & +25% Cast Rate per rank', max: 5 },
+            { id: 'm6', name: 'Vampiric Drain', icon: '🩸', rarity: 'rare', desc: 'Restores +6 HP upon killing an enemy with magic', max: 5 },
+            { id: 'm7', name: 'Chain Lightning', icon: '⚡', rarity: 'rare', desc: 'Hits arc lightning bolts to up to 3 nearby foes for 65% dmg', max: 5 },
+            { id: 'm8', name: 'Meteor Shower', icon: '☄️', rarity: 'epic', desc: 'Periodically calls down flaming meteors from the sky dealing heavy AoE', max: 5 },
+            { id: 'm9', name: 'Arcane Orbiters', icon: '💎', rarity: 'epic', desc: 'Summons 2 swirling mana crystals that shred colliding enemies', max: 5 },
+            { id: 'm10', name: 'Glacier Spear', icon: '❄️', rarity: 'epic', desc: 'Piercing frost lance that chills and freezes enemies for 2.5s', max: 5 },
+            { id: 'm11', name: 'Mana Siphon', icon: '🌀', rarity: 'rare', desc: 'Hits restore +6 Mana & increases passive mana regen by +15/s', max: 5 },
+            { id: 'm12', name: 'Prismatic Nova', icon: '🌈', rarity: 'epic', desc: 'Emits a 360-degree rainbow shockwave every 4.5s that dazes foes', max: 5 },
+            { id: 'm13', name: 'Black Hole Singularity', icon: '🕳️', rarity: 'legendary', desc: 'Opens a gravitational vortex pulling in enemies and imploding for 240 AoE dmg', max: 5 },
+            { id: 'm14', name: 'Arcane Overcharge', icon: '⚡', rarity: 'legendary', desc: '25% chance on spell cast to trigger a duplicate cascade of all spells', max: 5 }
         ]
     },
     Archer: {
         baseHp: 100, baseMana: 0, baseSpeed: 20, baseDamage: 20, color: 0x34d399,
+        tacticalName: 'Smoke Roll',
+        tacticalIcon: '💨',
+        tacticalDesc: 'Swift evasion roll dropping smoke screen and giving 100% Crit for 3s.',
         skills: [
-            { id: 'a1', name: 'Multishot', desc: 'Fires a wide fan of +2 additional arrows per rank', max: 5 },
-            { id: 'a2', name: 'Piercing Arrow', desc: 'Arrows pierce through +2 additional enemies', max: 5 },
-            { id: 'a3', name: 'Rapid Fire', desc: 'Massively increases arrow fire rate (+35% per rank)', max: 5 },
-            { id: 'a4', name: 'Heavy Draw', desc: 'Increases arrow damage (+8) and projectile size (+30%)', max: 5 },
-            { id: 'a5', name: 'Wind Walk', desc: '+25% movement speed and agility boost per rank', max: 5 },
-            { id: 'a6', name: 'Survivalist', desc: '+20 Max HP and restores +3 HP on enemy kill', max: 5 },
-            { id: 'a7', name: 'Explosive Cluster', desc: 'Arrows detonate upon impact into shrapnel dealing AoE damage', max: 5 },
-            { id: 'a8', name: 'Ricochet Shot', desc: 'Arrows bounce to up to 2 secondary nearby targets on hit', max: 5 },
-            { id: 'a9', name: 'Poison Caltrops', desc: 'Drops toxic caltrop traps behind you that poison & slow enemies', max: 5 },
-            { id: 'a10', name: 'Phantom Daggers', desc: 'Throws spinning phantom daggers in a 360-degree ring in combat', max: 5 },
-            { id: 'a11', name: 'Deadly Precision', desc: '+10% Crit Chance & +0.4x Crit Damage multiplier per rank', max: 5 },
-            { id: 'a12', name: 'Sniper Ballista', desc: 'Periodically fires a hyper-velocity piercing ballista bolt for 200 dmg', max: 5 }
+            { id: 'a1', name: 'Multishot', icon: '🏹', rarity: 'common', desc: 'Fires a wide fan of +2 additional arrows per rank', max: 5 },
+            { id: 'a2', name: 'Piercing Arrow', icon: '🎯', rarity: 'common', desc: 'Arrows pierce through +2 additional enemies', max: 5 },
+            { id: 'a3', name: 'Rapid Fire', icon: '⚡', rarity: 'common', desc: 'Massively increases arrow fire rate (+35% per rank)', max: 5 },
+            { id: 'a4', name: 'Heavy Draw', icon: '💥', rarity: 'common', desc: 'Increases arrow damage (+10) and projectile size (+30%)', max: 5 },
+            { id: 'a5', name: 'Wind Walk', icon: '💨', rarity: 'common', desc: '+25% movement speed and agility boost per rank', max: 5 },
+            { id: 'a6', name: 'Survivalist', icon: '💚', rarity: 'rare', desc: '+30 Max HP and restores +5 HP on enemy kill', max: 5 },
+            { id: 'a7', name: 'Explosive Cluster', icon: '💣', rarity: 'rare', desc: 'Arrows detonate upon impact into shrapnel dealing AoE damage', max: 5 },
+            { id: 'a8', name: 'Ricochet Shot', icon: '🪃', rarity: 'rare', desc: 'Arrows bounce to up to 2 secondary nearby targets on hit', max: 5 },
+            { id: 'a9', name: 'Poison Caltrops', icon: '☠️', rarity: 'epic', desc: 'Drops toxic caltrop traps behind you that explode into poison clouds', max: 5 },
+            { id: 'a10', name: 'Phantom Daggers', icon: '🗡️', rarity: 'epic', desc: 'Throws spinning phantom daggers in a 360-degree ring in combat', max: 5 },
+            { id: 'a11', name: 'Deadly Precision', icon: '🎯', rarity: 'rare', desc: '+10% Crit Chance & +0.45x Crit Damage multiplier per rank', max: 5 },
+            { id: 'a12', name: 'Sniper Ballista', icon: '🏹', rarity: 'epic', desc: 'Periodically fires a hyper-velocity piercing ballista bolt for 220 dmg', max: 5 },
+            { id: 'a13', name: 'Arrow Volley', icon: '🔥', rarity: 'legendary', desc: 'Rains down blazing sky arrows on dense mob clusters every 5s', max: 5 },
+            { id: 'a14', name: 'Eagle Eye Execution', icon: '🦅', rarity: 'legendary', desc: 'Deals +120% extra damage to enemies below 40% HP with execution burst', max: 5 }
         ]
     },
     Warrior: {
         baseHp: 150, baseMana: 0, baseSpeed: 18, baseDamage: 40, color: 0xf87171,
+        tacticalName: 'Shield Charge',
+        tacticalIcon: '🛡️',
+        tacticalDesc: 'Charges forward with high velocity, crushing enemies and gaining +60 Shield.',
         skills: [
-            { id: 'w1', name: 'Wide Cleave', desc: 'Massively widens Greatsword slash hitbox and sweep angle', max: 5 },
-            { id: 'w2', name: 'Whirlwind', desc: 'Continuous slicing blade hurricane around you (+15 dmg/s)', max: 5 },
-            { id: 'w3', name: 'Bloodthirst', desc: 'Heals +10 HP upon slaying any enemy in melee combat', max: 5 },
-            { id: 'w4', name: 'Juggernaut', desc: '+40 Max HP and reduces all incoming damage by 3 per rank', max: 5 },
-            { id: 'w5', name: 'Sword Beam', desc: 'Greatsword slashes release piercing energy crescent shockwaves', max: 5 },
-            { id: 'w6', name: 'Frenzy', desc: '+30% melee attack speed and momentum per rank', max: 5 },
-            { id: 'w7', name: 'Orbiting Battleaxes', desc: '2 spinning steel throwing axes circle you carving through mobs', max: 5 },
-            { id: 'w8', name: 'Earth Fissure', desc: 'Melee hits rip open ground fissures that knock back and crush mobs', max: 5 },
-            { id: 'w9', name: 'Spiked Barrier', desc: 'Reflects 60% damage to attackers and grants a recharging 80 HP shield', max: 5 },
-            { id: 'w10', name: 'Flame Cleave', desc: 'Slashes ignite enemies dealing burning fire damage over 3s', max: 5 },
-            { id: 'w11', name: 'Berserker Wrath', desc: 'Increases damage by up to +100% as player HP gets lower', max: 5 },
-            { id: 'w12', name: 'Thunder Clap', desc: 'Every 4s, slams the ground creating a dazing concussive shockwave', max: 5 }
+            { id: 'w1', name: 'Wide Cleave', icon: '⚔️', rarity: 'common', desc: 'Massively widens Greatsword slash hitbox and sweep angle', max: 5 },
+            { id: 'w2', name: 'Whirlwind', icon: '🌪️', rarity: 'rare', desc: 'Continuous slicing blade hurricane around you (+20 dmg/s)', max: 5 },
+            { id: 'w3', name: 'Bloodthirst', icon: '🩸', rarity: 'rare', desc: 'Heals +12 HP upon slaying any enemy in melee combat', max: 5 },
+            { id: 'w4', name: 'Juggernaut', icon: '🛡️', rarity: 'common', desc: '+50 Max HP and reduces all incoming damage by 4 per rank', max: 5 },
+            { id: 'w5', name: 'Sword Beam', icon: '🌊', rarity: 'rare', desc: 'Greatsword slashes release piercing energy crescent shockwaves', max: 5 },
+            { id: 'w6', name: 'Frenzy', icon: '⚡', rarity: 'common', desc: '+30% melee attack speed and momentum per rank', max: 5 },
+            { id: 'w7', name: 'Orbiting Battleaxes', icon: '🪓', rarity: 'epic', desc: '2 spinning steel throwing axes circle you carving through mobs', max: 5 },
+            { id: 'w8', name: 'Earth Fissure', icon: '🪨', rarity: 'rare', desc: 'Melee hits rip open ground fissures that knock back and crush mobs', max: 5 },
+            { id: 'w9', name: 'Spiked Barrier', icon: '🛡️', rarity: 'rare', desc: 'Reflects 80% damage to attackers and grants a recharging 90 HP shield', max: 5 },
+            { id: 'w10', name: 'Flame Cleave', icon: '🔥', rarity: 'rare', desc: 'Slashes ignite enemies dealing burning fire damage over 3s', max: 5 },
+            { id: 'w11', name: 'Berserker Wrath', icon: '😡', rarity: 'epic', desc: 'Increases damage by up to +120% as player HP gets lower', max: 5 },
+            { id: 'w12', name: 'Thunder Clap', icon: '⚡', rarity: 'epic', desc: 'Every 4s, slams the ground creating a dazing concussive shockwave', max: 5 },
+            { id: 'w13', name: 'Colossus Leap', icon: '💥', rarity: 'legendary', desc: 'Leaps into the air and crashes down every 6s dealing 280 crater AoE dmg', max: 5 },
+            { id: 'w14', name: 'Bloodlust Frenzy', icon: '🩸', rarity: 'legendary', desc: 'Kills grant stacking frenzy (+4% attack speed, +3% speed, up to 10 stacks)', max: 5 }
         ]
     }
 };
@@ -4101,16 +4188,49 @@ function triggerLevelUp() {
     generateSkillOptions();
 }
 
+window.rerollSkills = function() {
+    if (GAME.gold < 40) {
+        logMessage('Need 40 Gold to Reroll!', '#ef4444');
+        return;
+    }
+    GAME.gold -= 40;
+    SFX.reroll();
+    logMessage('🎲 SKILLS REROLLED (-40g)', '#38bdf8');
+    updateGUI();
+    generateSkillOptions();
+};
+
+window.skipSkillForGold = function() {
+    const goldEarned = 120 + PLAYER.level * 20;
+    const essEarned = 15;
+    GAME.gold += goldEarned;
+    SAVE.essence += essEarned;
+    writeSave();
+    SFX.item();
+    logMessage(`Skipped for +${goldEarned}g & +${essEarned} Essence!`, '#fbbf24');
+    updateGUI();
+    resumeGame();
+};
+
 // --- COMPANION & PERIODIC SPELL STATE ---
 const activeOrbitMeshes = [];
 const groundTraps = [];
-const SKILL_TIMERS = { meteor: 0, nova: 0, sniper: 0, trap: 0, thunder: 0, orbitAngle: 0 };
+const SKILL_TIMERS = { meteor: 0, nova: 0, sniper: 0, trap: 0, thunder: 0, volley: 0, blackHole: 0, colossus: 0, orbitAngle: 0 };
 
 function clearSpellEntities() {
     activeOrbitMeshes.forEach(m => scene.remove(m));
     activeOrbitMeshes.length = 0;
     groundTraps.forEach(t => scene.remove(t.mesh));
     groundTraps.length = 0;
+}
+
+function getRarityBorder(rarity) {
+    switch (rarity) {
+        case 'legendary': return '#f59e0b';
+        case 'epic': return '#a855f7';
+        case 'rare': return '#38bdf8';
+        default: return '#94a3b8';
+    }
 }
 
 function generateSkillOptions() {
@@ -4123,9 +4243,9 @@ function generateSkillOptions() {
         if (lvl >= s.max) return; 
         
         if (PLAYER.activeSkillIds.length < 5) {
-            pool.push({ ...s, nextLvl: lvl + 1 });
+            pool.push({ ...s, nextLvl: lvl + 1, currentLvl: lvl });
         } else {
-            if (owned) pool.push({ ...s, nextLvl: lvl + 1 });
+            if (owned) pool.push({ ...s, nextLvl: lvl + 1, currentLvl: lvl });
         }
     });
 
@@ -4144,10 +4264,18 @@ function generateSkillOptions() {
     
     choices.forEach(c => {
         const div = document.createElement('div');
-        div.className = 'skill-card';
+        const rClass = `rarity-${c.rarity || 'common'}`;
+        div.className = `skill-card ${rClass}`;
+        const icon = c.icon || '✨';
+        const rarityBadge = (c.rarity || 'common').toUpperCase();
+        
         div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; width:100%; margin-bottom:8px;">
+                <span class="skill-icon-badge">${icon}</span>
+                <span class="skill-rarity-badge ${rClass}">${rarityBadge}</span>
+            </div>
             <h2>${c.name}</h2>
-            <div class="level">Level ${c.nextLvl}</div>
+            <div class="level">${c.currentLvl === 0 ? '✨ NEW SKILL' : `Rank ${c.currentLvl} ➔ Rank ${c.nextLvl}`}</div>
             <p>${c.desc}</p>
         `;
         div.onclick = () => selectSkill(c.id);
@@ -4164,6 +4292,7 @@ function selectSkill(id) {
         PLAYER.activeSkillIds.push(id);
     }
     
+    SFX.talentPick();
     updateEffects();
     updateGUI();
     resumeGame(); 
@@ -4173,8 +4302,8 @@ function updateEffects() {
     const base = CLASSES[PLAYER.class];
 
     EFFECTS.projCount = 1; EFFECTS.projPierce = 1; EFFECTS.projRadius = 1;
-    EFFECTS.fireRateMult = INRUN.fireRateMult * (BUFFS.swiftness > 0 ? 1.5 : 1.0); 
-    EFFECTS.moveSpeedMult = INRUN.speedMult * PERM.speedMult * (BUFFS.swiftness > 0 ? 1.6 : 1.0);
+    EFFECTS.fireRateMult = INRUN.fireRateMult * (BUFFS.swiftness > 0 ? 1.5 : 1.0) * (1 + PLAYER.bloodlustStacks * 0.04); 
+    EFFECTS.moveSpeedMult = INRUN.speedMult * PERM.speedMult * (BUFFS.swiftness > 0 ? 1.6 : 1.0) * (1 + PLAYER.bloodlustStacks * 0.03);
     EFFECTS.auraDamage = 0; EFFECTS.homing = 0;
 
     let skillLifesteal = 0;
@@ -4186,46 +4315,52 @@ function updateEffects() {
         const lvl = s.level;
         switch(s.id) {
             // Mage Skills
-            case 'm1': EFFECTS.projRadius += lvl * 0.8; dmgBonus += lvl * 5; break;
+            case 'm1': EFFECTS.projRadius += lvl * 0.8; dmgBonus += lvl * 6; break;
             case 'm2': EFFECTS.projCount += lvl; break;
-            case 'm3': EFFECTS.auraDamage += lvl * 12; break;
-            case 'm4': EFFECTS.homing += lvl * 0.55; break;
-            case 'm5': EFFECTS.moveSpeedMult += lvl * 0.15; EFFECTS.fireRateMult += lvl * 0.20; break;
-            case 'm6': skillLifesteal += lvl * 5; break;
+            case 'm3': EFFECTS.auraDamage += lvl * 14; break;
+            case 'm4': EFFECTS.homing += lvl * 0.6; break;
+            case 'm5': EFFECTS.moveSpeedMult += lvl * 0.15; EFFECTS.fireRateMult += lvl * 0.25; break;
+            case 'm6': skillLifesteal += lvl * 6; break;
             case 'm7': break; // Chain lightning proc on hit
             case 'm8': break; // Meteor shower periodic
             case 'm9': break; // Arcane Orbiters
             case 'm10': EFFECTS.projPierce += lvl * 2; break; // Glacier spear
             case 'm11': break; // Mana siphon
             case 'm12': break; // Prismatic nova
+            case 'm13': break; // Black Hole Singularity
+            case 'm14': break; // Arcane Overcharge (handled on fire)
             
             // Archer Skills
             case 'a1': EFFECTS.projCount += lvl * 2; break;
             case 'a2': EFFECTS.projPierce += lvl * 2; break;
             case 'a3': EFFECTS.fireRateMult += lvl * 0.35; break;
-            case 'a4': EFFECTS.projRadius += lvl * 0.3; dmgBonus += lvl * 8; break;
+            case 'a4': EFFECTS.projRadius += lvl * 0.3; dmgBonus += lvl * 10; break;
             case 'a5': EFFECTS.moveSpeedMult += lvl * 0.25; break;
-            case 'a6': hpBonus += lvl * 20; skillLifesteal += lvl * 3; break;
+            case 'a6': hpBonus += lvl * 30; skillLifesteal += lvl * 5; break;
             case 'a7': break; // Explosive cluster on hit
             case 'a8': break; // Ricochet on hit
             case 'a9': break; // Poison caltrops
-            case 'a10': break; // Phantom daggers in fire
+            case 'a10': break; // Phantom daggers on fire
             case 'a11': break; // Deadly precision in rollDamage
             case 'a12': break; // Sniper ballista
+            case 'a13': break; // Arrow volley
+            case 'a14': break; // Eagle Eye Execution
             
             // Warrior Skills
-            case 'w1': EFFECTS.projRadius += lvl * 1.5; dmgBonus += lvl * 6; break;
-            case 'w2': EFFECTS.auraDamage += lvl * 18; break;
-            case 'w3': skillLifesteal += lvl * 10; break;
-            case 'w4': hpBonus += lvl * 40; break;
+            case 'w1': EFFECTS.projRadius += lvl * 1.5; dmgBonus += lvl * 8; break;
+            case 'w2': EFFECTS.auraDamage += lvl * 20; break;
+            case 'w3': skillLifesteal += lvl * 12; break;
+            case 'w4': hpBonus += lvl * 50; break;
             case 'w5': EFFECTS.projPierce += lvl * 3; EFFECTS.projRadius += lvl * 0.4; break;
             case 'w6': EFFECTS.fireRateMult += lvl * 0.3; break;
             case 'w7': break; // Orbiting battleaxes
             case 'w8': break; // Earth fissure on hit
-            case 'w9': bonusShield += lvl * 40; break; // Spiked Barrier
+            case 'w9': bonusShield += lvl * 45; break; // Spiked Barrier
             case 'w10': break; // Flame cleave burn
             case 'w11': break; // Berserker wrath
             case 'w12': break; // Thunder clap
+            case 'w13': break; // Colossus leap
+            case 'w14': break; // Bloodlust frenzy
         }
     });
 
@@ -4235,7 +4370,7 @@ function updateEffects() {
     
     if (m9Lvl > 0 && PLAYER.class === 'Mage') {
         if (activeOrbitMeshes.length === 0) {
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 3; i++) {
                 const crystalGeo = new THREE.OctahedronGeometry(0.7);
                 const crystalMat = new THREE.MeshStandardMaterial({
                     color: 0x38bdf8,
@@ -4250,7 +4385,7 @@ function updateEffects() {
         }
     } else if (w7Lvl > 0 && PLAYER.class === 'Warrior') {
         if (activeOrbitMeshes.length === 0) {
-            for (let i = 0; i < 2; i++) {
+            for (let i = 0; i < 3; i++) {
                 const axeGeo = new THREE.BoxGeometry(0.3, 1.8, 1.0);
                 const axeMat = new THREE.MeshStandardMaterial({
                     color: 0xf87171,
@@ -4288,7 +4423,8 @@ function updateEffects() {
         PLAYER.skills.forEach(s => {
             const def = CLASSES[PLAYER.class].skills.find(x => x.id === s.id);
             if (def) {
-                list.innerHTML += `<div class="active-skill-item">${def.name} (Lvl ${s.level})</div>`;
+                const icon = def.icon || '⚡';
+                list.innerHTML += `<div class="active-skill-item">${icon} ${def.name} (Lvl ${s.level})</div>`;
             }
         });
         if (PLAYER.skills.length === 0) {
@@ -4297,6 +4433,498 @@ function updateEffects() {
     }
     const countEl = document.getElementById('ui-skill-count');
     if (countEl) countEl.innerText = PLAYER.skills.length;
+}
+
+// --- TACTICAL SKILL SYSTEM ---
+window.useTacticalSkill = function() {
+    if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
+    if (PLAYER.tacticalCooldown > 0) {
+        logMessage(`Tactical skill cooling down (${Math.ceil(PLAYER.tacticalCooldown)}s)`, '#94a3b8');
+        return;
+    }
+
+    let maxCd = 6.0;
+    if (PLAYER.class === 'Warrior') maxCd = 6.5;
+    else if (PLAYER.class === 'Mage') maxCd = 5.5;
+    else if (PLAYER.class === 'Archer') maxCd = 5.0;
+
+    const hasChrono = SAVE.equipped && SAVE.equipped[PLAYER.class] && SAVE.equipped[PLAYER.class].accessory === 'acc_10';
+    if (hasChrono) maxCd *= 0.65;
+
+    PLAYER.tacticalMaxCooldown = maxCd;
+    PLAYER.tacticalCooldown = maxCd;
+
+    const playerPos = playerMesh.position;
+    const aimDir = new THREE.Vector3();
+    playerMesh.getWorldDirection(aimDir);
+
+    if (PLAYER.class === 'Warrior') {
+        // Shield Charge
+        SFX.dash();
+        SFX.hit();
+        cameraShakeTimer = 0.25;
+        logMessage('🛡️ SHIELD CHARGE!', '#f87171');
+        spawnFloatingText(playerPos, '🛡️ CHARGE!', '#f87171', 20, true);
+
+        const shieldGain = 60 + PLAYER.level * 10;
+        GAME.shield = Math.min(250, GAME.shield + shieldGain);
+
+        const dashDistance = 16;
+        playerMesh.position.addScaledVector(aimDir, dashDistance);
+        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
+        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+
+        const trailGeo = new THREE.CylinderGeometry(2, 3, 16, 16);
+        const trailMat = new THREE.MeshBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+        const trailMesh = new THREE.Mesh(trailGeo, trailMat);
+        trailMesh.rotation.x = Math.PI / 2;
+        trailMesh.position.set(playerPos.x - aimDir.x * 8, 1, playerPos.z - aimDir.z * 8);
+        trailMesh.lookAt(playerPos.x, 1, playerPos.z);
+        new VFXObject(trailMesh, 0.4, (m, prog) => {
+            m.material.opacity = (1 - prog) * 0.8;
+            m.scale.set(1 + prog * 1.5, 1, 1 + prog * 1.5);
+        });
+
+        const chargeDmg = 120 + PLAYER.level * 18 + (SAVE.upgrades.power || 0) * 10;
+        enemies.forEach(e => {
+            if (playerMesh.position.distanceTo(e.mesh.position) <= 12) {
+                e.stunTimer = 2.0;
+                e.takeDamage(chargeDmg, true, '💥 SMASH!');
+                const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerMesh.position).normalize();
+                e.mesh.position.addScaledVector(pushDir, 8);
+            }
+        });
+
+    } else if (PLAYER.class === 'Mage') {
+        // Arcane Blink
+        SFX.teleport();
+        logMessage('✨ ARCANE BLINK & FREEZE!', '#38bdf8');
+        spawnFloatingText(playerPos, '✨ BLINK!', '#38bdf8', 20, true);
+
+        const startPos = playerPos.clone();
+        const blinkGeo = new THREE.RingGeometry(0.5, 3.5, 24);
+        const blinkMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const blinkMesh = new THREE.Mesh(blinkGeo, blinkMat);
+        blinkMesh.rotation.x = -Math.PI / 2;
+        blinkMesh.position.set(startPos.x, 0.2, startPos.z);
+        new VFXObject(blinkMesh, 0.5, (m, prog) => {
+            const sc = 1 + prog * 4;
+            m.scale.set(sc, sc, sc);
+            m.material.opacity = (1 - prog) * 0.9;
+        });
+
+        enemies.forEach(e => {
+            if (startPos.distanceTo(e.mesh.position) <= 10) {
+                e.freezeTimer = 2.5;
+                e.takeDamage(80 + PLAYER.level * 14, false, '❄️ FROZEN');
+            }
+        });
+
+        playerMesh.position.addScaledVector(aimDir, 18);
+        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
+        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+
+        PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + 35);
+
+        const arrGeo = new THREE.SphereGeometry(2, 16, 16);
+        const arrMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.7, wireframe: true });
+        const arrMesh = new THREE.Mesh(arrGeo, arrMat);
+        arrMesh.position.copy(playerMesh.position);
+        new VFXObject(arrMesh, 0.35, (m, prog) => {
+            m.scale.set(1 + prog * 2, 1 + prog * 2, 1 + prog * 2);
+            m.material.opacity = (1 - prog) * 0.7;
+        });
+
+    } else if (PLAYER.class === 'Archer') {
+        // Smoke Roll & 100% Crit buff
+        SFX.dash();
+        logMessage('💨 SMOKE ROLL & 100% CRIT!', '#34d399');
+        spawnFloatingText(playerPos, '💨 EVASION ROLL!', '#34d399', 20, true);
+
+        PLAYER.invulnerableTimer = 1.0;
+        BUFFS.wrath = 3.5;
+        updateBuffsHUD();
+
+        playerMesh.position.addScaledVector(aimDir, 15);
+        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
+        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+
+        const smokeGeo = new THREE.SphereGeometry(4.5, 12, 12);
+        const smokeMat = new THREE.MeshBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.75 });
+        const smokeMesh = new THREE.Mesh(smokeGeo, smokeMat);
+        smokeMesh.position.set(playerPos.x, 1.5, playerPos.z);
+        new VFXObject(smokeMesh, 1.2, (m, prog) => {
+            const sc = 1 + prog * 1.5;
+            m.scale.set(sc, sc * 0.6, sc);
+            m.material.opacity = (1 - prog) * 0.75;
+        });
+
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 8) {
+                e.stunTimer = 2.5;
+                spawnFloatingText(e.mesh.position, '🌫️ BLINDED', '#94a3b8', 14, false);
+            }
+        });
+    }
+
+    updateGUI();
+};
+
+// --- PERIODIC SKILL ENGINE ---
+function updateClassSkills(dt) {
+    if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
+    const pPos = playerMesh.position;
+
+    // Bloodlust Frenzy decay
+    if (PLAYER.bloodlustTimer > 0) {
+        PLAYER.bloodlustTimer -= dt;
+        if (PLAYER.bloodlustTimer <= 0) {
+            PLAYER.bloodlustStacks = 0;
+            updateEffects();
+        }
+    }
+
+    // Tactical cooldown timer
+    if (PLAYER.tacticalCooldown > 0) {
+        PLAYER.tacticalCooldown = Math.max(0, PLAYER.tacticalCooldown - dt);
+        updateGUI();
+    }
+
+    // Orbiting meshes rotation
+    SKILL_TIMERS.orbitAngle = (SKILL_TIMERS.orbitAngle || 0) + dt * 3.5;
+    const orbDist = 4.2;
+    activeOrbitMeshes.forEach((mesh, idx) => {
+        const offset = (idx / activeOrbitMeshes.length) * Math.PI * 2;
+        const ang = SKILL_TIMERS.orbitAngle + offset;
+        mesh.position.set(
+            pPos.x + Math.cos(ang) * orbDist,
+            pPos.y + 0.8 + Math.sin(SKILL_TIMERS.orbitAngle * 2 + idx) * 0.3,
+            pPos.z + Math.sin(ang) * orbDist
+        );
+        mesh.rotation.y += dt * 8;
+        mesh.rotation.x += dt * 4;
+
+        // Orbit collision damage
+        const m9 = (PLAYER.skills.find(s => s.id === 'm9') || {level:0}).level;
+        const w7 = (PLAYER.skills.find(s => s.id === 'w7') || {level:0}).level;
+        const orbDmg = (m9 > 0 ? (20 + m9 * 14) : (w7 > 0 ? (28 + w7 * 16) : 0)) * dt * 3;
+        if (orbDmg > 0) {
+            enemies.forEach(e => {
+                if (mesh.position.distanceTo(e.mesh.position) <= 2.2) {
+                    e.takeDamage(orbDmg, false);
+                    if (Math.random() < 0.2) createImpact(mesh.position, m9 > 0 ? 0x38bdf8 : 0xf87171);
+                }
+            });
+        }
+    });
+
+    // Ground Caltrop Traps (Archer a9)
+    for (let i = groundTraps.length - 1; i >= 0; i--) {
+        const trap = groundTraps[i];
+        trap.life -= dt;
+        trap.mesh.rotation.y += dt * 2;
+        
+        let triggered = false;
+        for (let j = 0; j < enemies.length; j++) {
+            const e = enemies[j];
+            if (trap.mesh.position.distanceTo(e.mesh.position) <= 3.2) {
+                triggered = true;
+                e.takeDamage(trap.dmg, false, '☠️ POISON');
+                e.speed = Math.max(2, e.speed * 0.5);
+                createImpact(trap.mesh.position, 0x10b981);
+                break;
+            }
+        }
+
+        if (triggered || trap.life <= 0) {
+            scene.remove(trap.mesh);
+            groundTraps.splice(i, 1);
+        }
+    }
+
+    // Archer Caltrops Dropper (a9)
+    const a9 = (PLAYER.skills.find(s => s.id === 'a9') || {level:0}).level;
+    if (a9 > 0 && PLAYER.class === 'Archer') {
+        SKILL_TIMERS.trap = (SKILL_TIMERS.trap || 0) + dt;
+        if (SKILL_TIMERS.trap >= Math.max(1.8, 4.0 - a9 * 0.4)) {
+            SKILL_TIMERS.trap = 0;
+            if (groundTraps.length < 8) {
+                SFX.caltrops();
+                const trapGeo = new THREE.ConeGeometry(0.6, 0.8, 5);
+                const trapMat = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.6 });
+                const trapMesh = new THREE.Mesh(trapGeo, trapMat);
+                trapMesh.position.set(pPos.x + (Math.random() - 0.5) * 2, 0.4, pPos.z + (Math.random() - 0.5) * 2);
+                scene.add(trapMesh);
+                groundTraps.push({ mesh: trapMesh, life: 12, dmg: 40 + a9 * 25 });
+            }
+        }
+    }
+
+    // Mage Meteor Shower (m8)
+    const m8 = (PLAYER.skills.find(s => s.id === 'm8') || {level:0}).level;
+    if (m8 > 0 && PLAYER.class === 'Mage') {
+        SKILL_TIMERS.meteor = (SKILL_TIMERS.meteor || 0) + dt;
+        if (SKILL_TIMERS.meteor >= Math.max(1.5, 4.5 - m8 * 0.5)) {
+            SKILL_TIMERS.meteor = 0;
+            if (enemies.length > 0) {
+                const targetEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+                const targetX = targetEnemy.mesh.position.x + (Math.random() - 0.5) * 4;
+                const targetZ = targetEnemy.mesh.position.z + (Math.random() - 0.5) * 4;
+                
+                SFX.meteor();
+                const meteorGeo = new THREE.SphereGeometry(1.2, 12, 12);
+                const meteorMat = new THREE.MeshStandardMaterial({ color: 0xf97316, emissive: 0xef4444, emissiveIntensity: 1.0 });
+                const meteorMesh = new THREE.Mesh(meteorGeo, meteorMat);
+                meteorMesh.position.set(targetX, 40, targetZ);
+                
+                const meteorDmg = 90 + m8 * 45 + PLAYER.level * 8;
+                new VFXObject(meteorMesh, 0.6, (m, prog) => {
+                    m.position.y = 40 * (1 - prog) + 0.5;
+                    m.rotation.x += 0.2;
+                    m.rotation.y += 0.2;
+                    if (prog >= 0.98) {
+                        cameraShakeTimer = 0.25;
+                        createImpact(new THREE.Vector3(targetX, 0.5, targetZ), 0xf97316);
+                        
+                        const expGeo = new THREE.RingGeometry(0.5, 6.0, 24);
+                        const expMat = new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                        const expMesh = new THREE.Mesh(expGeo, expMat);
+                        expMesh.rotation.x = -Math.PI / 2;
+                        expMesh.position.set(targetX, 0.2, targetZ);
+                        new VFXObject(expMesh, 0.4, (em, eprog) => {
+                            const sc = 1 + eprog * 3;
+                            em.scale.set(sc, sc, sc);
+                            em.material.opacity = (1 - eprog) * 0.9;
+                        });
+
+                        enemies.forEach(e => {
+                            if (new THREE.Vector3(targetX, 0, targetZ).distanceTo(e.mesh.position) <= 9) {
+                                e.takeDamage(meteorDmg, true, '☄️ METEOR!');
+                                e.burnTimer = 3.0;
+                                e.burnDmg = 15 + m8 * 8;
+                            }
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    // Mage Prismatic Nova (m12)
+    const m12 = (PLAYER.skills.find(s => s.id === 'm12') || {level:0}).level;
+    if (m12 > 0 && PLAYER.class === 'Mage') {
+        SKILL_TIMERS.nova = (SKILL_TIMERS.nova || 0) + dt;
+        if (SKILL_TIMERS.nova >= Math.max(2.0, 5.0 - m12 * 0.5)) {
+            SKILL_TIMERS.nova = 0;
+            SFX.prismaticNova();
+            spawnFloatingText(pPos, '🌈 PRISMATIC NOVA', '#c084fc', 16, true);
+            
+            const colors = [0x38bdf8, 0xa855f7, 0xf43f5e, 0xfacc15];
+            colors.forEach((col, idx) => {
+                setTimeout(() => {
+                    const ringGeo = new THREE.RingGeometry(1, 2.5, 32);
+                    const ringMat = new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+                    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+                    ringMesh.rotation.x = -Math.PI / 2;
+                    ringMesh.position.set(pPos.x, 0.2 + idx * 0.05, pPos.z);
+                    new VFXObject(ringMesh, 0.5, (m, prog) => {
+                        const sc = 1 + prog * 14;
+                        m.scale.set(sc, sc, sc);
+                        m.material.opacity = (1 - prog) * 0.9;
+                    });
+                }, idx * 60);
+            });
+
+            const novaDmg = 70 + m12 * 35;
+            enemies.forEach(e => {
+                if (pPos.distanceTo(e.mesh.position) <= 18) {
+                    e.takeDamage(novaDmg, false, '🌈 NOVA!');
+                    e.stunTimer = 1.5;
+                }
+            });
+        }
+    }
+
+    // Mage Black Hole Singularity (m13)
+    const m13 = (PLAYER.skills.find(s => s.id === 'm13') || {level:0}).level;
+    if (m13 > 0 && PLAYER.class === 'Mage') {
+        SKILL_TIMERS.blackHole = (SKILL_TIMERS.blackHole || 0) + dt;
+        if (SKILL_TIMERS.blackHole >= Math.max(3.5, 8.0 - m13 * 0.8)) {
+            SKILL_TIMERS.blackHole = 0;
+            if (enemies.length > 0) {
+                const centerTarget = enemies[Math.floor(Math.random() * enemies.length)];
+                const cX = centerTarget.mesh.position.x;
+                const cZ = centerTarget.mesh.position.z;
+                
+                SFX.blackHole();
+                spawnFloatingText(new THREE.Vector3(cX, 2, cZ), '🕳️ SINGULARITY!', '#9333ea', 20, true);
+
+                const holeGeo = new THREE.SphereGeometry(2.5, 16, 16);
+                const holeMat = new THREE.MeshStandardMaterial({ color: 0x09090b, emissive: 0x6b21a8, emissiveIntensity: 1.5, wireframe: true });
+                const holeMesh = new THREE.Mesh(holeGeo, holeMat);
+                holeMesh.position.set(cX, 2, cZ);
+                
+                const holeDmg = 180 + m13 * 80;
+                new VFXObject(holeMesh, 2.0, (m, prog, pdt) => {
+                    m.rotation.y += pdt * 12;
+                    m.rotation.z += pdt * 8;
+                    const pullRadius = 22;
+                    enemies.forEach(e => {
+                        const d = m.position.distanceTo(e.mesh.position);
+                        if (d <= pullRadius) {
+                            const pullDir = new THREE.Vector3().subVectors(m.position, e.mesh.position).normalize();
+                            e.mesh.position.addScaledVector(pullDir, pdt * 16);
+                        }
+                    });
+                    if (prog >= 0.98) {
+                        cameraShakeTimer = 0.3;
+                        createImpact(m.position, 0xa855f7);
+                        enemies.forEach(e => {
+                            if (m.position.distanceTo(e.mesh.position) <= 14) {
+                                e.takeDamage(holeDmg, true, '💥 IMPLOSION!');
+                            }
+                        });
+                    }
+                });
+            }
+        }
+    }
+
+    // Archer Sniper Ballista (a12)
+    const a12 = (PLAYER.skills.find(s => s.id === 'a12') || {level:0}).level;
+    if (a12 > 0 && PLAYER.class === 'Archer') {
+        SKILL_TIMERS.sniper = (SKILL_TIMERS.sniper || 0) + dt;
+        if (SKILL_TIMERS.sniper >= Math.max(1.8, 5.0 - a12 * 0.6)) {
+            SKILL_TIMERS.sniper = 0;
+            if (enemies.length > 0) {
+                let bestEnemy = enemies[0];
+                let maxDist = 0;
+                enemies.forEach(e => {
+                    const d = pPos.distanceTo(e.mesh.position);
+                    if (d > maxDist) { maxDist = d; bestEnemy = e; }
+                });
+
+                SFX.sniper();
+                const beamDir = new THREE.Vector3().subVectors(bestEnemy.mesh.position, pPos).normalize();
+                
+                const p = new Projectile(pPos.clone().add(new THREE.Vector3(0, 1.2, 0)), beamDir, true, 0xfacc15, 160, 2.5);
+                p.mesh.scale.set(1.2, 1.2, 5.0);
+                p.pierce = 10;
+                
+                spawnFloatingText(pPos, '🏹 BALLISTA SHOT', '#facc15', 16, true);
+            }
+        }
+    }
+
+    // Archer Arrow Volley (a13)
+    const a13 = (PLAYER.skills.find(s => s.id === 'a13') || {level:0}).level;
+    if (a13 > 0 && PLAYER.class === 'Archer') {
+        SKILL_TIMERS.volley = (SKILL_TIMERS.volley || 0) + dt;
+        if (SKILL_TIMERS.volley >= Math.max(2.5, 6.0 - a13 * 0.7)) {
+            SKILL_TIMERS.volley = 0;
+            if (enemies.length > 0) {
+                const target = enemies[Math.floor(Math.random() * enemies.length)];
+                const tPos = target.mesh.position;
+                SFX.arrowStorm();
+                spawnFloatingText(tPos, '🔥 ARROW VOLLEY!', '#ef4444', 18, true);
+
+                const count = 18;
+                for (let k = 0; k < count; k++) {
+                    setTimeout(() => {
+                        const spreadX = tPos.x + (Math.random() - 0.5) * 12;
+                        const spreadZ = tPos.z + (Math.random() - 0.5) * 12;
+                        
+                        const arrMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.5), new THREE.MeshBasicMaterial({ color: 0xf97316 }));
+                        arrMesh.position.set(spreadX, 25, spreadZ);
+                        arrMesh.rotation.x = Math.PI / 2;
+                        
+                        new VFXObject(arrMesh, 0.25, (m, prog) => {
+                            m.position.y = 25 * (1 - prog) + 0.2;
+                            if (prog >= 0.95) {
+                                createImpact(m.position, 0xf97316);
+                                enemies.forEach(e => {
+                                    if (m.position.distanceTo(e.mesh.position) <= 4.5) {
+                                        e.takeDamage(35 + a13 * 18, false, '🏹 ARROW');
+                                    }
+                                });
+                            }
+                        });
+                    }, k * 45);
+                }
+            }
+        }
+    }
+
+    // Warrior Thunder Clap (w12)
+    const w12 = (PLAYER.skills.find(s => s.id === 'w12') || {level:0}).level;
+    if (w12 > 0 && PLAYER.class === 'Warrior') {
+        SKILL_TIMERS.thunder = (SKILL_TIMERS.thunder || 0) + dt;
+        if (SKILL_TIMERS.thunder >= Math.max(1.8, 4.5 - w12 * 0.5)) {
+            SKILL_TIMERS.thunder = 0;
+            SFX.thunderClap();
+            cameraShakeTimer = 0.25;
+            spawnFloatingText(pPos, '⚡ THUNDER CLAP!', '#fbbf24', 18, true);
+
+            const clapGeo = new THREE.RingGeometry(1, 2.5, 32);
+            const clapMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+            const clapMesh = new THREE.Mesh(clapGeo, clapMat);
+            clapMesh.rotation.x = -Math.PI / 2;
+            clapMesh.position.set(pPos.x, 0.2, pPos.z);
+            new VFXObject(clapMesh, 0.45, (m, prog) => {
+                const sc = 1 + prog * 12;
+                m.scale.set(sc, sc, sc);
+                m.material.opacity = (1 - prog) * 0.9;
+            });
+
+            const clapDmg = 85 + w12 * 40;
+            enemies.forEach(e => {
+                if (pPos.distanceTo(e.mesh.position) <= 15) {
+                    e.takeDamage(clapDmg, true, '⚡ CLAP!');
+                    e.stunTimer = 2.0;
+                    const pushDir = new THREE.Vector3().subVectors(e.mesh.position, pPos).normalize();
+                    e.mesh.position.addScaledVector(pushDir, 5);
+                }
+            });
+        }
+    }
+
+    // Warrior Colossus Leap (w13)
+    const w13 = (PLAYER.skills.find(s => s.id === 'w13') || {level:0}).level;
+    if (w13 > 0 && PLAYER.class === 'Warrior') {
+        SKILL_TIMERS.colossus = (SKILL_TIMERS.colossus || 0) + dt;
+        if (SKILL_TIMERS.colossus >= Math.max(2.5, 6.5 - w13 * 0.7)) {
+            SKILL_TIMERS.colossus = 0;
+            if (enemies.length > 0) {
+                const targetMob = enemies[Math.floor(Math.random() * enemies.length)];
+                const landPos = targetMob.mesh.position.clone();
+                SFX.colossus();
+                spawnFloatingText(landPos, '💥 COLOSSUS SLAM!', '#ef4444', 20, true);
+
+                const shadGeo = new THREE.RingGeometry(0.5, 7, 24);
+                const shadMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+                const shadMesh = new THREE.Mesh(shadGeo, shadMat);
+                shadMesh.rotation.x = -Math.PI / 2;
+                shadMesh.position.set(landPos.x, 0.15, landPos.z);
+                
+                const colDmg = 160 + w13 * 70;
+                new VFXObject(shadMesh, 0.6, (m, prog) => {
+                    m.material.opacity = 0.4 + prog * 0.5;
+                    if (prog >= 0.98) {
+                        cameraShakeTimer = 0.35;
+                        createImpact(landPos, 0xef4444);
+                        enemies.forEach(e => {
+                            if (landPos.distanceTo(e.mesh.position) <= 12) {
+                                e.takeDamage(colDmg, true, '💥 CRATER!');
+                                e.stunTimer = 2.5;
+                                const pDir = new THREE.Vector3().subVectors(e.mesh.position, landPos).normalize();
+                                e.mesh.position.addScaledVector(pDir, 7);
+                            }
+                        });
+                    }
+                });
+            }
+        }
+    }
 }
 
 // --- PROJECTILE CLASS ---
@@ -4533,6 +5161,28 @@ function attemptFire() {
         new Projectile(startPos.clone(), offsetDir);
     }
 
+    // Arcane Overcharge (Mage m14)
+    const m14 = (PLAYER.skills.find(s => s.id === 'm14') || {level:0}).level;
+    if (m14 > 0 && PLAYER.class === 'Mage' && Math.random() < 0.25 + m14 * 0.05) {
+        SFX.talentPick();
+        spawnFloatingText(playerMesh.position, '⚡ OVERCHARGE!', '#38bdf8', 16, true);
+        for (let k = 0; k < 4; k++) {
+            const arcDir = dir.clone();
+            arcDir.x += (Math.random() - 0.5) * 0.5;
+            arcDir.z += (Math.random() - 0.5) * 0.5;
+            new Projectile(startPos.clone(), arcDir, true, 0x67e8f9, 85, 2.0);
+        }
+    }
+
+    // Sword Beam Shockwave (Warrior w5)
+    const w5 = (PLAYER.skills.find(s => s.id === 'w5') || {level:0}).level;
+    if (w5 > 0 && PLAYER.class === 'Warrior') {
+        const beamDir = dir.clone();
+        const beamProj = new Projectile(startPos.clone(), beamDir, true, 0x60a5fa, 70, 1.8);
+        beamProj.mesh.scale.set(3.5, 0.2, 1.8);
+        beamProj.pierce = 3 + w5 * 2;
+    }
+
     // Phantom Daggers (Archer a10)
     const a10 = (PLAYER.skills.find(s => s.id === 'a10') || {level:0}).level;
     if (a10 > 0 && PLAYER.class === 'Archer' && Math.random() < 0.4) {
@@ -4742,6 +5392,35 @@ class Enemy {
             if (this.isBoss) trackQuestProgress('boss', 1);
             if (this.type === 'orc' || this.type === 'slime') trackQuestProgress('elites', 1);
             
+            // Skill Kill Procs
+            if (PLAYER.class === 'Warrior') {
+                const w3 = (PLAYER.skills.find(s => s.id === 'w3') || {level:0}).level;
+                if (w3 > 0) {
+                    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + w3 * 12);
+                    spawnFloatingText(playerMesh.position, `+${w3 * 12} HP`, '#f87171', 14, false, '🩸');
+                }
+                const w14 = (PLAYER.skills.find(s => s.id === 'w14') || {level:0}).level;
+                if (w14 > 0) {
+                    PLAYER.bloodlustStacks = Math.min(10, (PLAYER.bloodlustStacks || 0) + 1);
+                    PLAYER.bloodlustTimer = 5.0;
+                    spawnFloatingText(playerMesh.position, `🔥 FRENZY x${PLAYER.bloodlustStacks}`, '#ef4444', 16, true);
+                    updateEffects();
+                }
+            } else if (PLAYER.class === 'Mage') {
+                const m6 = (PLAYER.skills.find(s => s.id === 'm6') || {level:0}).level;
+                if (m6 > 0) {
+                    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + m6 * 6);
+                    PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + m6 * 4);
+                    spawnFloatingText(playerMesh.position, `+${m6 * 6} HP`, '#38bdf8', 14, false, '🩸');
+                }
+            } else if (PLAYER.class === 'Archer') {
+                const a6 = (PLAYER.skills.find(s => s.id === 'a6') || {level:0}).level;
+                if (a6 > 0) {
+                    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + a6 * 5);
+                    spawnFloatingText(playerMesh.position, `+${a6 * 5} HP`, '#34d399', 14, false, '💚');
+                }
+            }
+
             if (EFFECTS.lifesteal > 0) {
                 PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + EFFECTS.lifesteal);
                 spawnFloatingText(playerMesh.position, `+${Math.round(EFFECTS.lifesteal)} HP`, '#22c55e', 14, false, '💚');
@@ -4966,6 +5645,30 @@ function updateGUI() {
         if (mobileUltBtn) mobileUltBtn.classList.remove('ready');
         if (mobileUltCd) mobileUltCd.innerText = `${Math.ceil(PLAYER.ultCooldown)}s`;
     }
+
+    // Tactical Ability Meter & UI
+    const tacMax = PLAYER.tacticalMaxCooldown || 5.0;
+    const tacCd = PLAYER.tacticalCooldown || 0;
+    const tacPct = Math.min(100, Math.max(0, ((tacMax - tacCd) / tacMax) * 100));
+    const tacBar = document.getElementById('tactical-bar');
+    const tacStatus = document.getElementById('ui-tactical-status');
+    const tacName = document.getElementById('ui-tactical-name');
+    
+    if (tacName) {
+        if (PLAYER.class === 'Warrior') tacName.innerText = '🛡️ CHARGE [E]';
+        else if (PLAYER.class === 'Mage') tacName.innerText = '✨ BLINK [E]';
+        else tacName.innerText = '💨 ROLL [E]';
+    }
+    if (tacBar) tacBar.style.width = tacPct + '%';
+    if (tacStatus) {
+        if (tacCd <= 0) {
+            tacStatus.innerText = 'READY [E]';
+            tacStatus.style.color = '#38bdf8';
+        } else {
+            tacStatus.innerText = `${tacCd.toFixed(1)}s`;
+            tacStatus.style.color = '#94a3b8';
+        }
+    }
 }
 
 function gameOver() {
@@ -5147,9 +5850,16 @@ function animate() {
             PLAYER.ultCooldown = Math.max(0, PLAYER.ultCooldown - dt);
             updateGUI();
         }
+        if (PLAYER.tacticalCooldown > 0) {
+            PLAYER.tacticalCooldown = Math.max(0, PLAYER.tacticalCooldown - dt);
+            updateGUI();
+        }
         if (PLAYER.invulnerableTimer > 0) {
             PLAYER.invulnerableTimer = Math.max(0, PLAYER.invulnerableTimer - dt);
         }
+
+        // Periodic skills (Companions, Orbiters, Meteors, Novas, Caltrops, Ballistas, Slam)
+        updateClassSkills(dt);
 
         // Aiming
         if (joystickShoot.active) {

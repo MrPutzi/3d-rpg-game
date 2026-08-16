@@ -216,8 +216,24 @@
         @keyframes pulse { 0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); } 50% { opacity: 0.8; transform: translateX(-50%) scale(0.97); } }
         
         .ult-bar { height: 100%; background: linear-gradient(90deg, #f59e0b, #fbbf24); width: 100%; transition: width 0.15s; }
+        .tactical-bar { height: 100%; background: linear-gradient(90deg, #0284c7, #38bdf8); width: 100%; transition: width 0.15s; }
         .ult-ready-glow { animation: ultGlow 1.2s infinite alternate; box-shadow: 0 0 14px rgba(251,191,36,0.85); border-color: #fbbf24 !important; }
+        .tactical-ready-glow { animation: tacticalGlow 1.2s infinite alternate; box-shadow: 0 0 10px rgba(56,189,248,0.8); border-color: #38bdf8 !important; }
         @keyframes ultGlow { from { box-shadow: 0 0 6px rgba(251,191,36,0.4); } to { box-shadow: 0 0 18px rgba(251,191,36,0.9); } }
+        @keyframes tacticalGlow { from { box-shadow: 0 0 4px rgba(56,189,248,0.3); } to { box-shadow: 0 0 14px rgba(56,189,248,0.85); } }
+
+        /* Skill Card Rarity & Visuals */
+        .skill-card.common { border-color: #64748b; }
+        .skill-card.rare { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56,189,248,0.25); }
+        .skill-card.epic { border-color: #c084fc; box-shadow: 0 0 16px rgba(192,132,252,0.35); }
+        .skill-card.legendary { border-color: #fbbf24; box-shadow: 0 0 20px rgba(251,191,36,0.45); animation: ultGlow 1.5s infinite alternate; }
+        .skill-rarity-tag { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 4px; }
+        .skill-icon-badge { font-size: 1.8rem; margin-bottom: 4px; display: inline-block; }
+
+        /* Mobile Tactical Button */
+        #btn-tactical-mobile { position: absolute; bottom: 170px; right: 95px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #0284c7; color: white; font-weight: bold; font-size: 0.8rem; display: none; align-items: center; justify-content: center; flex-direction: column; cursor: pointer; z-index: 25; touch-action: manipulation; box-shadow: 0 4px 12px rgba(0,0,0,0.7); pointer-events: auto; }
+        #btn-tactical-mobile.ready { border-color: #38bdf8; background: linear-gradient(135deg, #0369a1, #0284c7); animation: tacticalGlow 1.2s infinite alternate; }
+        #btn-tactical-mobile .ult-cd-text { font-size: 0.65rem; color: #cbd5e1; }
 
         /* Shrine Buffs HUD */
         #hud-buffs { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; pointer-events: none; }
@@ -847,9 +863,13 @@
 
     <!-- Level Up Screen -->
     <div id="skill-screen" class="overlay">
-        <h1 style="color: #fbbf24;">⚡ LEVEL UP!</h1>
-        <p>Select a skill upgrade (Max 4 unique skills per run)</p>
+        <h1 style="color: #fbbf24; text-shadow: 0 0 20px rgba(251,191,36,0.6);">⚡ LEVEL UP!</h1>
+        <p id="skill-screen-subtitle">Select a skill upgrade (Max 5 unique skills per run)</p>
         <div class="skill-grid" id="skill-options"></div>
+        <div style="display: flex; gap: 10px; margin-top: 18px; align-items: center; flex-wrap: wrap; justify-content: center;">
+            <button id="btn-reroll-skills" onclick="rerollSkills()" class="btn-gold" style="padding: 8px 18px; font-size: 0.85rem;">🎲 Reroll Choices (-40 Gold)</button>
+            <button onclick="skipSkillForGold()" style="background: #334155; border: 1px solid #64748b; padding: 8px 18px; font-size: 0.85rem; color: #cbd5e1;">🪙 Skip (+150 Gold & +15 Essence)</button>
+        </div>
     </div>
 
     <!-- Game Over Screen -->
@@ -947,6 +967,15 @@
                 </div>
                 <div class="bar-container" style="height: 10px; border-color: #f59e0b;"><div id="ult-bar" class="ult-bar"></div></div>
             </div>
+
+            <!-- Tactical Ability Gauge -->
+            <div id="tactical-box" style="margin-top: 4px; cursor: pointer;" onclick="useTacticalSkill()" title="Activate Class Tactical Skill (Hotkey: E)">
+                <div style="display:flex; justify-content:space-between; font-weight: bold; font-size:0.75rem; color:#38bdf8;">
+                    <span id="ui-tactical-name">🛡️ DASH [E]</span>
+                    <span id="ui-tactical-status">READY</span>
+                </div>
+                <div class="bar-container" style="height: 8px; border-color: #0284c7;"><div id="tactical-bar" class="tactical-bar"></div></div>
+            </div>
         </div>
 
         <!-- Active Shrine Buffs Display -->
@@ -1013,6 +1042,10 @@
             <div id="joystick-right" class="joystick-zone">
                 <div id="knob-right" class="joystick-knob"></div>
             </div>
+            <button id="btn-tactical-mobile" onclick="useTacticalSkill()">
+                <span id="mobile-tactical-icon">🛡️ DASH</span>
+                <span id="mobile-tactical-cd" class="ult-cd-text">READY</span>
+            </button>
             <button id="btn-ultimate-mobile" onclick="useUltimate()">
                 <span>⚡ ULT</span>
                 <span id="mobile-ult-cd" class="ult-cd-text">READY</span>
