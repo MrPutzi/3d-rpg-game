@@ -292,6 +292,78 @@
         /* Dungeon Victory Screen */
         #dungeon-victory-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(20,24,40,0.95) 0%, rgba(5,6,12,0.98) 100%); display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; color: white; z-index: 35; }
 
+        /* Lobby System Styles */
+        #lobby-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, #1e1b4b 0%, #090d16 100%); display: none; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 30; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+        .lobby-panel { width: 100%; max-width: 960px; display: flex; flex-direction: column; gap: 14px; }
+        .lobby-header { background: rgba(15, 23, 42, 0.85); border: 2px solid #6366f1; border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 20px rgba(99,102,241,0.25); }
+        .room-code-badge { background: #1e1b4b; border: 2px dashed #a855f7; border-radius: 8px; padding: 6px 14px; font-family: monospace; font-size: 1.25rem; font-weight: 800; color: #fde047; display: flex; align-items: center; gap: 8px; letter-spacing: 2px; }
+        .btn-copy-code { background: #4f46e5; border: none; color: white; padding: 5px 10px; border-radius: 6px; font-size: 0.78rem; cursor: pointer; transition: 0.15s; font-weight: bold; }
+        .btn-copy-code:hover { background: #6366f1; transform: scale(1.05); }
+
+        .lobby-content-row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 16px; width: 100%; }
+        @media (max-width: 820px) {
+            .lobby-content-row { grid-template-columns: 1fr; }
+        }
+
+        .lobby-roster-section { background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+        .lobby-party-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+        .lobby-player-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #334155; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; transition: all 0.2s; position: relative; }
+        .lobby-player-card.is-ready { border-color: #22c55e; box-shadow: 0 0 14px rgba(34,197,94,0.3); }
+        .lobby-player-card.is-host { border-color: #f59e0b; }
+        .lobby-player-card.is-self { outline: 2px solid #38bdf8; }
+
+        .lobby-card-header { display: flex; justify-content: space-between; align-items: center; }
+        .lobby-player-name { font-weight: 800; font-size: 0.95rem; color: #f8fafc; display: flex; align-items: center; gap: 6px; }
+        .lobby-host-crown { color: #f59e0b; font-size: 0.95rem; }
+        .lobby-role-pill { font-size: 0.68rem; font-weight: 800; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; }
+
+        .lobby-avatar-box { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 8px; }
+        .lobby-avatar-icon { font-size: 2rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.06); border-radius: 8px; }
+        .lobby-avatar-desc { font-size: 0.75rem; color: #94a3b8; }
+
+        .lobby-class-picker { display: flex; gap: 4px; margin-top: 4px; }
+        .btn-lobby-class { flex: 1; padding: 5px 2px; font-size: 0.72rem; font-weight: bold; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: #94a3b8; cursor: pointer; transition: 0.15s; }
+        .btn-lobby-class.active { color: white; }
+        .btn-lobby-class.active.warrior { background: #b91c1c; border-color: #f87171; }
+        .btn-lobby-class.active.mage { background: #0369a1; border-color: #38bdf8; }
+        .btn-lobby-class.active.archer { background: #047857; border-color: #34d399; }
+
+        .lobby-status-badge { font-size: 0.75rem; font-weight: bold; padding: 4px 8px; border-radius: 6px; text-align: center; }
+        .status-ready { background: rgba(34,197,94,0.2); color: #4ade80; border: 1px solid #22c55e; }
+        .status-choosing { background: rgba(245,158,11,0.2); color: #fde047; border: 1px solid #f59e0b; }
+
+        /* Lobby Chat */
+        .lobby-chat-section { background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; height: 380px; }
+        .lobby-chat-box { flex: 1; overflow-y: auto; background: #090d16; border: 1px solid #1e293b; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; }
+        .lobby-chat-msg { line-height: 1.35; word-break: break-word; }
+        .lobby-chat-sender { font-weight: bold; margin-right: 4px; }
+        .lobby-chat-time { font-size: 0.68rem; color: #64748b; margin-left: 6px; }
+        .lobby-chat-input-row { display: flex; gap: 6px; }
+        .lobby-chat-input { flex: 1; background: #090d16; border: 1px solid #475569; border-radius: 6px; color: white; padding: 8px 10px; font-size: 0.82rem; outline: none; }
+        .lobby-chat-input:focus { border-color: #6366f1; }
+        .btn-chat-send { background: #4f46e5; border: none; color: white; padding: 0 14px; border-radius: 6px; font-weight: bold; font-size: 0.82rem; cursor: pointer; }
+        .lobby-emotes-row { display: flex; gap: 4px; flex-wrap: wrap; }
+        .btn-lobby-emote { background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-size: 0.72rem; padding: 3px 8px; border-radius: 4px; cursor: pointer; }
+        .btn-lobby-emote:hover { background: #334155; color: white; }
+
+        /* Lobby Bottom Action Bar */
+        .lobby-action-bar { background: rgba(15, 23, 42, 0.95); border: 2px solid #334155; border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-lobby-action { padding: 10px 22px; font-size: 0.95rem; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; }
+        .btn-lobby-leave { background: #dc2626; color: white; }
+        .btn-lobby-leave:hover { background: #ef4444; }
+        .btn-lobby-ready { background: #0284c7; color: white; }
+        .btn-lobby-ready.is-ready { background: #16a34a; }
+        .btn-lobby-launch { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; font-size: 1.05rem; padding: 12px 28px; box-shadow: 0 0 20px rgba(245,158,11,0.5); }
+        .btn-lobby-launch:hover:not(:disabled) { transform: scale(1.03); filter: brightness(1.1); }
+        .btn-lobby-launch:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+
+        /* Start Screen Multiplayer Hub Card */
+        .mp-hub-card { background: rgba(15, 23, 42, 0.85); border: 2px solid #38bdf8; border-radius: 12px; padding: 14px 18px; width: 100%; max-width: 600px; box-sizing: border-box; margin: 8px 0; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 16px rgba(56,189,248,0.2); }
+        .mp-hub-title { font-weight: 800; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; justify-content: space-between; }
+        .mp-input-row { display: flex; gap: 8px; width: 100%; }
+        .mp-name-input { flex: 1; background: #090d16; border: 1px solid #475569; border-radius: 6px; color: white; padding: 8px 12px; font-size: 0.85rem; outline: none; }
+        .mp-code-input { width: 130px; background: #090d16; border: 2px solid #a855f7; border-radius: 6px; color: #fde047; padding: 8px 10px; font-size: 0.95rem; font-weight: bold; font-family: monospace; text-align: center; text-transform: uppercase; outline: none; }
+
         @media (max-width: 1024px) {
             #btn-ultimate-mobile { display: flex; }
         }
@@ -339,10 +411,25 @@
         <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 600px; text-align: center; font-size: 0.85rem; color: #bae6fd;">
             🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!
         </div>
-        
-        <div style="margin: 4px 0 10px 0; display: flex; flex-direction: column; align-items: center; width: 100%;">
-            <p style="color: #38bdf8; margin-bottom: 4px; font-weight: bold; font-size: 0.85rem;">Multiplayer Room Code (leave blank for Solo + 2 AI Companions)</p>
-            <input type="text" id="room-input" class="mp-input" placeholder="Room Code (optional e.g. 777)">
+
+        <!-- Multiplayer Lobby Hub Panel -->
+        <div class="mp-hub-card">
+            <div class="mp-hub-title">
+                <span>👥 Multiplayer Online Co-Op Lobby</span>
+                <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">Assemble party before starting</span>
+            </div>
+            <div class="mp-input-row">
+                <input type="text" id="mp-hero-name" class="mp-name-input" placeholder="Your Hero Name (e.g. Roland)" maxlength="16">
+                <button onclick="createPartyLobby()" class="btn-emerald" style="padding: 8px 14px; font-size: 0.82rem; font-weight: bold; margin: 0; white-space: nowrap;">
+                    ✨ Create Lobby
+                </button>
+            </div>
+            <div class="mp-input-row" style="margin-top: 2px;">
+                <input type="text" id="mp-join-code" class="mp-code-input" placeholder="CODE" maxlength="8">
+                <button onclick="joinPartyLobby()" class="btn-gold" style="padding: 8px 16px; font-size: 0.82rem; font-weight: bold; margin: 0; flex: 1; white-space: nowrap;">
+                    🚀 Join Party Lobby
+                </button>
+            </div>
         </div>
 
         <!-- Class Selection Cards -->
@@ -396,9 +483,9 @@
             </div>
         </div>
 
-        <!-- Big Launch Button -->
-        <button id="btn-start-launch" class="btn-gold" onclick="startGame(selectedStartHero)" style="font-size: 1.15rem; padding: 12px 36px; border-radius: 10px; margin-top: 14px; box-shadow: 0 0 20px rgba(245,158,11,0.5); width: 100%; max-width: 440px;">
-            ⚔️ START HORDE SURVIVAL (WARRIOR)
+        <!-- Big Launch Button for Solo -->
+        <button id="btn-start-launch" class="btn-gold" onclick="startSoloGame()" style="font-size: 1.15rem; padding: 12px 36px; border-radius: 10px; margin-top: 14px; box-shadow: 0 0 20px rgba(245,158,11,0.5); width: 100%; max-width: 440px;">
+            🎮 PLAY SOLO + 2 AI COMPANIONS
         </button>
 
         <!-- Controls Cheat Sheet -->
@@ -411,6 +498,106 @@
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[L] Quests</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[E] Quick Loot</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Esc] Pause</span>
+        </div>
+    </div>
+
+    <!-- Multiplayer Lobby Screen Overlay -->
+    <div id="lobby-screen">
+        <div class="lobby-panel">
+            <!-- Header Bar -->
+            <div class="lobby-header">
+                <div>
+                    <h2 style="margin:0; font-size: 1.25rem; color:#f8fafc; display:flex; align-items:center; gap:8px;">
+                        ⚔️ MULTIPLAYER PARTY LOBBY
+                    </h2>
+                    <div id="lobby-status-text" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">
+                        Coordinate roles and prepare before embarking on the raid!
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div class="room-code-badge">
+                        <span style="font-size:0.75rem; color:#c084fc; font-weight:bold;">ROOM:</span>
+                        <span id="lobby-room-code-display">---</span>
+                    </div>
+                    <button class="btn-copy-code" onclick="copyLobbyCode()" id="btn-copy-lobby-code">📋 Copy Code</button>
+                    <button class="btn-copy-code" onclick="copyLobbyLink()" id="btn-copy-lobby-link" style="background:#0284c7;">🔗 Share Link</button>
+                </div>
+            </div>
+
+            <!-- Mode Selector for Lobby (Host controls, others see active selection) -->
+            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:0.85rem; font-weight:bold; color:#cbd5e1;">🎯 RAID OBJECTIVE:</span>
+                    <span id="lobby-mode-badge" style="font-size:0.8rem; font-weight:800; padding:3px 10px; border-radius:6px; background:#0284c7; color:white;">
+                        🌊 HORDE SURVIVAL
+                    </span>
+                </div>
+                <div id="lobby-host-mode-controls" style="display:flex; gap:6px;">
+                    <button id="btn-lobby-mode-horde" class="mode-btn active" onclick="setLobbyGameMode('horde')" style="padding:6px 12px; font-size:0.8rem;">🌊 Wave Horde</button>
+                    <button id="btn-lobby-mode-dungeon" class="mode-btn dungeon" onclick="setLobbyGameMode('dungeon')" style="padding:6px 12px; font-size:0.8rem;">🏰 MMORPG Dungeon</button>
+                </div>
+            </div>
+
+            <!-- Main Content: Party Roster (Left) & Lobby Chat (Right) -->
+            <div class="lobby-content-row">
+                <!-- Roster Section -->
+                <div class="lobby-roster-section">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-weight:bold; font-size:0.95rem; color:#38bdf8;">
+                            🛡️ PARTY ROSTER (<span id="lobby-player-count">1</span>/6)
+                        </span>
+                        <span id="lobby-ready-summary" style="font-size:0.75rem; color:#4ade80; font-weight:bold;">1 Ready</span>
+                    </div>
+
+                    <!-- Party Cards Grid -->
+                    <div class="lobby-party-grid" id="lobby-players-container">
+                        <!-- Dynamically filled by updateLobbyUI() -->
+                    </div>
+                </div>
+
+                <!-- Chat & Emotes Section -->
+                <div class="lobby-chat-section">
+                    <div style="font-weight:bold; font-size:0.9rem; color:#cbd5e1; display:flex; justify-content:space-between;">
+                        <span>💬 PARTY CHAT</span>
+                        <span style="font-size:0.72rem; color:#64748b;">Live Room Messages</span>
+                    </div>
+                    
+                    <div class="lobby-chat-box" id="lobby-chat-log">
+                        <div style="color:#64748b; font-style:italic;">Welcome to the gathering lobby! Select your hero class and get ready.</div>
+                    </div>
+
+                    <!-- Quick Emote / Message Shortcuts -->
+                    <div class="lobby-emotes-row">
+                        <button class="btn-lobby-emote" onclick="sendLobbyQuickChat('Ready! Let\'s go! ⚔️')">Ready! ⚔️</button>
+                        <button class="btn-lobby-emote" onclick="sendLobbyQuickChat('I\'ll Tank! 🛡️')">I\'ll Tank 🛡️</button>
+                        <button class="btn-lobby-emote" onclick="sendLobbyQuickChat('I\'m Magic DPS 🔮')">Magic DPS 🔮</button>
+                        <button class="btn-lobby-emote" onclick="sendLobbyQuickChat('Let\'s do Dungeon! 🏰')">Dungeon! 🏰</button>
+                    </div>
+
+                    <div class="lobby-chat-input-row">
+                        <input type="text" id="lobby-chat-input" class="lobby-chat-input" placeholder="Type a message to party..." maxlength="100" onkeydown="if(event.key==='Enter') sendLobbyChat()">
+                        <button class="btn-chat-send" onclick="sendLobbyChat()">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Action Bar -->
+            <div class="lobby-action-bar">
+                <button class="btn-lobby-action btn-lobby-leave" onclick="leaveLobby()">
+                    🚪 Leave Lobby
+                </button>
+
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button id="btn-lobby-ready-toggle" class="btn-lobby-action btn-lobby-ready" onclick="toggleLobbyReady()">
+                        ✅ READY UP
+                    </button>
+
+                    <button id="btn-lobby-start-game" class="btn-lobby-action btn-lobby-launch" onclick="startLobbyGame()">
+                        🚀 START RAID / GAME
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 

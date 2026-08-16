@@ -44,12 +44,15 @@ function getRoom(id) {
     if (!rooms.has(id)) {
         const room = {
             id,
+            state: 'LOBBY', // 'LOBBY' or 'PLAYING'
+            mode: 'horde',  // 'horde' or 'dungeon'
+            hostId: null,
             players: new Map(),
             enemies: new Map(),
             items: new Map(),
             wave: 1,
             waveState: 'PREPARING',
-            waveTimer: 5,
+            waveTimer: 4,
             totalWaveEnemies: 20,
             enemiesSpawned: 0,
             enemiesKilled: 0,
@@ -59,6 +62,31 @@ function getRoom(id) {
         rooms.set(id, room);
     }
     return rooms.get(id);
+}
+
+function broadcastLobbyState(room) {
+    const playerList = Array.from(room.players.values()).map(p => ({
+        id: p.id,
+        name: p.name || 'Hero',
+        class: p.class || 'Warrior',
+        isHost: p.id === room.hostId,
+        isReady: p.isReady || false
+    }));
+
+    const msg = JSON.stringify({
+        type: 'LOBBY_STATE',
+        roomId: room.id,
+        state: room.state,
+        mode: room.mode,
+        hostId: room.hostId,
+        players: playerList
+    });
+
+    for (const p of room.players.values()) {
+        if (p.ws && p.ws.readyState === 1) {
+            p.ws.send(msg);
+        }
+    }
 }
 
 wss.on('connection', (ws, req) => {
@@ -73,49 +101,164 @@ wss.on('connection', (ws, req) => {
             data = JSON.parse(message);
         } catch (e) { return; }
 
-        if (data.type === 'JOIN') {
-            // Find a spawn position near existing players
-            let spawnX = 0;
-            let spawnZ = 0;
+        if (data.type === 'LOBBY_JOIN' || data.type === 'JOIN') {
+            const isFirst = (room.players.size === 0 || !room.hostId);
+            if (isFirst) {
+                room.hostId = playerId;
+            }
+
+            // Determine spawn point
+            let spawnX = (Math.random() - 0.5) * 6;
+            let spawnZ = (Math.random() - 0.5) * 6;
             let livingPlayers = [];
             for (const p of room.players.values()) {
                 if (p.hp > 0) livingPlayers.push(p);
             }
-
             if (livingPlayers.length > 0) {
                 const anchor = livingPlayers[Math.floor(Math.random() * livingPlayers.length)];
                 const angle = Math.random() * Math.PI * 2;
-                const dist = 4 + Math.random() * 4; // 4 to 8 units away
+                const dist = 4 + Math.random() * 4;
                 spawnX = anchor.x + Math.cos(angle) * dist;
                 spawnZ = anchor.z + Math.sin(angle) * dist;
-            } else {
-                spawnX = (Math.random() - 0.5) * 6;
-                spawnZ = (Math.random() - 0.5) * 6;
             }
+
+            const heroClass = data.class || 'Warrior';
+            const heroName = data.name || ('Hero ' + (room.players.size + 1));
 
             room.players.set(playerId, { 
                 id: playerId, 
                 ws, 
-                class: data.class || 'Warrior', 
+                name: heroName,
+                class: heroClass, 
+                isHost: (playerId === room.hostId),
+                isReady: (playerId === room.hostId), // Host is automatically ready
                 x: spawnX, z: spawnZ, lookX: spawnX, lookZ: spawnZ + 1, 
-                hp: data.hp, maxHp: data.maxHp,
+                hp: data.hp || 160, maxHp: data.maxHp || 160,
                 level: data.level || 1,
                 isDowned: false,
                 reviveProgress: 0
             });
 
-            ws.send(JSON.stringify({ 
-                type: 'INIT', 
-                id: playerId,
-                spawnX,
-                spawnZ,
-                wave: room.wave,
-                waveState: room.waveState,
-                waveTimer: Math.ceil(room.waveTimer),
-                isBossWave: room.isBossWave,
-                totalEnemies: room.totalWaveEnemies,
-                enemiesKilled: room.enemiesKilled
-            }));
+            // If room is in LOBBY state, send lobby sync
+            if (room.state === 'LOBBY') {
+                ws.send(JSON.stringify({
+                    type: 'INIT_LOBBY',
+                    id: playerId,
+                    roomId: room.id,
+                    mode: room.mode,
+                    isHost: (playerId === room.hostId)
+                }));
+                broadcastLobbyState(room);
+            } else {
+                // If game already started in room, admit directly
+                ws.send(JSON.stringify({ 
+                    type: 'INIT', 
+                    id: playerId,
+                    roomId: room.id,
+                    mode: room.mode,
+                    spawnX,
+                    spawnZ,
+                    wave: room.wave,
+                    waveState: room.waveState,
+                    waveTimer: Math.ceil(room.waveTimer),
+                    isBossWave: room.isBossWave,
+                    totalEnemies: room.totalWaveEnemies,
+                    enemiesKilled: room.enemiesKilled
+                }));
+            }
+        }
+        else if (data.type === 'LOBBY_SET_CLASS') {
+            const p = room.players.get(playerId);
+            if (p) {
+                p.class = data.class;
+                broadcastLobbyState(room);
+            }
+        }
+        else if (data.type === 'LOBBY_SET_NAME') {
+            const p = room.players.get(playerId);
+            if (p) {
+                p.name = (data.name || '').substring(0, 16) || p.name;
+                broadcastLobbyState(room);
+            }
+        }
+        else if (data.type === 'LOBBY_SET_READY') {
+            const p = room.players.get(playerId);
+            if (p) {
+                p.isReady = (typeof data.isReady === 'boolean') ? data.isReady : !p.isReady;
+                broadcastLobbyState(room);
+            }
+        }
+        else if (data.type === 'LOBBY_SET_MODE') {
+            if (playerId === room.hostId && (data.mode === 'horde' || data.mode === 'dungeon')) {
+                room.mode = data.mode;
+                broadcastLobbyState(room);
+            }
+        }
+        else if (data.type === 'LOBBY_CHAT') {
+            const p = room.players.get(playerId);
+            const text = (data.text || '').trim().substring(0, 120);
+            if (p && text) {
+                const chatMsg = JSON.stringify({
+                    type: 'LOBBY_CHAT_MSG',
+                    sender: p.name,
+                    class: p.class,
+                    isHost: p.id === room.hostId,
+                    text: text,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+                for (const pl of room.players.values()) {
+                    if (pl.ws && pl.ws.readyState === 1) pl.ws.send(chatMsg);
+                }
+            }
+        }
+        else if (data.type === 'LOBBY_START_GAME') {
+            if (playerId === room.hostId) {
+                room.state = 'PLAYING';
+                room.wave = 1;
+                room.waveState = 'PREPARING';
+                room.waveTimer = 4;
+                room.enemiesSpawned = 0;
+                room.enemiesKilled = 0;
+                room.isBossWave = false;
+                room.bossSpawned = false;
+                room.enemies.clear();
+                room.items.clear();
+
+                const pCount = room.players.size;
+                let idx = 0;
+                for (const p of room.players.values()) {
+                    const angle = (idx / Math.max(1, pCount)) * Math.PI * 2;
+                    p.x = Math.cos(angle) * (pCount > 1 ? 4 : 0);
+                    p.z = Math.sin(angle) * (pCount > 1 ? 4 : 0);
+                    p.lookX = p.x;
+                    p.lookZ = p.z + 1;
+                    p.isDowned = false;
+                    idx++;
+                }
+
+                const startPayload = JSON.stringify({
+                    type: 'GAME_START',
+                    mode: room.mode,
+                    wave: room.wave,
+                    waveState: room.waveState,
+                    waveTimer: room.waveTimer,
+                    totalEnemies: room.totalWaveEnemies,
+                    isBossWave: room.isBossWave,
+                    players: Array.from(room.players.values()).map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        class: p.class,
+                        x: p.x,
+                        z: p.z,
+                        hp: p.hp,
+                        maxHp: p.maxHp
+                    }))
+                });
+
+                for (const pl of room.players.values()) {
+                    if (pl.ws && pl.ws.readyState === 1) pl.ws.send(startPayload);
+                }
+            }
         }
         else if (data.type === 'UPDATE') {
             const p = room.players.get(playerId);
@@ -236,9 +379,23 @@ wss.on('connection', (ws, req) => {
     });
 
     ws.on('close', () => {
+        const wasHost = (room.hostId === playerId);
         room.players.delete(playerId);
+
         if (room.players.size === 0) {
             rooms.delete(roomId);
+        } else {
+            if (wasHost) {
+                const nextPlayer = room.players.values().next().value;
+                if (nextPlayer) {
+                    room.hostId = nextPlayer.id;
+                    nextPlayer.isHost = true;
+                    nextPlayer.isReady = true;
+                }
+            }
+            if (room.state === 'LOBBY') {
+                broadcastLobbyState(room);
+            }
         }
     });
 });
@@ -247,6 +404,7 @@ setInterval(() => {
     const dt = 0.05;
     for (const room of rooms.values()) {
         if (room.players.size === 0) continue;
+        if (room.state !== 'PLAYING') continue; // Only process game tick when game has started
 
         // Wave State Machine
         if (room.waveState === 'PREPARING') {

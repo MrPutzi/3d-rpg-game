@@ -1899,23 +1899,127 @@ let WS = null;
 let MY_ID = null;
 const OTHER_PLAYERS = {}; 
 
+let LOBBY_DATA = null;
+let CURRENT_LOBBY_CODE = '';
+let IS_LOBBY_HOST = false;
+let MY_LOBBY_READY = false;
+let MY_LOBBY_NAME = localStorage.getItem('rpg_player_name') || 'Hero ' + Math.floor(10 + Math.random() * 90);
+
+function getSavedHeroName() {
+    const input = document.getElementById('mp-hero-name');
+    if (input && input.value.trim()) {
+        MY_LOBBY_NAME = input.value.trim().substring(0, 16);
+        localStorage.setItem('rpg_player_name', MY_LOBBY_NAME);
+    }
+    return MY_LOBBY_NAME;
+}
+
+window.createPartyLobby = function() {
+    initAudio();
+    const heroName = getSavedHeroName();
+    const randomCode = 'RAID' + Math.floor(10 + Math.random() * 90);
+    connectToLobby(randomCode);
+};
+
+window.joinPartyLobby = function() {
+    initAudio();
+    const codeInput = document.getElementById('mp-join-code');
+    const roomCode = codeInput ? codeInput.value.trim().toUpperCase() : '';
+    if (!roomCode) {
+        if (codeInput) {
+            codeInput.focus();
+            codeInput.style.borderColor = '#ef4444';
+            setTimeout(() => { codeInput.style.borderColor = '#a855f7'; }, 1500);
+        }
+        return;
+    }
+    getSavedHeroName();
+    connectToLobby(roomCode);
+};
+
+window.startSoloGame = function() {
+    initAudio();
+    IS_MULTIPLAYER = false;
+    startGame(selectedStartHero || 'Warrior', false);
+};
+
+function connectToLobby(roomCode) {
+    CURRENT_LOBBY_CODE = roomCode.toUpperCase().trim();
+    
+    // Switch screens
+    document.getElementById('start-screen').style.display = 'none';
+    const lobbyScreen = document.getElementById('lobby-screen');
+    if (lobbyScreen) lobbyScreen.style.display = 'flex';
+
+    const codeDisplay = document.getElementById('lobby-room-code-display');
+    if (codeDisplay) codeDisplay.innerText = CURRENT_LOBBY_CODE;
+
+    // Reset local ready
+    MY_LOBBY_READY = false;
+    updateReadyButtonUI();
+
+    initMultiplayer(CURRENT_LOBBY_CODE, selectedStartHero || 'Warrior');
+}
+
 function initMultiplayer(roomCode, className) {
     IS_MULTIPLAYER = true;
+    if (WS) {
+        try { WS.close(); } catch(e) {}
+        WS = null;
+    }
+
     const protocol = location.protocol === 'https:' ? 'wss://' : 'ws://';
     WS = new WebSocket(`${protocol}${location.host}?room=${roomCode}`);
 
     WS.onopen = () => {
+        const playerName = getSavedHeroName();
         WS.send(JSON.stringify({ 
-            type: 'JOIN', class: className, 
-            hp: PLAYER.hp, maxHp: PLAYER.maxHp, level: PLAYER.level 
+            type: 'LOBBY_JOIN',
+            name: playerName,
+            class: className || selectedStartHero || 'Warrior', 
+            hp: PLAYER.hp || 160, 
+            maxHp: PLAYER.maxHp || 160, 
+            level: PLAYER.level || 1 
         }));
     };
 
     WS.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === 'INIT') {
+        
+        if (data.type === 'INIT_LOBBY') {
             MY_ID = data.id;
-            // Spawn player at server-designated location near peers
+            IS_LOBBY_HOST = data.isHost;
+            if (data.mode) {
+                GAME.mode = data.mode;
+                updateLobbyModeUI(data.mode);
+            }
+        } 
+        else if (data.type === 'LOBBY_STATE') {
+            LOBBY_DATA = data;
+            IS_LOBBY_HOST = (data.hostId === MY_ID);
+            if (data.mode) {
+                GAME.mode = data.mode;
+                updateLobbyModeUI(data.mode);
+            }
+            renderLobbyUI(data);
+        }
+        else if (data.type === 'LOBBY_CHAT_MSG') {
+            appendLobbyChatMessage(data);
+        }
+        else if (data.type === 'GAME_START') {
+            SFX.waveStart();
+            const lobbyScreen = document.getElementById('lobby-screen');
+            if (lobbyScreen) lobbyScreen.style.display = 'none';
+            document.getElementById('start-screen').style.display = 'none';
+
+            if (data.mode) GAME.mode = data.mode;
+            const chosenHero = (LOBBY_DATA && LOBBY_DATA.players) ? (LOBBY_DATA.players.find(p => p.id === MY_ID)?.class || selectedStartHero || 'Warrior') : (selectedStartHero || 'Warrior');
+            
+            startGame(chosenHero, true, data);
+        }
+        else if (data.type === 'INIT') {
+            MY_ID = data.id;
+            if (data.mode) GAME.mode = data.mode;
             if (typeof data.spawnX === 'number' && typeof data.spawnZ === 'number') {
                 playerMesh.position.set(data.spawnX, 1.5, data.spawnZ);
                 camera.position.set(data.spawnX, 60, data.spawnZ + 35);
@@ -1997,7 +2101,238 @@ function initMultiplayer(roomCode, className) {
             }
         }
     };
+
+    WS.onclose = () => {
+        if (GAME.state === 'PLAYING') {
+            logMessage('Multiplayer host connection closed', '#ef4444');
+        }
+    };
 }
+
+function updateLobbyModeUI(mode) {
+    const badge = document.getElementById('lobby-mode-badge');
+    const btnHorde = document.getElementById('btn-lobby-mode-horde');
+    const btnDungeon = document.getElementById('btn-lobby-mode-dungeon');
+
+    if (badge) {
+        if (mode === 'dungeon') {
+            badge.innerText = '🏰 3-HERO MMORPG DUNGEON';
+            badge.style.background = 'linear-gradient(135deg, #9333ea, #7e22ce)';
+        } else {
+            badge.innerText = '🌊 WAVE HORDE SURVIVAL';
+            badge.style.background = '#0284c7';
+        }
+    }
+    if (btnHorde) btnHorde.classList.toggle('active', mode === 'horde');
+    if (btnDungeon) btnDungeon.classList.toggle('active', mode === 'dungeon');
+}
+
+function renderLobbyUI(lobbyData) {
+    if (!lobbyData || !lobbyData.players) return;
+
+    const container = document.getElementById('lobby-players-container');
+    const countEl = document.getElementById('lobby-player-count');
+    const readySumEl = document.getElementById('lobby-ready-summary');
+    const startBtn = document.getElementById('btn-lobby-start-game');
+    const hostControls = document.getElementById('lobby-host-mode-controls');
+
+    if (countEl) countEl.innerText = lobbyData.players.length;
+
+    const readyCount = lobbyData.players.filter(p => p.isReady || p.isHost).length;
+    if (readySumEl) readySumEl.innerText = `${readyCount}/${lobbyData.players.length} Ready`;
+
+    // Host controls setup
+    if (hostControls) {
+        hostControls.style.display = IS_LOBBY_HOST ? 'flex' : 'none';
+    }
+
+    if (startBtn) {
+        if (IS_LOBBY_HOST) {
+            startBtn.disabled = false;
+            startBtn.innerText = '🚀 START RAID / GAME';
+            startBtn.style.opacity = '1';
+        } else {
+            startBtn.disabled = true;
+            startBtn.innerText = '⏳ Waiting for Host...';
+            startBtn.style.opacity = '0.6';
+        }
+    }
+
+    if (!container) return;
+    container.innerHTML = '';
+
+    lobbyData.players.forEach(p => {
+        const isMe = (p.id === MY_ID);
+        const pClass = p.class || 'Warrior';
+        const card = document.createElement('div');
+        card.className = `lobby-player-card ${p.isReady ? 'is-ready' : ''} ${p.isHost ? 'is-host' : ''} ${isMe ? 'is-self' : ''}`;
+
+        const roleInfo = {
+            Warrior: { icon: '⚔️', role: '🛡️ TANK', color: '#f87171', desc: 'Heavy Cleave & Stuns' },
+            Mage: { icon: '🔮', role: '✨ RANGED AOE', color: '#38bdf8', desc: 'Arcane Bolts & Frost Nova' },
+            Archer: { icon: '🏹', role: '🎯 RAPID DPS', color: '#34d399', desc: 'High Mobility & Piercing' }
+        }[pClass] || { icon: '⚔️', role: 'HERO', color: '#fff', desc: '' };
+
+        let classPickerHtml = '';
+        if (isMe) {
+            classPickerHtml = `
+                <div class="lobby-class-picker">
+                    <button class="btn-lobby-class warrior ${pClass === 'Warrior' ? 'active' : ''}" onclick="setLobbyPlayerClass('Warrior')">⚔️ Warrior</button>
+                    <button class="btn-lobby-class mage ${pClass === 'Mage' ? 'active' : ''}" onclick="setLobbyPlayerClass('Mage')">🔮 Mage</button>
+                    <button class="btn-lobby-class archer ${pClass === 'Archer' ? 'active' : ''}" onclick="setLobbyPlayerClass('Archer')">🏹 Archer</button>
+                </div>
+            `;
+        }
+
+        card.innerHTML = `
+            <div class="lobby-card-header">
+                <div class="lobby-player-name">
+                    ${p.isHost ? '<span class="lobby-host-crown" title="Party Leader / Host">👑</span>' : ''}
+                    <span>${p.name || 'Hero'} ${isMe ? '(You)' : ''}</span>
+                </div>
+                <span class="lobby-role-pill" style="background: rgba(255,255,255,0.08); color: ${roleInfo.color}; border: 1px solid ${roleInfo.color};">
+                    ${roleInfo.role}
+                </span>
+            </div>
+
+            <div class="lobby-avatar-box">
+                <div class="lobby-avatar-icon">${roleInfo.icon}</div>
+                <div>
+                    <div style="font-weight: bold; font-size: 0.85rem; color: ${roleInfo.color};">${pClass}</div>
+                    <div class="lobby-avatar-desc">${roleInfo.desc}</div>
+                </div>
+            </div>
+
+            ${classPickerHtml}
+
+            <div class="lobby-status-badge ${p.isReady ? 'status-ready' : 'status-choosing'}">
+                ${p.isReady ? '✅ READY' : '⏳ SELECTING HERO'}
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function updateReadyButtonUI() {
+    const btn = document.getElementById('btn-lobby-ready-toggle');
+    if (!btn) return;
+    if (MY_LOBBY_READY) {
+        btn.innerText = '⏳ CANCEL READY';
+        btn.className = 'btn-lobby-action btn-lobby-ready is-ready';
+    } else {
+        btn.innerText = '✅ READY UP';
+        btn.className = 'btn-lobby-action btn-lobby-ready';
+    }
+}
+
+window.toggleLobbyReady = function() {
+    initAudio();
+    MY_LOBBY_READY = !MY_LOBBY_READY;
+    updateReadyButtonUI();
+    if (WS && WS.readyState === WebSocket.OPEN) {
+        WS.send(JSON.stringify({ type: 'LOBBY_SET_READY', isReady: MY_LOBBY_READY }));
+    }
+};
+
+window.setLobbyPlayerClass = function(className) {
+    initAudio();
+    selectedStartHero = className;
+    window.selectedStartHero = className;
+    if (WS && WS.readyState === WebSocket.OPEN) {
+        WS.send(JSON.stringify({ type: 'LOBBY_SET_CLASS', class: className }));
+    }
+};
+
+window.setLobbyGameMode = function(mode) {
+    initAudio();
+    GAME.mode = mode;
+    updateLobbyModeUI(mode);
+    if (IS_LOBBY_HOST && WS && WS.readyState === WebSocket.OPEN) {
+        WS.send(JSON.stringify({ type: 'LOBBY_SET_MODE', mode: mode }));
+    }
+};
+
+window.sendLobbyChat = function() {
+    const input = document.getElementById('lobby-chat-input');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+
+    if (WS && WS.readyState === WebSocket.OPEN) {
+        WS.send(JSON.stringify({ type: 'LOBBY_CHAT', text: text }));
+    }
+};
+
+window.sendLobbyQuickChat = function(text) {
+    initAudio();
+    if (WS && WS.readyState === WebSocket.OPEN) {
+        WS.send(JSON.stringify({ type: 'LOBBY_CHAT', text: text }));
+    }
+};
+
+function appendLobbyChatMessage(msg) {
+    const log = document.getElementById('lobby-chat-log');
+    if (!log) return;
+
+    const div = document.createElement('div');
+    div.className = 'lobby-chat-msg';
+
+    const color = (msg.class === 'Warrior' ? '#f87171' : (msg.class === 'Mage' ? '#38bdf8' : '#34d399'));
+    div.innerHTML = `
+        <span class="lobby-chat-sender" style="color:${color};">${msg.isHost ? '👑 ' : ''}${msg.sender}:</span>
+        <span style="color:#f1f5f9;">${msg.text}</span>
+        <span class="lobby-chat-time">${msg.time || ''}</span>
+    `;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+}
+
+window.leaveLobby = function() {
+    initAudio();
+    if (WS) {
+        try { WS.close(); } catch(e) {}
+        WS = null;
+    }
+    IS_MULTIPLAYER = false;
+    LOBBY_DATA = null;
+
+    const lobbyScreen = document.getElementById('lobby-screen');
+    if (lobbyScreen) lobbyScreen.style.display = 'none';
+    document.getElementById('start-screen').style.display = 'flex';
+};
+
+window.startLobbyGame = function() {
+    initAudio();
+    if (!IS_LOBBY_HOST) return;
+    if (WS && WS.readyState === WebSocket.OPEN) {
+        WS.send(JSON.stringify({ type: 'LOBBY_START_GAME' }));
+    }
+};
+
+window.copyLobbyCode = function() {
+    if (!CURRENT_LOBBY_CODE) return;
+    navigator.clipboard.writeText(CURRENT_LOBBY_CODE).then(() => {
+        const btn = document.getElementById('btn-copy-lobby-code');
+        if (btn) {
+            btn.innerText = '✓ Copied!';
+            setTimeout(() => { btn.innerText = '📋 Copy Code'; }, 1500);
+        }
+    });
+};
+
+window.copyLobbyLink = function() {
+    if (!CURRENT_LOBBY_CODE) return;
+    const url = `${window.location.origin}${window.location.pathname}?room=${CURRENT_LOBBY_CODE}`;
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = document.getElementById('btn-copy-lobby-link');
+        if (btn) {
+            btn.innerText = '✓ Link Copied!';
+            setTimeout(() => { btn.innerText = '🔗 Share Link'; }, 1500);
+        }
+    });
+};
 
 function showWaveClearBanner(waveNum, gold, exp) {
     const banner = document.getElementById('wave-clear-banner');
@@ -3643,11 +3978,9 @@ function triggerDungeonVictory() {
 }
 
 // --- GAME LIFECYCLE ---
-window.startGame = function(className) {
+window.startGame = function(className, isMultiplayer = false, initPayload = null) {
     initAudio();
     const heroName = className || selectedStartHero || 'Warrior';
-    const roomInput = document.getElementById('room-input');
-    const roomCode = roomInput ? roomInput.value.trim() : '';
     
     PLAYER.class = heroName;
     currentGearHero = heroName;
@@ -3679,6 +4012,9 @@ window.startGame = function(className) {
     INRUN.speedMult = 1.0;
 
     document.getElementById('start-screen').style.display = 'none';
+    const lobbyScreen = document.getElementById('lobby-screen');
+    if (lobbyScreen) lobbyScreen.style.display = 'none';
+    
     document.getElementById('ui-class').innerText = heroName;
     
     if (heroName !== 'Mage') {
@@ -3723,8 +4059,23 @@ window.startGame = function(className) {
         playerMesh.position.set(0, 1, 0);
     }
 
-    if (roomCode) {
-        initMultiplayer(roomCode, heroName);
+    if (initPayload) {
+        if (typeof initPayload.spawnX === 'number' && typeof initPayload.spawnZ === 'number') {
+            playerMesh.position.set(initPayload.spawnX, 1.5, initPayload.spawnZ);
+        }
+        if (initPayload.wave) {
+            GAME.wave = initPayload.wave;
+            GAME.waveState = initPayload.waveState || 'PREPARING';
+            GAME.waveTimer = initPayload.waveTimer || 4;
+            GAME.isBossWave = initPayload.isBossWave || false;
+            GAME.totalWaveEnemies = initPayload.totalEnemies || 20;
+            updateWaveHUD();
+        }
+    }
+
+    if (IS_MULTIPLAYER) {
+        const tmHUD = document.getElementById('hud-teammates');
+        if (tmHUD) tmHUD.style.display = 'block';
     }
 
     camera.position.set(playerMesh.position.x, 60, playerMesh.position.z + 35);
@@ -5035,6 +5386,26 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// --- LOBBY URL PARAMETER & STORAGE BOOTSTRAP ---
+window.addEventListener('DOMContentLoaded', () => {
+    initMinimap();
+    const savedName = localStorage.getItem('rpg_player_name');
+    const nameInput = document.getElementById('mp-hero-name');
+    if (nameInput) {
+        nameInput.value = savedName || ('Hero ' + Math.floor(10 + Math.random() * 90));
+        nameInput.addEventListener('input', (e) => {
+            localStorage.setItem('rpg_player_name', e.target.value.trim());
+        });
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomParam = urlParams.get('room');
+    if (roomParam) {
+        const joinInput = document.getElementById('mp-join-code');
+        if (joinInput) joinInput.value = roomParam.toUpperCase();
+    }
 });
 
 animate();
