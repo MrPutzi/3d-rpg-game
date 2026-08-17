@@ -57,60 +57,177 @@
 
         .item-log { position: absolute; bottom: 85px; left: 50%; transform: translateX(-50%); color: #34d399; font-weight: bold; text-shadow: 0 2px 6px rgba(0,0,0,0.9); font-size: 1.25rem; transition: opacity 0.2s; opacity: 0; pointer-events: none; z-index: 10; text-align: center; width: 100%; }
         
+        /* Damage Vignette */
         #damage-vignette { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(0,0,0,0) 40%, rgba(239,68,68,0.5) 100%); pointer-events: none; opacity: 0; transition: opacity 0.2s; z-index: 4; }
         
+        /* Modern Bottom Action Bar (Square Skill Slots) */
+        #hud-action-bar { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 25; pointer-events: auto; }
+        .skill-square-btn {
+            width: 58px;
+            height: 58px;
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+            border: 2px solid #475569;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            user-select: none;
+            padding: 0;
+            margin: 0;
+            color: #fff;
+            outline: none;
+        }
+        .skill-square-btn:hover {
+            border-color: #38bdf8;
+            transform: translateY(-3px) scale(1.04);
+            box-shadow: 0 0 16px rgba(56,189,248,0.4);
+        }
+        .skill-square-btn:active {
+            transform: translateY(1px) scale(0.97);
+        }
+        .skill-square-btn.ready-glow {
+            border-color: #38bdf8;
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+        }
+        .skill-square-btn.ult-slot {
+            border-color: #f59e0b;
+        }
+        .skill-square-btn.ult-slot.ready-glow {
+            border-color: #fbbf24;
+            box-shadow: 0 0 18px rgba(251, 191, 36, 0.7);
+            animation: ultGlow 1.2s infinite alternate;
+        }
+        .skill-key-badge {
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            font-size: 0.58rem;
+            font-weight: 800;
+            color: #cbd5e1;
+            background: rgba(0, 0, 0, 0.65);
+            padding: 1px 4px;
+            border-radius: 4px;
+            font-family: monospace;
+            z-index: 3;
+        }
+        .skill-square-icon {
+            font-size: 1.45rem;
+            line-height: 1;
+            margin-top: 2px;
+            z-index: 2;
+        }
+        .skill-square-name {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 52px;
+            text-align: center;
+            margin-top: 2px;
+            z-index: 2;
+        }
+        .skill-cd-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            background: rgba(0, 0, 0, 0.78);
+            pointer-events: none;
+            transition: height 0.08s linear;
+            z-index: 4;
+        }
+        .skill-cd-text {
+            position: absolute;
+            font-size: 0.85rem;
+            font-weight: 900;
+            color: #fde047;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: 5;
+            display: none;
+        }
+
+        /* Joysticks & Controls */
         #mobile-controls { display: none; }
+        .joystick-zone { position: absolute; bottom: 30px; width: 120px; height: 120px; background: rgba(255,255,255,0.1); border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); z-index: 20; touch-action: none; pointer-events: auto; }
+        .joystick-knob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255,255,255,0.5); border-radius: 50%; pointer-events: none; transition: transform 0.05s; }
+        #joystick-left { left: 16px; }
+        #joystick-right { right: 16px; }
+
+        /* Top Action Bar (Clean Header Row) */
+        .top-action-bar { position: absolute; top: 8px; right: 120px; display: flex; gap: 5px; z-index: 22; pointer-events: auto; }
+        .action-btn { background: rgba(15, 23, 42, 0.9); border: 1.5px solid #475569; color: white; padding: 5px 9px; border-radius: 7px; font-weight: bold; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: 0.15s; }
+        .action-btn:hover { background: #334155; border-color: #94a3b8; }
+
+        /* Responsive Breakpoints */
         @media (max-width: 1024px) {
             #mobile-controls { display: block; }
-            #hud-top-left { transform: scale(0.85); transform-origin: top left; }
-            #hud-bottom-right { bottom: 165px; right: 10px; font-size: 0.8rem; padding: 8px 10px; max-width: 170px; }
+            #hud-top-left { transform: scale(0.88); transform-origin: top left; }
+            #hud-bottom-right { bottom: 85px; right: 10px; font-size: 0.78rem; padding: 6px 8px; max-width: 140px; }
             #hud-bottom-left { display: none; }
             #hud-teammates { display: none !important; }
-            .joystick-zone { width: 120px; height: 120px; bottom: 25px; }
-            .joystick-knob { width: 50px; height: 50px; top: 35px; left: 35px; }
-            #minimap-container { top: 10px !important; right: 10px !important; width: 90px !important; height: 90px !important; }
-            #hud-top-center { transform: translateX(-50%); max-width: 260px; min-width: 0; padding: 8px 10px; font-size: 0.8rem; }
-            .top-action-bar { right: 105px !important; }
+            #minimap-container { top: 8px !important; right: 8px !important; width: 95px !important; height: 95px !important; }
+            #hud-top-center { transform: translateX(-50%); max-width: 250px; min-width: 0; padding: 6px 10px; font-size: 0.8rem; }
+            .top-action-bar { right: 110px !important; top: 8px; }
+            #hud-action-bar { bottom: 12px; gap: 6px; }
+            .skill-square-btn { width: 50px; height: 50px; border-radius: 8px; }
+            .skill-square-icon { font-size: 1.25rem; }
+            .skill-square-name { font-size: 0.55rem; max-width: 44px; }
         }
 
-        @media (max-width: 640px) {
-            #hud-top-left { transform: scale(0.78); transform-origin: top left; top: 6px; left: 6px; max-width: 170px; padding: 6px 8px; }
-            #hud-top-center { top: 6px; transform: translateX(-50%); max-width: 175px; min-width: 0; padding: 5px 8px; font-size: 0.72rem; }
-            #wave-badge { font-size: 0.88rem !important; }
-            #wave-sub-status { font-size: 0.72rem !important; }
-            #boss-name { font-size: 0.72rem !important; }
-            #boss-hp-text { font-size: 0.68rem !important; }
-            #ui-skip-prep-btn { padding: 3px 6px !important; font-size: 0.7rem !important; }
+        @media (max-width: 768px) {
+            #hud-top-left { transform: scale(0.8); transform-origin: top left; top: 6px; left: 6px; max-width: 160px; padding: 5px 8px; }
+            #hud-top-center { top: 6px; transform: translateX(-50%); max-width: 190px; min-width: 0; padding: 5px 7px; font-size: 0.74rem; }
+            #wave-badge { font-size: 0.86rem !important; }
+            #wave-sub-status { font-size: 0.7rem !important; }
+            #boss-name { font-size: 0.7rem !important; }
+            #boss-hp-text { font-size: 0.65rem !important; }
+            #ui-skip-prep-btn { padding: 3px 6px !important; font-size: 0.68rem !important; }
             
-            #hud-bottom-right { bottom: 155px; right: 8px; font-size: 0.75rem; padding: 6px 8px; max-width: 145px; line-height: 1.25; }
-            #hud-bottom-right h3 { font-size: 0.82rem; margin-bottom: 1px; }
-            #hud-bottom-right p { margin: 0 0 2px 0; }
+            #hud-bottom-right { bottom: 85px; right: 6px; font-size: 0.72rem; padding: 4px 6px; max-width: 120px; line-height: 1.2; }
+            #hud-bottom-right h3 { font-size: 0.76rem; margin-bottom: 1px; }
 
-            .top-action-bar { top: 6px; right: 82px !important; gap: 4px; }
-            .action-btn { padding: 4px 8px; font-size: 0.75rem; border-radius: 6px; }
-            #minimap-container { top: 6px !important; right: 6px !important; width: 72px !important; height: 72px !important; }
+            .top-action-bar { top: 6px; right: 88px !important; gap: 3px; }
+            .action-btn { padding: 4px 6px; font-size: 0.72rem; border-radius: 5px; }
+            .action-btn .btn-text { display: none; }
+            #minimap-container { top: 6px !important; right: 6px !important; width: 76px !important; height: 76px !important; }
 
-            .joystick-zone { width: 110px; height: 110px; bottom: 20px; }
-            .joystick-knob { width: 44px; height: 44px; top: 33px; left: 33px; }
-            #joystick-left { left: 12px; }
-            #joystick-right { right: 12px; }
+            .joystick-zone { width: 100px; height: 100px; bottom: 15px; }
+            .joystick-knob { width: 42px; height: 42px; top: 29px; left: 29px; }
+            #joystick-left { left: 10px; }
+            #joystick-right { right: 10px; }
+
+            #hud-action-bar { bottom: 10px; gap: 4px; }
+            .skill-square-btn { width: 46px; height: 46px; border-radius: 7px; }
+            .skill-square-icon { font-size: 1.1rem; margin-top: 1px; }
+            .skill-square-name { font-size: 0.52rem; max-width: 40px; }
+            .skill-key-badge { font-size: 0.5rem; padding: 0 3px; }
         }
 
-        @media (max-width: 420px) {
-            #hud-top-center { max-width: 135px; padding: 4px 6px; font-size: 0.68rem; }
-            #wave-badge { font-size: 0.8rem !important; }
-            #hud-bottom-right { max-width: 130px; font-size: 0.7rem; }
-            .action-btn { padding: 3px 6px; font-size: 0.7rem; }
+        @media (max-width: 480px) {
+            #hud-top-left { transform: scale(0.74); max-width: 135px; padding: 4px 6px; }
+            #hud-top-center { max-width: 140px; padding: 3px 5px; font-size: 0.66rem; }
+            #wave-badge { font-size: 0.76rem !important; }
+            .top-action-bar { right: 68px !important; gap: 2px; }
+            .action-btn { padding: 3px 5px; font-size: 0.66rem; }
+            #minimap-container { width: 58px !important; height: 58px !important; }
+            
+            #hud-action-bar { bottom: 8px; gap: 3px; }
+            .skill-square-btn { width: 42px; height: 42px; border-radius: 6px; }
+            .skill-square-icon { font-size: 0.95rem; }
+            .skill-square-name { display: none; }
+            .joystick-zone { width: 85px; height: 85px; bottom: 12px; }
+            .joystick-knob { width: 36px; height: 36px; top: 24px; left: 24px; }
         }
-        
-        .joystick-zone { position: absolute; bottom: 35px; width: 135px; height: 135px; background: rgba(255,255,255,0.12); border-radius: 50%; border: 2px solid rgba(255,255,255,0.35); z-index: 20; touch-action: none; pointer-events: auto; }
-        .joystick-knob { position: absolute; top: 37px; left: 37px; width: 60px; height: 60px; background: rgba(255,255,255,0.55); border-radius: 50%; pointer-events: none; transition: transform 0.05s; }
-        #joystick-left { left: 20px; }
-        #joystick-right { right: 20px; }
-        
-        .top-action-bar { position: absolute; top: 10px; right: 175px; display: flex; gap: 8px; z-index: 20; pointer-events: auto; }
-        .action-btn { background: rgba(15, 23, 42, 0.85); border: 2px solid #475569; color: white; padding: 6px 12px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .action-btn:hover { background: #334155; border-color: #94a3b8; }
         
         .currency-display { font-size: 1rem; color: #38bdf8; margin-bottom: 10px; text-align: center; }
         
@@ -137,55 +254,110 @@
 
         .quest-notify-badge { background: #ef4444; color: white; border-radius: 10px; font-size: 0.7rem; font-weight: 800; padding: 1px 6px; margin-left: 4px; }
         
-        /* In-Game Shop Tabs & Grid & Enhancements */
-        .shop-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
-        .shop-tab-btn { padding: 8px 18px; border-radius: 8px; border: 2px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer; font-weight: bold; font-size: 0.92rem; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+        /* In-Game Shop Tabs & Ultra-Compact Responsive Grid */
+        .shop-tabs { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; justify-content: center; max-width: 100%; }
+        .shop-tab-btn { padding: 6px 14px; border-radius: 6px; border: 2px solid #475569; background: #1e293b; color: #94a3b8; cursor: pointer; font-weight: bold; font-size: 0.84rem; transition: 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
         .shop-tab-btn:hover { background: #334155; color: white; }
-        .shop-tab-btn.active { background: #0284c7; color: white; border-color: #38bdf8; box-shadow: 0 0 14px rgba(56,189,248,0.4); }
+        .shop-tab-btn.active { background: #0284c7; color: white; border-color: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.4); }
         
-        .shop-toolbar { display: flex; gap: 8px; align-items: center; justify-content: space-between; width: 100%; max-width: 900px; margin-bottom: 12px; flex-wrap: wrap; }
-        .shop-filter-group { display: flex; gap: 5px; flex-wrap: wrap; }
-        .shop-filter-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #94a3b8; font-size: 0.78rem; font-weight: bold; cursor: pointer; transition: 0.15s; }
+        .shop-toolbar { display: flex; gap: 6px; align-items: center; justify-content: space-between; width: 100%; max-width: 960px; margin-bottom: 8px; flex-wrap: wrap; }
+        .shop-filter-group { display: flex; gap: 4px; flex-wrap: wrap; }
+        .shop-filter-btn { padding: 4px 9px; border-radius: 5px; border: 1px solid #475569; background: #0f172a; color: #94a3b8; font-size: 0.74rem; font-weight: bold; cursor: pointer; transition: 0.15s; }
         .shop-filter-btn:hover { background: #1e293b; color: white; }
         .shop-filter-btn.active { background: #3b82f6; border-color: #60a5fa; color: white; }
-        .shop-search-input { background: #0f172a; border: 1px solid #475569; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; outline: none; width: 160px; transition: 0.2s; }
-        .shop-search-input:focus { border-color: #38bdf8; width: 190px; }
+        .shop-search-input { background: #0f172a; border: 1px solid #475569; color: white; padding: 4px 10px; border-radius: 5px; font-size: 0.76rem; outline: none; width: 150px; transition: 0.2s; }
+        .shop-search-input:focus { border-color: #38bdf8; width: 180px; }
 
-        .shop-summary-bar { background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 8px; padding: 6px 14px; display: flex; gap: 16px; align-items: center; justify-content: center; font-size: 0.82rem; margin-bottom: 12px; max-width: 900px; width: 100%; box-sizing: border-box; }
-        .shop-summary-item { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+        .shop-summary-bar { background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 6px; padding: 4px 10px; display: flex; gap: 12px; align-items: center; justify-content: center; font-size: 0.76rem; margin-bottom: 8px; max-width: 960px; width: 100%; box-sizing: border-box; flex-wrap: wrap; }
+        .shop-summary-item { display: flex; align-items: center; gap: 4px; font-weight: 600; }
 
-        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; width: 100%; max-width: 920px; box-sizing: border-box; padding: 4px; justify-content: center; max-height: 52vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #38bdf8 #0f172a; }
-        .shop-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #334155; padding: 12px; border-radius: 12px; text-align: left; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); min-height: 170px; position: relative; }
-        .shop-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.5); border-color: #38bdf8; }
+        /* Compact Shop Product Cards */
+        .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; width: 100%; max-width: 980px; box-sizing: border-box; padding: 2px; justify-content: center; max-height: 56vh; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #38bdf8 #0f172a; }
+        .shop-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 1.5px solid #334155; padding: 7px 9px; border-radius: 8px; text-align: left; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1); min-height: 120px; position: relative; }
+        .shop-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-color: #38bdf8; }
         .shop-card.maxed { border-color: #eab308 !important; opacity: 0.88; background: linear-gradient(145deg, #1e293b, #172554); }
-        .shop-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-        .shop-card-icon { font-size: 1.4rem; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: rgba(255,255,255,0.06); flex-shrink: 0; }
+        .shop-card-header { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+        .shop-card-icon { font-size: 1.1rem; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: rgba(255,255,255,0.06); flex-shrink: 0; }
         .shop-card-title-group { flex: 1; min-width: 0; }
-        .shop-card h3 { margin: 0; font-size: 0.88rem; font-weight: bold; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .shop-card-cat-badge { font-size: 0.65rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; padding: 1px 5px; border-radius: 4px; display: inline-block; margin-top: 2px; }
+        .shop-card h3 { margin: 0; font-size: 0.78rem; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .shop-card-cat-badge { font-size: 0.6rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.4px; padding: 1px 4px; border-radius: 3px; display: inline-block; margin-top: 1px; }
         
-        .shop-card .lvl-bar-container { width: 100%; background: #334155; height: 5px; border-radius: 3px; overflow: hidden; margin: 4px 0 6px 0; }
+        .shop-card .lvl-bar-container { width: 100%; background: #334155; height: 4px; border-radius: 2px; overflow: hidden; margin: 3px 0 4px 0; }
         .shop-card .lvl-bar-fill { height: 100%; background: #34d399; transition: width 0.3s; }
-        .shop-card .lvl-text { font-size: 0.72rem; color: #94a3b8; font-weight: bold; display: flex; justify-content: space-between; }
+        .shop-card .lvl-text { font-size: 0.66rem; color: #94a3b8; font-weight: bold; display: flex; justify-content: space-between; }
         
-        .shop-card p { font-size: 0.75rem; color: #cbd5e1; margin: 6px 0 10px 0; min-height: 36px; line-height: 1.35; }
-        .shop-card-footer { display: flex; flex-direction: column; gap: 5px; margin-top: auto; }
-        .shop-card-buy-row { display: flex; gap: 6px; }
-        .shop-card button { padding: 7px 10px; font-size: 0.82rem; margin: 0; flex: 1; box-sizing: border-box; border-radius: 6px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; }
-        .btn-buy-max { padding: 7px 8px !important; flex: 0 0 auto !important; background: #0f766e !important; border-color: #14b8a6 !important; font-size: 0.75rem !important; }
+        .shop-card p { font-size: 0.68rem; color: #cbd5e1; margin: 3px 0 6px 0; min-height: 26px; line-height: 1.25; }
+        .shop-card-footer { display: flex; flex-direction: column; gap: 4px; margin-top: auto; }
+        .shop-card-buy-row { display: flex; gap: 4px; }
+        .shop-card button { padding: 4px 6px; font-size: 0.72rem; margin: 0; flex: 1; box-sizing: border-box; border-radius: 5px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 3px; }
+        .btn-buy-max { padding: 4px 6px !important; flex: 0 0 auto !important; background: #0f766e !important; border-color: #14b8a6 !important; font-size: 0.68rem !important; }
         .btn-buy-max:hover:not(:disabled) { background: #0d9488 !important; }
 
+        /* Leaderboard Modal & Table Styling */
+        .lb-container { width: 100%; max-width: 860px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
+        .lb-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; background: rgba(15,23,42,0.85); padding: 8px 14px; border-radius: 8px; border: 1px solid #334155; }
+        .lb-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+        .lb-tab-btn { padding: 5px 12px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #94a3b8; font-size: 0.78rem; font-weight: bold; cursor: pointer; transition: 0.15s; }
+        .lb-tab-btn.active { background: #f59e0b; color: #000; border-color: #fbbf24; font-weight: 800; }
+        
+        .lb-table-wrap { width: 100%; max-height: 50vh; overflow-y: auto; border: 1px solid #334155; border-radius: 8px; background: rgba(15,23,42,0.7); }
+        .lb-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.82rem; }
+        .lb-table th { background: #1e293b; color: #94a3b8; padding: 8px 12px; font-weight: bold; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.5px; border-bottom: 2px solid #334155; position: sticky; top: 0; z-index: 2; }
+        .lb-table td { padding: 8px 12px; border-bottom: 1px solid #1e293b; color: #cbd5e1; vertical-align: middle; }
+        .lb-table tr:hover { background: rgba(56,189,248,0.08); }
+        .lb-table tr.lb-self { background: rgba(245,158,11,0.15); border-left: 3px solid #f59e0b; font-weight: bold; }
+        .lb-rank-badge { font-weight: 800; font-size: 0.95rem; width: 32px; display: inline-block; text-align: center; }
+        .rank-1 { color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,0.6); }
+        .rank-2 { color: #cbd5e1; }
+        .rank-3 { color: #d97706; }
+        .lb-score-val { font-weight: 800; color: #34d399; font-size: 0.95rem; }
+
+        /* Talent Trees Styles */
+        .talents-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 960px; box-sizing: border-box; max-height: 56vh; overflow-y: auto; padding: 4px; }
+        .talent-spec-col { background: rgba(15, 23, 42, 0.85); border: 2px solid #334155; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .talent-spec-header { text-align: center; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+        .talent-spec-name { font-size: 0.95rem; font-weight: 800; color: #f8fafc; }
+        .talent-spec-desc { font-size: 0.72rem; color: #94a3b8; }
+        .talent-node-card { background: #1e293b; border: 1.5px solid #475569; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; transition: all 0.15s; position: relative; }
+        .talent-node-card.unlocked { border-color: #38bdf8; background: linear-gradient(145deg, #1e293b, #0369a1); }
+        .talent-node-card.maxed { border-color: #fbbf24; background: linear-gradient(145deg, #1e293b, #78350f); box-shadow: 0 0 10px rgba(251,191,36,0.25); }
+        .talent-node-top { display: flex; justify-content: space-between; align-items: center; }
+        .talent-node-title { font-size: 0.82rem; font-weight: bold; color: #f8fafc; }
+        .talent-node-rank { font-size: 0.7rem; font-weight: 800; color: #fde047; background: rgba(0,0,0,0.4); padding: 1px 6px; border-radius: 4px; }
+        .talent-node-desc { font-size: 0.7rem; color: #cbd5e1; line-height: 1.25; }
+        .talent-node-btn { padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; margin-top: 2px; }
+
+        /* Combo Streak HUD */
+        #hud-combo { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); display: none; align-items: center; gap: 6px; background: rgba(15,23,42,0.92); border: 2px solid #f59e0b; padding: 4px 14px; border-radius: 20px; color: #fbbf24; font-weight: 800; font-size: 0.88rem; box-shadow: 0 0 14px rgba(245,158,11,0.6); pointer-events: none; z-index: 15; animation: pulse 0.8s infinite alternate; }
+
+        /* Titan Gauntlet Boss HUD & Boon Draft */
+        #hud-titan-stage { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.92); border: 2px solid #ef4444; border-radius: 10px; padding: 8px 20px; text-align: center; color: white; z-index: 10; box-shadow: 0 4px 20px rgba(239,68,68,0.4); pointer-events: auto; display: none; min-width: 300px; }
+        .titan-stage-badge { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1.5px; color: #fca5a5; font-weight: 800; }
+        .titan-stage-title { font-size: 1rem; font-weight: bold; color: #fff; margin-top: 2px; }
+
+        .boon-grid { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; width: 100%; max-width: 860px; }
+        .boon-card { background: linear-gradient(145deg, #1e293b, #0f172a); border: 2px solid #fbbf24; border-radius: 12px; padding: 16px; width: 240px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; cursor: pointer; transition: all 0.2s; box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
+        .boon-card:hover { transform: translateY(-5px) scale(1.03); border-color: #fde047; box-shadow: 0 0 24px rgba(251,191,36,0.6); }
+        .boon-icon { font-size: 2.2rem; margin-bottom: 2px; }
+        .boon-name { font-size: 1.05rem; font-weight: 800; color: #fbbf24; }
+        .boon-desc { font-size: 0.78rem; color: #cbd5e1; line-height: 1.35; }
+
+        @media (max-width: 768px) {
+            .talents-container { grid-template-columns: 1fr; }
+            .shop-grid { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 6px; }
+        }
+
         @media (max-width: 640px) {
-            .shop-tabs { gap: 6px; margin-bottom: 8px; }
-            .shop-tab-btn { padding: 6px 12px; font-size: 0.8rem; }
-            .shop-toolbar { justify-content: center; gap: 6px; }
+            .shop-tabs { gap: 4px; margin-bottom: 6px; }
+            .shop-tab-btn { padding: 5px 10px; font-size: 0.76rem; }
+            .shop-toolbar { justify-content: center; gap: 4px; }
             .shop-search-input { width: 100%; }
-            .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 2px; max-height: 48vh; }
-            .shop-card { padding: 9px; min-height: 155px; border-radius: 8px; }
-            .shop-card-icon { font-size: 1.1rem; width: 28px; height: 28px; }
-            .shop-card h3 { font-size: 0.8rem; }
-            .shop-card p { font-size: 0.7rem; min-height: 30px; margin: 4px 0 8px 0; }
-            .shop-card button { padding: 5px 6px; font-size: 0.74rem; }
+            .shop-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 2px; max-height: 48vh; }
+            .shop-card { padding: 6px 7px; min-height: 110px; border-radius: 6px; }
+            .shop-card-icon { font-size: 0.95rem; width: 22px; height: 22px; }
+            .shop-card h3 { font-size: 0.74rem; }
+            .shop-card p { font-size: 0.65rem; min-height: 24px; margin: 2px 0 4px 0; }
+            .shop-card button { padding: 4px 5px; font-size: 0.68rem; }
             .class-grid { gap: 10px; }
             .class-card { max-width: 100%; padding: 12px; }
             .skill-grid { gap: 8px; }
@@ -398,33 +570,44 @@
 <body>
     <!-- Start Screen -->
     <div id="start-screen" class="overlay" style="display: flex;">
-        <h1 style="margin-bottom: 2px; letter-spacing: 0.5px;">⚔️ 3D RPG HORDE &amp; DUNGEON RAID</h1>
-        <p style="margin-bottom: 8px; color: #cbd5e1;">Master 3 distinct hero archetypes, raid 5-chamber dungeons with party AI, and conquer endless hordes with class-restricted gear!</p>
+        <h1 style="margin-bottom: 2px; letter-spacing: 0.5px;">⚔️ 3D RPG HORDE, DUNGEON &amp; TITAN RAID</h1>
+        <p style="margin-bottom: 8px; color: #cbd5e1;">Master 3 hero archetypes, raid dungeons with party AI, battle colossi in Titan's Gauntlet, and climb the Global Hall of Legends!</p>
         
-        <div class="currency-display" style="display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;">
+        <div class="currency-display" style="display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;">
             <span>✨ Essence: <strong id="start-essence" style="color: #c084fc;">0</strong></span>
-            <button onclick="openQuestsModal()" class="btn-emerald" style="padding:6px 14px; font-size:0.88rem; background: linear-gradient(135deg, #8b5cf6, #a855f7);">
+            <button onclick="openQuestsModal()" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #8b5cf6, #a855f7);">
                 📜 Daily Quests <span id="start-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
             </button>
-            <button onclick="openShopModal('sanctuary')" class="btn-emerald" style="padding:6px 14px; font-size:0.88rem;">
+            <button onclick="openTalentsModal()" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+                🌟 Class Talents (N)
+            </button>
+            <button onclick="openLeaderboardModal()" class="btn-gold" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #d97706, #f59e0b);">
+                🏆 Hall of Legends (L)
+            </button>
+            <button onclick="openShopModal('sanctuary')" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem;">
                 🛒 Meta Sanctuary
             </button>
-            <button onclick="openGearModal()" class="btn-gold" style="padding:6px 14px; font-size:0.88rem;">
-                🎒 Hero Equipment (I)
+            <button onclick="openGearModal()" class="btn-gold" style="padding:5px 12px; font-size:0.82rem;">
+                🎒 Equipment (I)
             </button>
         </div>
 
         <!-- Mode Switcher -->
         <div class="mode-toggle-group">
             <button id="mode-btn-horde" class="mode-btn active" onclick="selectGameMode('horde')">🌊 Horde Survival</button>
-            <button id="mode-btn-dungeon" class="mode-btn dungeon" onclick="selectGameMode('dungeon')">🏰 3-Hero MMORPG Dungeon</button>
+            <button id="mode-btn-dungeon" class="mode-btn dungeon" onclick="selectGameMode('dungeon')">🏰 3-Hero Dungeon</button>
+            <button id="mode-btn-titan" class="mode-btn" style="border:1px solid #ef4444;" onclick="selectGameMode('titan')">⚔️ Titan's Gauntlet</button>
         </div>
 
-        <div id="dungeon-info-banner" style="display: none; background: rgba(147, 51, 234, 0.18); border: 1px solid #a855f7; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 600px; text-align: center; font-size: 0.85rem; color: #e9d5ff; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
-            🗡️ <strong>Dungeon: Crypt of Overlord Malakor</strong> &bull; Traverse 5 chambers with a Tank, Healer, &amp; DPS party. Clear mob packs to unseal gates and conquer the final boss!
+        <div id="dungeon-info-banner" style="display: none; background: rgba(147, 51, 234, 0.18); border: 1px solid #a855f7; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 650px; text-align: center; font-size: 0.82rem; color: #e9d5ff; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
+            🗡️ <strong>Crypt of Overlord Malakor (Hardcore Isometric Mode)</strong> &bull; Traverse 5 perilous chambers featuring floor spike traps, flame fissures, elite shielded guards, and a 3-phase final boss!
         </div>
 
-        <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 600px; text-align: center; font-size: 0.85rem; color: #bae6fd;">
+        <div id="titan-info-banner" style="display: none; background: rgba(239, 68, 68, 0.18); border: 1px solid #ef4444; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 650px; text-align: center; font-size: 0.82rem; color: #fecaca; box-shadow: 0 4px 12px rgba(239,68,68,0.3);">
+            ⚡ <strong>Titan's Gauntlet (Boss Rush Colosseum)</strong> &bull; Face 5 gargantuan ancient Titans back-to-back! Draft divine boons after each kill and race against the clock for the ultimate score!
+        </div>
+
+        <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 650px; text-align: center; font-size: 0.82rem; color: #bae6fd;">
             🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!
         </div>
 
@@ -855,10 +1038,99 @@
     <div id="pause-screen" class="overlay">
         <h1>GAME PAUSED</h1>
         <p>Take a breath or tweak your setup</p>
+        <button onclick="openTalentsModal()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding:10px 20px;">🌟 Class Talents (N)</button>
+        <button onclick="openLeaderboardModal()" style="background: linear-gradient(135deg, #d97706, #f59e0b); padding:10px 20px;">🏆 Hall of Legends (L)</button>
         <button onclick="openQuestsModal()" style="background: linear-gradient(135deg, #8b5cf6, #a855f7); padding:10px 20px;">📜 Daily Quests</button>
         <button onclick="openShopModal('merchant')" class="btn-gold" style="padding:10px 20px;">🛒 Open In-Game Shop</button>
         <button onclick="resumeGame()">Resume Game</button>
         <button onclick="location.reload()" style="background: #ef4444;">Quit to Menu</button>
+    </div>
+
+    <!-- Leaderboard Modal (Hall of Legends) -->
+    <div id="leaderboard-screen" class="overlay">
+        <h1 style="color: #fbbf24; text-shadow: 0 0 16px rgba(251,191,36,0.5); margin-bottom: 2px;">🏆 HALL OF LEGENDS</h1>
+        <p style="color: #cbd5e1; font-size: 0.88rem; margin-bottom: 8px;">Top High Scores across all Hero Archetypes and Game Modes!</p>
+        
+        <div class="lb-container">
+            <div class="lb-toolbar">
+                <div class="lb-filters">
+                    <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold; align-self: center;">MODE:</span>
+                    <button class="lb-tab-btn active" id="lb-mode-all" onclick="filterLeaderboardMode('all')">All Modes</button>
+                    <button class="lb-tab-btn" id="lb-mode-horde" onclick="filterLeaderboardMode('horde')">🌊 Horde</button>
+                    <button class="lb-tab-btn" id="lb-mode-dungeon" onclick="filterLeaderboardMode('dungeon')">🏰 Dungeon</button>
+                    <button class="lb-tab-btn" id="lb-mode-titan" onclick="filterLeaderboardMode('titan')">⚔️ Titan Gauntlet</button>
+                </div>
+                <div class="lb-filters">
+                    <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold; align-self: center;">CLASS:</span>
+                    <button class="lb-tab-btn active" id="lb-class-all" onclick="filterLeaderboardClass('all')">All</button>
+                    <button class="lb-tab-btn" id="lb-class-warrior" onclick="filterLeaderboardClass('Warrior')">⚔️ Warrior</button>
+                    <button class="lb-tab-btn" id="lb-class-mage" onclick="filterLeaderboardClass('Mage')">🔮 Mage</button>
+                    <button class="lb-tab-btn" id="lb-class-archer" onclick="filterLeaderboardClass('Archer')">🏹 Archer</button>
+                </div>
+            </div>
+
+            <div class="lb-table-wrap">
+                <table class="lb-table" id="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px; text-align: center;">Rank</th>
+                            <th>Hero &amp; Archetype</th>
+                            <th>Mode &amp; Progress</th>
+                            <th>Kills &amp; Time</th>
+                            <th style="text-align: right;">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-tbody">
+                        <!-- Rendered by game.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="closeLeaderboardModal()" style="background:#475569; padding: 8px 24px; font-weight:bold; border-radius:8px;">Close (L)</button>
+        </div>
+    </div>
+
+    <!-- Class Talent Trees Modal -->
+    <div id="talents-screen" class="overlay">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 960px; margin-bottom: 6px;">
+            <div>
+                <h1 style="color: #38bdf8; font-size: 1.5rem; margin: 0; text-align: left;">🌟 CLASS TALENT TREES</h1>
+                <p style="color: #cbd5e1; font-size: 0.8rem; margin: 2px 0 0 0; text-align: left;">
+                    Invest Talent Points earned from Leveling, Dungeons &amp; Titan Slayer runs into deep specializations!
+                </p>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; background: rgba(15,23,42,0.85); border: 1px solid #334155; padding: 6px 14px; border-radius: 8px;">
+                <span style="font-size: 0.85rem; color: #cbd5e1;">Points: <strong id="talent-points-available" style="color: #fbbf24; font-size: 1.1rem;">0</strong> 🌟</span>
+                <button onclick="resetClassTalents()" class="btn-emerald" style="padding: 4px 10px; font-size: 0.75rem; background: #dc2626; margin: 0;">Reset (Free)</button>
+            </div>
+        </div>
+
+        <!-- Class Selector Tabs in Talents -->
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <button id="talent-tab-warrior" class="shop-tab-btn active" onclick="switchTalentClass('Warrior')">⚔️ Warrior Specs</button>
+            <button id="talent-tab-mage" class="shop-tab-btn" onclick="switchTalentClass('Mage')">🔮 Mage Specs</button>
+            <button id="talent-tab-archer" class="shop-tab-btn" onclick="switchTalentClass('Archer')">🏹 Archer Specs</button>
+        </div>
+
+        <div class="talents-container" id="talents-trees-container">
+            <!-- Populated dynamically by game.js -->
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+            <button onclick="closeTalentsModal()" style="background:#475569; padding: 8px 24px; font-weight:bold; border-radius:8px;">Close (N)</button>
+        </div>
+    </div>
+
+    <!-- Titan's Boon Draft Modal (Boss Rush Gauntlet) -->
+    <div id="boon-draft-screen" class="overlay">
+        <h1 style="color: #fbbf24; text-shadow: 0 0 20px rgba(251,191,36,0.6); margin-bottom: 2px;">⚡ TITAN'S BOON DRAFT</h1>
+        <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 14px;">The Pantheon acknowledges your triumph! Choose a divine power before the next colossus awakes:</p>
+        
+        <div class="boon-grid" id="boon-choices-container">
+            <!-- Populated dynamically by game.js -->
+        </div>
     </div>
 
     <!-- Level Up Screen -->
@@ -884,16 +1156,22 @@
     <!-- HUD -->
     <canvas id="teammate-arrows-canvas"></canvas>
     <div id="gui">
-        <!-- Top Action Bar (Shop & Pause buttons) -->
+        <!-- Top Action Bar (Shop, Gear, Talents, Quests & Pause) -->
         <div class="top-action-bar">
             <button class="action-btn btn-gold" onclick="toggleGearModal()" title="Open Hero Equipment & Stash (Hotkey: I)">
-                🎒 Gear (I)
+                🎒 <span class="btn-text">Gear (I)</span>
+            </button>
+            <button class="action-btn btn-emerald" onclick="toggleTalentsModal()" style="background: rgba(14, 165, 233, 0.25); border-color: #38bdf8;" title="Class Talents (Hotkey: N)">
+                🌟 <span class="btn-text">Talents (N)</span>
+            </button>
+            <button class="action-btn btn-gold" onclick="toggleLeaderboardModal()" style="background: rgba(245, 158, 11, 0.25); border-color: #f59e0b;" title="Hall of Legends (Hotkey: L)">
+                🏆 <span class="btn-text">Hall (L)</span>
             </button>
             <button class="action-btn btn-emerald" onclick="toggleShopModal()" title="Open live shop (Hotkey: B)">
-                🛒 Shop (B)
+                🛒 <span class="btn-text">Shop (B)</span>
             </button>
             <button class="action-btn" onclick="toggleQuestsModal()" style="background: rgba(139, 92, 246, 0.25); border-color: #8b5cf6;" title="Daily Quests">
-                📜 Quests <span id="top-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
+                📜 <span class="btn-text">Quests</span> <span id="top-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
             </button>
             <button class="action-btn" onclick="toggleAudio()" id="audio-toggle-btn" title="Mute/Unmute Audio">
                 🔊
@@ -903,10 +1181,10 @@
             </button>
         </div>
 
-        <!-- Dungeon Objective HUD (Dungeon Mode) -->
-        <div id="hud-dungeon-obj">
-            <div class="dungeon-room-badge" id="dungeon-room-name">🏰 Room 1: Crypt Entrance</div>
-            <div class="dungeon-obj-title" id="dungeon-obj-text">Defeat the Skeletal Vanguard (0/4)</div>
+        <!-- Combo Streak Badge HUD -->
+        <div id="hud-combo">
+            <span>⚡ COMBO x<span id="combo-multiplier">1.0</span></span>
+            <span style="font-size:0.75rem; color:#fde047;">(<span id="combo-count">0</span> hits)</span>
         </div>
 
         <!-- Dungeon 3-Hero Party Frames (Classic MMORPG) -->
@@ -945,60 +1223,65 @@
 
         <div id="minimap-container"><canvas id="minimap-canvas"></canvas></div>
 
-        <!-- Top Left Player Stats -->
+        <!-- Top Left Player Stats (Clean & Compact) -->
         <div id="hud-top-left" class="panel">
-            <h3 style="font-size: 0.95rem; margin-bottom: 2px;"><span id="ui-class">Player</span> &bull; Lvl <span id="ui-level">1</span></h3>
-            <div style="display:flex; justify-content:space-between;"><span>HP:</span><span><span id="ui-hp">100</span>/<span id="ui-maxhp">100</span></span></div>
-            <div class="bar-container"><div id="hp-bar" class="health-bar"></div></div>
+            <h3 style="font-size: 0.92rem; margin-bottom: 2px;"><span id="ui-class">Player</span> &bull; Lvl <span id="ui-level">1</span></h3>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem;"><span>HP:</span><span><span id="ui-hp">100</span>/<span id="ui-maxhp">100</span></span></div>
+            <div class="bar-container" style="height:7px;"><div id="hp-bar" class="health-bar"></div></div>
             
-            <div id="mana-box" style="margin-top: 4px;">
-                <div style="display:flex; justify-content:space-between;"><span>Mana:</span><span><span id="ui-mana">50</span>/<span id="ui-maxmana">50</span></span></div>
-                <div class="bar-container" id="mana-bar-container"><div id="mana-bar" class="mana-bar"></div></div>
+            <div id="mana-box" style="margin-top: 3px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem;"><span>Mana:</span><span><span id="ui-mana">50</span>/<span id="ui-maxmana">50</span></span></div>
+                <div class="bar-container" style="height:5px;" id="mana-bar-container"><div id="mana-bar" class="mana-bar"></div></div>
             </div>
 
-            <div style="margin-top: 4px; display:flex; justify-content:space-between;"><span>EXP:</span><span><span id="ui-exp">0</span>/<span id="ui-exp-needed">100</span></span></div>
-            <div class="bar-container"><div id="exp-bar" class="exp-bar"></div></div>
-
-            <!-- Ultimate Gauge -->
-            <div id="ult-box" style="margin-top: 5px; cursor: pointer;" onclick="useUltimate()" title="Activate Ultimate Ability (Hotkey: SPACE or Q)">
-                <div style="display:flex; justify-content:space-between; font-weight: bold; font-size:0.78rem; color:#fde047;">
-                    <span id="ui-ult-name">⚡ ULT [SPACE]</span>
-                    <span id="ui-ult-status">READY!</span>
-                </div>
-                <div class="bar-container" style="height: 10px; border-color: #f59e0b;"><div id="ult-bar" class="ult-bar"></div></div>
-            </div>
-
-            <!-- Tactical Ability Gauge -->
-            <div id="tactical-box" style="margin-top: 4px; cursor: pointer;" onclick="useTacticalSkill()" title="Activate Class Tactical Skill (Hotkey: E)">
-                <div style="display:flex; justify-content:space-between; font-weight: bold; font-size:0.75rem; color:#38bdf8;">
-                    <span id="ui-tactical-name">🛡️ DASH [E]</span>
-                    <span id="ui-tactical-status">READY</span>
-                </div>
-                <div class="bar-container" style="height: 8px; border-color: #0284c7;"><div id="tactical-bar" class="tactical-bar"></div></div>
-            </div>
+            <div style="margin-top: 3px; display:flex; justify-content:space-between; font-size:0.75rem;"><span>EXP:</span><span><span id="ui-exp">0</span>/<span id="ui-exp-needed">100</span></span></div>
+            <div class="bar-container" style="height:5px;"><div id="exp-bar" class="exp-bar"></div></div>
         </div>
 
         <!-- Active Shrine Buffs Display -->
         <div id="hud-buffs"></div>
 
-        <!-- Top Center Wave Counter & Boss Bar -->
+        <!-- Top Center Unified Context HUD -->
         <div id="hud-top-center" class="panel">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                <span id="wave-badge" style="font-weight: 800; font-size: 1.1rem; color: #38bdf8;">🌊 WAVE <span id="ui-wave">1</span></span>
-                <span id="wave-sub-status" style="font-size: 0.85rem; color: #cbd5e1;">(0/20)</span>
+            <!-- Mode: Horde Wave Info -->
+            <div id="hud-horde-mode-header">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <span id="wave-badge" style="font-weight: 800; font-size: 1.05rem; color: #38bdf8;">🌊 WAVE <span id="ui-wave">1</span></span>
+                    <span id="wave-sub-status" style="font-size: 0.82rem; color: #cbd5e1;">(0/20)</span>
+                </div>
+                <div class="bar-container" style="height: 7px; margin-top: 4px;"><div id="wave-bar" class="wave-bar"></div></div>
             </div>
-            <div class="bar-container" style="height: 8px; margin-top: 4px;"><div id="wave-bar" class="wave-bar"></div></div>
+
+            <!-- Mode: Dungeon Chamber Info & Direction Compass -->
+            <div id="hud-dungeon-header" style="display: none;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                    <span class="dungeon-room-badge" id="dungeon-room-name" style="font-weight: 800; color: #c084fc; font-size: 0.82rem;">🏰 Crypt 1: Entrance</span>
+                    <span id="dungeon-gate-status" style="font-size: 0.72rem; color: #fde047; font-weight: bold;">SEALED 🔒</span>
+                </div>
+                <div class="dungeon-obj-title" id="dungeon-obj-text" style="font-size: 0.82rem; font-weight: bold; color: #fff; margin-top: 2px;">⚔️ Vanguard (0/4)</div>
+                <div id="dungeon-compass-bar" style="margin-top: 3px; font-size: 0.74rem; font-weight: bold; color: #38bdf8; background: rgba(0,0,0,0.35); border-radius: 4px; padding: 2px 6px;">
+                    🧭 <span id="dungeon-compass-text">Gate: 25m Ahead ⬆️</span>
+                </div>
+            </div>
+
+            <!-- Mode: Titan Boss Rush Info -->
+            <div id="hud-titan-header" style="display: none;">
+                <div class="titan-stage-badge" id="titan-stage-num" style="font-size: 0.76rem; color: #fde047; font-weight: 800;">⚡ TITAN I / V &bull; BOSS RUSH</div>
+                <div class="titan-stage-title" id="titan-stage-name" style="font-size: 0.84rem; font-weight: bold; color: #fff;">Earth Colossus</div>
+                <div style="font-size:0.74rem; color:#fde047; font-weight:bold; margin-top:2px;">⏱️ Timer: <span id="titan-stage-timer">00:00</span></div>
+            </div>
+
             <div id="wave-action-area" style="margin-top: 4px; display: none;">
-                <button id="ui-skip-prep-btn" onclick="skipIntermission()" class="btn-emerald" style="padding: 4px 10px; font-size: 0.8rem; margin: 0;">⚔️ Start Next Wave</button>
+                <button id="ui-skip-prep-btn" onclick="skipIntermission()" class="btn-emerald" style="padding: 3px 8px; font-size: 0.75rem; margin: 0;">⚔️ Start Next Wave</button>
             </div>
             
             <!-- Boss Bar -->
             <div id="boss-hud">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span id="boss-name">⚠️ BOSS: Gorgar the Orc Warlord</span>
-                    <span id="boss-hp-text" style="font-size:0.75rem; color:#fca5a5;">100%</span>
+                    <span id="boss-name" style="font-size: 0.8rem; font-weight: bold; color: #f87171;">⚠️ BOSS: Gorgar</span>
+                    <span id="boss-hp-text" style="font-size:0.72rem; color:#fca5a5;">100%</span>
                 </div>
-                <div class="bar-container" style="height: 10px; margin-top: 2px;"><div id="boss-bar" class="boss-bar"></div></div>
+                <div class="bar-container" style="height: 7px; margin-top: 2px;"><div id="boss-bar" class="boss-bar"></div></div>
             </div>
         </div>
         
@@ -1008,17 +1291,61 @@
             <div id="teammates-list"></div>
         </div>
 
-        <!-- Active Skills Panel -->
+        <!-- Active Skills Panel (Floating Desktop Tracker) -->
         <div id="hud-bottom-left" class="panel">
-            <h3 style="font-size: 0.9rem; margin-bottom: 2px;">⚡ Skills (<span id="ui-skill-count">0</span>/3)</h3>
+            <h3 style="font-size: 0.85rem; margin-bottom: 2px;">⚡ Passives (<span id="ui-skill-count">0</span>/5)</h3>
             <div class="active-skills-list" id="ui-skills-list"></div>
         </div>
 
         <!-- Bottom Right Score & Resources -->
         <div id="hud-bottom-right" class="panel">
-            <h3 style="font-size: 0.95rem; margin-bottom: 2px;">Score: <span id="ui-score" style="color:#34d399;">0</span></h3>
-            <p>🪙 Gold: <span id="ui-gold" style="color: #fbbf24; font-weight: bold;">0</span></p>
-            <p>💀 Kills: <span id="ui-kills">0</span></p>
+            <h3 style="font-size: 0.9rem; margin-bottom: 2px;">Score: <span id="ui-score" style="color:#34d399;">0</span></h3>
+            <p style="margin: 2px 0;">🪙 Gold: <span id="ui-gold" style="color: #fbbf24; font-weight: bold;">0</span></p>
+            <p style="margin: 2px 0;">💀 Kills: <span id="ui-kills">0</span></p>
+        </div>
+
+        <!-- 5-Slot Square Skill Action Bar (Bottom Center) -->
+        <div id="hud-action-bar">
+            <!-- Slot 1: Primary Attack -->
+            <button class="skill-square-btn" id="skill-slot-1" onclick="usePrimaryAttack()" title="Primary Attack (LMB / 1)">
+                <div class="skill-key-badge">1</div>
+                <div class="skill-square-icon" id="skill-icon-1">⚔️</div>
+                <div class="skill-square-name" id="skill-name-1">Slash</div>
+                <div class="skill-cd-overlay" id="skill-cd-1"></div>
+                <div class="skill-cd-text" id="skill-cd-text-1"></div>
+            </button>
+            <!-- Slot 2: Tactical Skill -->
+            <button class="skill-square-btn" id="skill-slot-2" onclick="useTacticalSkill()" title="Tactical Skill (E / 2)">
+                <div class="skill-key-badge">E</div>
+                <div class="skill-square-icon" id="skill-icon-2">🛡️</div>
+                <div class="skill-square-name" id="skill-name-2">Charge</div>
+                <div class="skill-cd-overlay" id="skill-cd-2"></div>
+                <div class="skill-cd-text" id="skill-cd-text-2"></div>
+            </button>
+            <!-- Slot 3: Class Skill 1 -->
+            <button class="skill-square-btn" id="skill-slot-3" onclick="useClassSkill1()" title="Class Skill 1 (R / 3)">
+                <div class="skill-key-badge">R</div>
+                <div class="skill-square-icon" id="skill-icon-3">🌀</div>
+                <div class="skill-square-name" id="skill-name-3">Whirlwind</div>
+                <div class="skill-cd-overlay" id="skill-cd-3"></div>
+                <div class="skill-cd-text" id="skill-cd-text-3"></div>
+            </button>
+            <!-- Slot 4: Class Skill 2 -->
+            <button class="skill-square-btn" id="skill-slot-4" onclick="useClassSkill2()" title="Class Skill 2 (F / 4)">
+                <div class="skill-key-badge">F</div>
+                <div class="skill-square-icon" id="skill-icon-4">⚡</div>
+                <div class="skill-square-name" id="skill-name-4">Thunder</div>
+                <div class="skill-cd-overlay" id="skill-cd-4"></div>
+                <div class="skill-cd-text" id="skill-cd-text-4"></div>
+            </button>
+            <!-- Slot 5: Ultimate -->
+            <button class="skill-square-btn ult-slot" id="skill-slot-5" onclick="useUltimate()" title="Ultimate Ability (SPACE / 5)">
+                <div class="skill-key-badge">SPC</div>
+                <div class="skill-square-icon" id="skill-icon-5">🌟</div>
+                <div class="skill-square-name" id="skill-name-5">Colossus</div>
+                <div class="skill-cd-overlay" id="skill-cd-5"></div>
+                <div class="skill-cd-text" id="skill-cd-text-5">READY</div>
+            </button>
         </div>
 
         <div id="item-log" class="item-log"></div>
@@ -1034,7 +1361,7 @@
             <span style="font-size: 0.85rem; font-weight: normal;">Teammates can stand near you to revive, or wait for wave completion!</span>
         </div>
         
-        <!-- Mobile Dual Joysticks & Ultimate Button -->
+        <!-- Mobile Dual Joysticks -->
         <div id="mobile-controls">
             <div id="joystick-left" class="joystick-zone">
                 <div id="knob-left" class="joystick-knob"></div>
@@ -1042,14 +1369,6 @@
             <div id="joystick-right" class="joystick-zone">
                 <div id="knob-right" class="joystick-knob"></div>
             </div>
-            <button id="btn-tactical-mobile" onclick="useTacticalSkill()">
-                <span id="mobile-tactical-icon">🛡️ DASH</span>
-                <span id="mobile-tactical-cd" class="ult-cd-text">READY</span>
-            </button>
-            <button id="btn-ultimate-mobile" onclick="useUltimate()">
-                <span>⚡ ULT</span>
-                <span id="mobile-ult-cd" class="ult-cd-text">READY</span>
-            </button>
         </div>
     </div>
 

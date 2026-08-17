@@ -47,6 +47,19 @@ const SFX = {
     hit() {
         this.playTone(120, 'square', 0.08, 0.15);
     },
+    slash() {
+        this.playTone(240, 'sawtooth', 0.1, 0.25);
+        setTimeout(() => this.playTone(160, 'sawtooth', 0.12, 0.2), 25);
+    },
+    whirlwind() {
+        this.playTone(320, 'sawtooth', 0.25, 0.25);
+        setTimeout(() => this.playTone(440, 'sawtooth', 0.2, 0.2), 60);
+        setTimeout(() => this.playTone(220, 'sawtooth', 0.25, 0.2), 120);
+    },
+    thunder() {
+        this.playTone(90, 'square', 0.35, 0.35);
+        setTimeout(() => this.playTone(60, 'sawtooth', 0.3, 0.3), 80);
+    },
     coin() {
         this.playTone(987, 'sine', 0.08, 0.15);
         setTimeout(() => this.playTone(1318, 'sine', 0.12, 0.15), 50);
@@ -183,6 +196,23 @@ const SFX = {
         [440, 494, 523, 659].forEach((f, i) => {
             setTimeout(() => this.playTone(f, 'sine', 0.08, 0.18), i * 35);
         });
+    },
+    titanRoar() {
+        this.playTone(55, 'sawtooth', 1.2, 0.5);
+        setTimeout(() => this.playTone(40, 'square', 1.4, 0.45), 150);
+        setTimeout(() => this.playTone(70, 'sawtooth', 0.9, 0.3), 350);
+    },
+    combo() {
+        this.playTone(600 + Math.min(600, (GAME.comboCount || 1) * 35), 'sine', 0.12, 0.2);
+    },
+    trap() {
+        this.playTone(110, 'sawtooth', 0.25, 0.3);
+        setTimeout(() => this.playTone(75, 'square', 0.2, 0.25), 50);
+    },
+    boon() {
+        [523, 659, 783, 1046, 1318, 1567].forEach((f, i) => {
+            setTimeout(() => this.playTone(f, 'triangle', 0.4, 0.3), i * 80);
+        });
     }
 };
 
@@ -195,8 +225,8 @@ window.toggleAudio = function() {
 
 // --- GAME STATE ---
 const GAME = {
-    state: 'START', // START, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, DUNGEON_VICTORY
-    mode: 'horde', // 'horde' or 'dungeon'
+    state: 'START', // START, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, DUNGEON_VICTORY, TITAN_VICTORY, BOON_DRAFT
+    mode: 'horde', // 'horde', 'dungeon', 'titan'
     score: 0,
     gold: 0,
     kills: 0,
@@ -213,12 +243,22 @@ const GAME = {
     reviveTokens: 0,
     shield: 0,
     maxShield: 0,
+    // Combo Multiplier
+    comboCount: 0,
+    comboMultiplier: 1.0,
+    comboTimer: 0,
     // Dungeon Mode Tracking
     dungeonRoom: 0,
     dungeonTotalRooms: 5,
     dungeonRoomKills: 0,
     dungeonRoomTotal: 4,
-    dungeonCleared: false
+    dungeonCleared: false,
+    // Titan's Gauntlet Mode Tracking
+    titanStage: 0,
+    titanTotalStages: 5,
+    titanTimer: 0,
+    titanDefeated: false,
+    titanBoons: []
 };
 
 const INRUN = {
@@ -247,6 +287,10 @@ const PLAYER = {
     tacticalCooldown: 0,
     tacticalMaxCooldown: 6,
     tacticalName: 'Shield Charge',
+    skill1Cooldown: 0,
+    skill1MaxCooldown: 4.5,
+    skill2Cooldown: 0,
+    skill2MaxCooldown: 7.0,
     pendingLevelUps: 0,
     bloodlustStacks: 0,
     bloodlustTimer: 0,
@@ -396,6 +440,13 @@ function loadSave() {
     if (!Array.isArray(SAVE.inventory)) {
         SAVE.inventory = ['war_wep_2', 'mag_wep_2', 'arc_wep_2', 'war_arm_2', 'acc_2', 'acc_6'];
     }
+    // Initialize Class Talents & Starter Talent Points
+    if (!SAVE.talents || typeof SAVE.talents !== 'object') {
+        SAVE.talents = { Warrior: {}, Mage: {}, Archer: {} };
+    }
+    if (typeof SAVE.talentPoints !== 'number' || isNaN(SAVE.talentPoints)) {
+        SAVE.talentPoints = 3;
+    }
 }
 
 function writeSave() {
@@ -455,7 +506,9 @@ window.selectStartHero = function(heroName) {
 function updateStartLaunchButton() {
     const btn = document.getElementById('btn-start-launch');
     if (!btn) return;
-    const modeText = (GAME.mode === 'dungeon') ? '🏰 ENTER DUNGEON RAID' : '⚔️ START HORDE SURVIVAL';
+    let modeText = '⚔️ START HORDE SURVIVAL';
+    if (GAME.mode === 'dungeon') modeText = '🏰 ENTER DUNGEON RAID';
+    else if (GAME.mode === 'titan') modeText = "⚡ ENTER TITAN'S GAUNTLET";
     btn.innerText = `${modeText} (${(selectedStartHero || 'WARRIOR').toUpperCase()})`;
 }
 
@@ -464,13 +517,17 @@ window.selectGameMode = function(mode) {
     GAME.mode = mode;
     const btnHorde = document.getElementById('mode-btn-horde');
     const btnDungeon = document.getElementById('mode-btn-dungeon');
+    const btnTitan = document.getElementById('mode-btn-titan');
     const infoDungeon = document.getElementById('dungeon-info-banner');
     const infoHorde = document.getElementById('horde-info-banner');
+    const infoTitan = document.getElementById('titan-info-banner');
 
     if (btnHorde) btnHorde.classList.toggle('active', mode === 'horde');
     if (btnDungeon) btnDungeon.classList.toggle('active', mode === 'dungeon');
+    if (btnTitan) btnTitan.classList.toggle('active', mode === 'titan');
     if (infoDungeon) infoDungeon.style.display = (mode === 'dungeon' ? 'block' : 'none');
     if (infoHorde) infoHorde.style.display = (mode === 'horde' ? 'block' : 'none');
+    if (infoTitan) infoTitan.style.display = (mode === 'titan' ? 'block' : 'none');
     updateStartLaunchButton();
 };
 
@@ -1737,6 +1794,948 @@ const CLASSES = {
     }
 };
 
+// ==========================================
+// --- CLASS TALENT TREES & SPECIALIZATION ---
+// ==========================================
+const CLASS_TALENTS = {
+    Warrior: [
+        {
+            id: 'colossus',
+            name: 'Juggernaut Colossus',
+            icon: '🛡️',
+            desc: 'Supreme survivability, impenetrable armor and damage reflection.',
+            color: '#38bdf8',
+            nodes: [
+                { id: 'w_c1', name: 'Adamantine Skin', icon: '🛡️', desc: '+50 Max HP and +6 Flat Armor damage reduction.', max: 3, stat: { maxHp: 50, armor: 6 } },
+                { id: 'w_c2', name: 'Spiked Retaliation', icon: '⚡', desc: 'Reflects 40% of incoming damage back to attackers and inflicts Daze.', max: 3, stat: { thorns: 40 } },
+                { id: 'w_c3', name: 'Immortal Bulwark', icon: '👑', desc: 'When HP drops below 30%, gain an impenetrable 200 HP shield for 8s (30s CD).', max: 1, stat: { bulwark: true } }
+            ]
+        },
+        {
+            id: 'berserker',
+            name: 'Bloodrage Berserker',
+            icon: '🪓',
+            desc: 'Relentless offensive fury, slashing cleaves and execution frenzy.',
+            color: '#ef4444',
+            nodes: [
+                { id: 'w_b1', name: 'Bloodlust Edge', icon: '🩸', desc: '+20% Greatsword Damage and +15% Melee Attack Speed.', max: 3, stat: { damagePct: 20, fireRatePct: 15 } },
+                { id: 'w_b2', name: 'Savage Laceration', icon: '🗡️', desc: 'Melee slashes cause targets to bleed for 35 Physical DMG per second.', max: 3, stat: { bleedDmg: 35 } },
+                { id: 'w_b3', name: 'Decapitating Whirlwind', icon: '🌪️', desc: 'Whirlwind radius +60% and slaying an enemy extends Whirlwind duration.', max: 1, stat: { whirlwindMastery: true } }
+            ]
+        },
+        {
+            id: 'warlord',
+            name: 'Titan Vanguard',
+            icon: '⚔️',
+            desc: 'Empowers companions, crushes bosses and commands the battlefield.',
+            color: '#fbbf24',
+            nodes: [
+                { id: 'w_w1', name: 'Battle Cry Aura', icon: '📢', desc: '+25% Damage to you and all party companions.', max: 3, stat: { partyDmgPct: 25 } },
+                { id: 'w_w2', name: 'Earthshaker Charge', icon: '💥', desc: 'Shield Charge leaves a seismic shockwave stunning enemies for 1.5s.', max: 3, stat: { stunDuration: 1.5 } },
+                { id: 'w_w3', name: 'Colossus Slayer', icon: '⚡', desc: 'Deals +50% extra damage to Dungeon Bosses, Mini-bosses and Titans.', max: 1, stat: { bossDmgPct: 50 } }
+            ]
+        }
+    ],
+    Mage: [
+        {
+            id: 'archmage',
+            name: 'Arcane Dominance',
+            icon: '🔮',
+            desc: 'Overwhelming magical firepower, mana surges and cascading spells.',
+            color: '#c084fc',
+            nodes: [
+                { id: 'm_a1', name: 'Arcane Surge', icon: '✨', desc: '+25 Magic DMG and +40 Max Mana reservoir.', max: 3, stat: { damage: 25, maxMana: 40 } },
+                { id: 'm_a2', name: 'Echoing Cascade', icon: '⚡', desc: '25% chance for every spell cast to trigger a free duplicate missile.', max: 3, stat: { doubleCastPct: 25 } },
+                { id: 'm_a3', name: 'Singularity Collapse', icon: '🕳️', desc: 'Black Holes implode with celestial meteors dealing 350 AoE damage.', max: 1, stat: { blackHoleMeteors: true } }
+            ]
+        },
+        {
+            id: 'pyromancer',
+            name: 'Infernal Pyromancer',
+            icon: '🔥',
+            desc: 'Cataclysmic flame explosions, burn DoTs and phoenix rebirth.',
+            color: '#f97316',
+            nodes: [
+                { id: 'm_p1', name: 'Ignition Sparks', icon: '🔥', desc: 'All spells ignite foes dealing 45 Fire DMG/s for 4 seconds.', max: 3, stat: { burnDmg: 45 } },
+                { id: 'm_p2', name: 'Pyroblast Blast', icon: '☄️', desc: 'Every 3rd basic attack launches an explosive fiery meteor.', max: 3, stat: { pyroblastRank: 1 } },
+                { id: 'm_p3', name: 'Phoenix Flameborn', icon: '🦅', desc: 'Upon taking fatal damage, explode in a blaze of fire killing foes and reviving with 60% HP (60s CD).', max: 1, stat: { phoenixRevive: true } }
+            ]
+        },
+        {
+            id: 'chronomancer',
+            name: 'Frost & Time Weaver',
+            icon: '❄️',
+            desc: 'Glacial crowd control, teleport acceleration and temporal stasis.',
+            color: '#38bdf8',
+            nodes: [
+                { id: 'm_c1', name: 'Glacial Chill', icon: '❄️', desc: 'Hits chill enemies by 40% and deal +30% extra damage to frozen foes.', max: 3, stat: { chillPct: 40, frozenBonusPct: 30 } },
+                { id: 'm_c2', name: 'Temporal Blink', icon: '⏳', desc: 'Arcane Blink CD reduced by 50% and leaves a freezing time vortex.', max: 3, stat: { blinkCdReduct: 50 } },
+                { id: 'm_c3', name: 'Chronos Distortion', icon: '🌀', desc: 'Every 14s, slows all nearby enemy movement by 70% while doubling your cast rate for 3.5s.', max: 1, stat: { timeDistortion: true } }
+            ]
+        }
+    ],
+    Archer: [
+        {
+            id: 'sharpshooter',
+            name: 'Deadeye Sniper',
+            icon: '🎯',
+            desc: 'Hyper-critical precision, piercing ballistas and execution strikes.',
+            color: '#4ade80',
+            nodes: [
+                { id: 'a_s1', name: 'Eagle Precision', icon: '🎯', desc: '+15% Critical Strike Chance and +50% Critical Damage Multiplier.', max: 3, stat: { critChance: 15, critMult: 50 } },
+                { id: 'a_s2', name: 'Armor-Piercing Wind', icon: '💨', desc: 'Arrows pierce through all enemies without losing damage.', max: 3, stat: { fullPierce: true } },
+                { id: 'a_s3', name: 'Ballista Overdrive', icon: '🏹', desc: 'Sniper Ballista fires a volley of 3 hyper-sonic piercing bolts simultaneously.', max: 1, stat: { tripleBallista: true } }
+            ]
+        },
+        {
+            id: 'shadow_hunter',
+            name: 'Shadow Infiltrator',
+            icon: '🗡️',
+            desc: 'Stealth evasion, toxic poison caltrops and phantom dagger storms.',
+            color: '#a855f7',
+            nodes: [
+                { id: 'a_h1', name: 'Smoke Veil', icon: '💨', desc: 'Smoke Roll grants 1.5s complete invulnerability and +50% Movement Speed.', max: 3, stat: { rollInvuln: 1.5, rollSpeed: 50 } },
+                { id: 'a_h2', name: 'Venomous Caltrops', icon: '☠️', desc: 'Caltrops poison enemies and cause them to take +35% increased damage.', max: 3, stat: { poisonAmpPct: 35 } },
+                { id: 'a_h3', name: 'Phantom Tempest', icon: '🌪️', desc: 'Phantom Daggers spawn twice as many blades and heal +4 HP per hit.', max: 1, stat: { phantomHeal: 4 } }
+            ]
+        },
+        {
+            id: 'ranger',
+            name: 'Gale Force Ranger',
+            icon: '🏹',
+            desc: 'Machine-gun arrow volleys, ricochet spirals and celestial skyfalls.',
+            color: '#facc15',
+            nodes: [
+                { id: 'a_r1', name: 'Rapid Quiver', icon: '⚡', desc: '+30% Arrow Attack Speed and +1 additional arrow to every attack.', max: 3, stat: { fireRatePct: 30, bonusArrows: 1 } },
+                { id: 'a_r2', name: 'Ricochet Tempest', icon: '🪃', desc: 'Arrows bounce up to 3 times to nearby targets for full damage.', max: 3, stat: { extraBounces: 3 } },
+                { id: 'a_r3', name: 'Blazing Skyfall', icon: '🔥', desc: 'Arrow Volley rains blazing burning meteors every 4 seconds continuously.', max: 1, stat: { autoVolley: true } }
+            ]
+        }
+    ]
+};
+
+let activeTalentClass = 'Warrior';
+
+window.openTalentsModal = function() {
+    initAudio();
+    activeTalentClass = (GAME.state === 'PLAYING' && PLAYER.class) ? PLAYER.class : (selectedStartHero || 'Warrior');
+    const modal = document.getElementById('talents-screen');
+    if (modal) modal.style.display = 'flex';
+    renderTalentsModal();
+};
+
+window.closeTalentsModal = function() {
+    const modal = document.getElementById('talents-screen');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleTalentsModal = function() {
+    const modal = document.getElementById('talents-screen');
+    if (modal && modal.style.display === 'flex') {
+        window.closeTalentsModal();
+    } else {
+        window.openTalentsModal();
+    }
+};
+
+window.switchTalentClass = function(className) {
+    initAudio();
+    activeTalentClass = className;
+    ['Warrior', 'Mage', 'Archer'].forEach(c => {
+        const btn = document.getElementById(`talent-tab-${c.toLowerCase()}`);
+        if (btn) btn.classList.toggle('active', c === className);
+    });
+    renderTalentsModal();
+};
+
+window.investTalentPoint = function(specId, nodeIdx) {
+    if (SAVE.talentPoints <= 0) {
+        logMessage('No Talent Points available! Level up or complete Dungeons/Titans to earn points.', '#ef4444');
+        return;
+    }
+    const heroTalents = SAVE.talents[activeTalentClass] = SAVE.talents[activeTalentClass] || {};
+    const currentRanks = heroTalents[specId] = heroTalents[specId] || [0, 0, 0];
+    
+    const tree = CLASS_TALENTS[activeTalentClass].find(s => s.id === specId);
+    if (!tree) return;
+    const node = tree.nodes[nodeIdx];
+    if (!node) return;
+
+    if (currentRanks[nodeIdx] >= node.max) {
+        logMessage('Talent is already at maximum rank!', '#fde047');
+        return;
+    }
+
+    // Check prerequisites: node 1 requires rank in node 0, node 2 requires rank in node 1
+    if (nodeIdx > 0 && currentRanks[nodeIdx - 1] === 0) {
+        logMessage(`Must invest at least 1 point in ${tree.nodes[nodeIdx - 1].name} first!`, '#ef4444');
+        return;
+    }
+
+    currentRanks[nodeIdx]++;
+    SAVE.talentPoints--;
+    writeSave();
+    SFX.talentPick();
+    spawnFloatingText(playerMesh.position, `🌟 ${node.name.toUpperCase()} RANK ${currentRanks[nodeIdx]}!`, tree.color, 18, true);
+    logMessage(`Invested 1 Talent Point in ${node.name} (${currentRanks[nodeIdx]}/${node.max})`, tree.color);
+
+    applyTalentPassives();
+    updateGUI();
+    renderTalentsModal();
+};
+
+window.resetClassTalents = function() {
+    initAudio();
+    const heroTalents = SAVE.talents[activeTalentClass] || {};
+    let refunded = 0;
+    Object.keys(heroTalents).forEach(specId => {
+        const ranks = heroTalents[specId] || [];
+        ranks.forEach(r => { refunded += (r || 0); });
+    });
+
+    SAVE.talents[activeTalentClass] = {};
+    SAVE.talentPoints += refunded;
+    writeSave();
+    SFX.scrap();
+    logMessage(`Reset talents for ${activeTalentClass}! Refunded ${refunded} Talent Points.`, '#38bdf8');
+    applyTalentPassives();
+    updateGUI();
+    renderTalentsModal();
+};
+
+function renderTalentsModal() {
+    const pointsEl = document.getElementById('talent-points-available');
+    if (pointsEl) pointsEl.innerText = `${SAVE.talentPoints || 0}`;
+
+    ['Warrior', 'Mage', 'Archer'].forEach(c => {
+        const btn = document.getElementById(`talent-tab-${c.toLowerCase()}`);
+        if (btn) btn.classList.toggle('active', c === activeTalentClass);
+    });
+
+    const container = document.getElementById('talents-trees-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const specs = CLASS_TALENTS[activeTalentClass] || [];
+    const heroTalents = SAVE.talents[activeTalentClass] || {};
+
+    specs.forEach(spec => {
+        const ranks = heroTalents[spec.id] || [0, 0, 0];
+        const col = document.createElement('div');
+        col.className = 'talent-tree-col';
+        col.style.borderColor = `${spec.color}44`;
+
+        let nodesHtml = '';
+        spec.nodes.forEach((node, idx) => {
+            const rank = ranks[idx] || 0;
+            const isMaxed = rank >= node.max;
+            const isLocked = (idx > 0 && (ranks[idx - 1] || 0) === 0);
+            const canAfford = SAVE.talentPoints > 0 && !isLocked && !isMaxed;
+
+            nodesHtml += `
+                <div class="talent-node-card ${isMaxed ? 'maxed' : ''} ${isLocked ? 'locked' : ''}" style="border-left: 3px solid ${spec.color};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                        <div style="display:flex; gap:8px; align-items:center;">
+                            <span style="font-size:1.3rem;">${node.icon}</span>
+                            <div>
+                                <h4 style="margin:0; font-size:0.92rem; color:${spec.color};">${node.name}</h4>
+                                <span style="font-size:0.75rem; color:#94a3b8;">Tier ${idx + 1} &bull; ${rank}/${node.max} Ranks</span>
+                            </div>
+                        </div>
+                        <button class="talent-btn-invest ${isMaxed ? 'maxed' : ''}" 
+                                ${canAfford ? '' : 'disabled'} 
+                                onclick="investTalentPoint('${spec.id}', ${idx})">
+                            ${isMaxed ? '⭐ MASTERED' : (isLocked ? '🔒 LOCKED' : '+ INVEST (1🌟)')}
+                        </button>
+                    </div>
+                    <p style="margin:0; font-size:0.8rem; color:#cbd5e1; line-height:1.35;">${node.desc}</p>
+                </div>
+            `;
+        });
+
+        col.innerHTML = `
+            <div class="talent-tree-header" style="background:linear-gradient(135deg, ${spec.color}22, rgba(15,23,42,0.8));">
+                <span class="talent-tree-icon">${spec.icon}</span>
+                <div>
+                    <h3 style="margin:0; font-size:1.05rem; color:${spec.color};">${spec.name}</h3>
+                    <p style="margin:2px 0 0 0; font-size:0.75rem; color:#cbd5e1;">${spec.desc}</p>
+                </div>
+            </div>
+            <div class="talent-nodes-list">
+                ${nodesHtml}
+            </div>
+        `;
+        container.appendChild(col);
+    });
+}
+
+function applyTalentPassives() {
+    if (!PLAYER.class) return;
+    const heroTalents = SAVE.talents[PLAYER.class] || {};
+
+    // Reset base bonus passives then calculate total
+    let bonusHp = 0;
+    let bonusArmor = 0;
+    let bonusDamagePct = 0;
+    let bonusFireRatePct = 0;
+    let bonusCrit = 0;
+    let bonusCritMult = 0;
+
+    const specs = CLASS_TALENTS[PLAYER.class] || [];
+    specs.forEach(spec => {
+        const ranks = heroTalents[spec.id] || [0, 0, 0];
+        spec.nodes.forEach((node, idx) => {
+            const r = ranks[idx] || 0;
+            if (r > 0) {
+                if (node.stat.maxHp) bonusHp += node.stat.maxHp * r;
+                if (node.stat.armor) bonusArmor += node.stat.armor * r;
+                if (node.stat.damagePct) bonusDamagePct += node.stat.damagePct * r;
+                if (node.stat.fireRatePct) bonusFireRatePct += node.stat.fireRatePct * r;
+                if (node.stat.critChance) bonusCrit += node.stat.critChance * r;
+                if (node.stat.critMult) bonusCritMult += (node.stat.critMult * r) / 100;
+            }
+        });
+    });
+
+    PLAYER.talentBonusHp = bonusHp;
+    PLAYER.talentBonusArmor = bonusArmor;
+    PLAYER.talentBonusDmgPct = bonusDamagePct;
+    PLAYER.talentBonusFireRatePct = bonusFireRatePct;
+    PLAYER.talentBonusCrit = bonusCrit;
+    PLAYER.talentBonusCritMult = bonusCritMult;
+}
+
+// ==========================================
+// --- HALL OF LEGENDS (GLOBAL LEADERBOARD) ---
+// ==========================================
+const LEADERBOARD_STORAGE_KEY = 'rpg_hall_of_legends_v2';
+
+const DEFAULT_CHAMPIONS = [
+    { rank: 1, name: 'Aric the Sunforged', heroClass: 'Warrior', mode: 'titan', progress: 'Colossus V Cleared', kills: 480, time: 285, score: 185000, date: '2026-08-10' },
+    { rank: 2, name: 'Valeria Voidweaver', heroClass: 'Mage', mode: 'dungeon', progress: 'Chamber V Boss Slayed', kills: 360, time: 310, score: 142000, date: '2026-08-11' },
+    { rank: 3, name: 'Sylas Swiftgale', heroClass: 'Archer', mode: 'horde', progress: 'Wave 28 Survived', kills: 1120, time: 740, score: 129000, date: '2026-08-12' },
+    { rank: 4, name: 'Kaelen Shadowstride', heroClass: 'Archer', mode: 'titan', progress: 'Titan IV Slain', kills: 390, time: 240, score: 98000, date: '2026-08-13' },
+    { rank: 5, name: 'Thorgar Ironbane', heroClass: 'Warrior', mode: 'dungeon', progress: 'Chamber V Boss Slayed', kills: 295, time: 380, score: 91500, date: '2026-08-14' },
+    { rank: 6, name: 'Lyra Starlight', heroClass: 'Mage', mode: 'horde', progress: 'Wave 21 Survived', kills: 780, time: 510, score: 84000, date: '2026-08-15' }
+];
+
+let lbCurrentModeFilter = 'all';
+let lbCurrentClassFilter = 'all';
+
+function getLeaderboardEntries() {
+    let entries = [];
+    try {
+        const raw = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+        if (raw) entries = JSON.parse(raw);
+    } catch (e) { /* ignore */ }
+    if (!Array.isArray(entries) || entries.length === 0) {
+        entries = [...DEFAULT_CHAMPIONS];
+        try { localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries)); } catch (e) {}
+    }
+    return entries;
+}
+
+function saveScoreToLeaderboard(details = {}) {
+    const entries = getLeaderboardEntries();
+    let progressStr = '';
+    if (GAME.mode === 'horde') {
+        progressStr = `Wave ${GAME.wave} Survived`;
+    } else if (GAME.mode === 'dungeon') {
+        progressStr = GAME.dungeonCleared ? 'Chamber V Conquered 🏆' : `Chamber ${GAME.dungeonRoom + 1}`;
+    } else if (GAME.mode === 'titan') {
+        progressStr = GAME.titanDefeated ? 'Titan V Slain (Pantheon Master) ⚡' : `Titan ${GAME.titanStage + 1} / 5`;
+    }
+
+    const newEntry = {
+        name: details.name || `Hero ${PLAYER.class}`,
+        heroClass: PLAYER.class,
+        mode: GAME.mode,
+        progress: progressStr,
+        kills: GAME.kills,
+        time: Math.round(GAME.time),
+        score: Math.max(10, GAME.score),
+        date: new Date().toISOString().split('T')[0]
+    };
+
+    entries.push(newEntry);
+    entries.sort((a, b) => b.score - a.score);
+    // Keep top 50
+    const trimmed = entries.slice(0, 50);
+    try {
+        localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(trimmed));
+    } catch (e) {}
+    return trimmed;
+}
+
+window.openLeaderboardModal = function() {
+    initAudio();
+    const modal = document.getElementById('leaderboard-screen');
+    if (modal) modal.style.display = 'flex';
+    renderLeaderboardModal();
+};
+
+window.closeLeaderboardModal = function() {
+    const modal = document.getElementById('leaderboard-screen');
+    if (modal) modal.style.display = 'none';
+};
+
+window.toggleLeaderboardModal = function() {
+    const modal = document.getElementById('leaderboard-screen');
+    if (modal && modal.style.display === 'flex') {
+        window.closeLeaderboardModal();
+    } else {
+        window.openLeaderboardModal();
+    }
+};
+
+window.filterLeaderboardMode = function(mode) {
+    initAudio();
+    lbCurrentModeFilter = mode;
+    ['all', 'horde', 'dungeon', 'titan'].forEach(m => {
+        const btn = document.getElementById(`lb-mode-${m}`);
+        if (btn) btn.classList.toggle('active', m === mode);
+    });
+    renderLeaderboardModal();
+};
+
+window.filterLeaderboardClass = function(className) {
+    initAudio();
+    lbCurrentClassFilter = className;
+    ['all', 'warrior', 'mage', 'archer'].forEach(c => {
+        const btn = document.getElementById(`lb-class-${c}`);
+        if (btn) btn.classList.toggle('active', c.toLowerCase() === className.toLowerCase());
+    });
+    renderLeaderboardModal();
+};
+
+function renderLeaderboardModal() {
+    const tbody = document.getElementById('leaderboard-tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const entries = getLeaderboardEntries();
+    const filtered = entries.filter(e => {
+        const matchMode = lbCurrentModeFilter === 'all' || e.mode === lbCurrentModeFilter;
+        const matchClass = lbCurrentClassFilter === 'all' || e.heroClass.toLowerCase() === lbCurrentClassFilter.toLowerCase();
+        return matchMode && matchClass;
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:24px;">No legendary heroes recorded for this filter yet! Play a run to claim the crown!</td></tr>`;
+        return;
+    }
+
+    filtered.forEach((entry, idx) => {
+        const tr = document.createElement('tr');
+        if (idx === 0) tr.className = 'rank-1';
+        else if (idx === 1) tr.className = 'rank-2';
+        else if (idx === 2) tr.className = 'rank-3';
+
+        let rankBadge = `${idx + 1}`;
+        if (idx === 0) rankBadge = '🥇';
+        else if (idx === 1) rankBadge = '🥈';
+        else if (idx === 2) rankBadge = '🥉';
+
+        const classColor = entry.heroClass === 'Warrior' ? '#f87171' : (entry.heroClass === 'Mage' ? '#38bdf8' : '#34d399');
+        const classIcon = entry.heroClass === 'Warrior' ? '⚔️' : (entry.heroClass === 'Mage' ? '🔮' : '🏹');
+        const modeBadge = entry.mode === 'titan' ? '⚡ Titan Gauntlet' : (entry.mode === 'dungeon' ? '🏰 Dungeon Raid' : '🌊 Horde Survival');
+        const modeColor = entry.mode === 'titan' ? '#ef4444' : (entry.mode === 'dungeon' ? '#a855f7' : '#0284c7');
+
+        const mins = Math.floor(entry.time / 60);
+        const secs = (entry.time % 60).toString().padStart(2, '0');
+
+        tr.innerHTML = `
+            <td style="text-align: center; font-weight: bold; font-size: 1.1rem;">${rankBadge}</td>
+            <td>
+                <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">${entry.name}</div>
+                <div style="font-size: 0.78rem; color: ${classColor};">${classIcon} ${entry.heroClass}</div>
+            </td>
+            <td>
+                <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: ${modeColor}33; color: ${modeColor}; font-weight: bold; border: 1px solid ${modeColor}66;">${modeBadge}</span>
+                <div style="font-size: 0.78rem; color: #cbd5e1; margin-top: 2px;">${entry.progress}</div>
+            </td>
+            <td>
+                <div style="color: #cbd5e1; font-size: 0.82rem;">💀 ${entry.kills} kills</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">⏱️ ${mins}:${secs} &bull; ${entry.date}</div>
+            </td>
+            <td style="text-align: right; font-weight: bold; font-size: 1.15rem; color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,0.3);">
+                ${entry.score.toLocaleString()}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function updateComboHUD() {
+    const comboEl = document.getElementById('hud-combo');
+    const multEl = document.getElementById('combo-multiplier');
+    const countEl = document.getElementById('combo-count');
+    if (!comboEl || !multEl || !countEl) return;
+
+    if (GAME.comboCount > 1 && GAME.comboTimer > 0) {
+        comboEl.style.display = 'flex';
+        multEl.innerText = GAME.comboMultiplier.toFixed(1);
+        countEl.innerText = `${GAME.comboCount}`;
+        comboEl.style.transform = 'scale(1.15)';
+        setTimeout(() => { if (comboEl) comboEl.style.transform = 'scale(1)'; }, 100);
+    } else {
+        comboEl.style.display = 'none';
+    }
+}
+
+// ==========================================
+// --- TITAN'S GAUNTLET (BOSS RUSH MODE) ---
+// ==========================================
+const TITAN_STAGES = [
+    {
+        id: 0,
+        name: 'Gargantuan Terra-Colossus',
+        title: 'Titan of the Shattered Earth',
+        hp: 3500,
+        color: 0xd97706,
+        emissive: 0x92400e,
+        scale: 4.2,
+        speed: 9,
+        damage: 45,
+        abilities: ['boulder_rain', 'fissure_slam'],
+        desc: 'Crushes with earthshaking fists and calls down massive granite boulders.'
+    },
+    {
+        id: 1,
+        name: 'Frost Dragon Sovereign Valthor',
+        title: 'Emperor of the Glacial Wastes',
+        hp: 5800,
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        scale: 4.8,
+        speed: 12,
+        damage: 55,
+        abilities: ['ice_nova_ring', 'blizzard_vortex'],
+        desc: 'Chills the colosseum with freezing breath and razor-sharp ice storms.'
+    },
+    {
+        id: 2,
+        name: 'Infernal Demon Balor',
+        title: 'Lord of the Abyssal Hellfire',
+        hp: 8500,
+        color: 0xef4444,
+        emissive: 0xb91c1c,
+        scale: 5.2,
+        speed: 14,
+        damage: 65,
+        abilities: ['hellfire_eruption', 'lava_pillars'],
+        desc: 'Unleashes waves of brimstone and geysers of molten magma.'
+    },
+    {
+        id: 3,
+        name: 'Void Archon Chronos',
+        title: 'Devourer of Spacetime',
+        hp: 12000,
+        color: 0xa855f7,
+        emissive: 0x6b21a8,
+        scale: 5.5,
+        speed: 15,
+        damage: 75,
+        abilities: ['gravity_vortex', 'temporal_slow'],
+        desc: 'Rips open singularity rifts and warps the fabric of time.'
+    },
+    {
+        id: 4,
+        name: 'Supreme Sovereign Deus-Rex',
+        title: 'The Primordial God-Colossus',
+        hp: 18000,
+        color: 0xfbbf24,
+        emissive: 0xd97706,
+        scale: 6.0,
+        speed: 16,
+        damage: 90,
+        abilities: ['solar_beam', 'titan_supernova', 'elemental_storm'],
+        desc: 'The supreme architect of destruction wielding pure celestial energy.'
+    }
+];
+
+const TITAN_BOONS = [
+    {
+        id: 'zeus_thunder',
+        name: "⚡ Zeus's Heavenly Smite",
+        icon: '⚡',
+        rarity: 'legendary',
+        desc: 'Every attack calls down a lightning bolt from the heavens dealing 85 bonus damage.',
+        color: '#38bdf8',
+        apply: () => { BUFFS.zeusSmite = true; }
+    },
+    {
+        id: 'sol_aegis',
+        name: '🛡️ Aegis of the Sun God',
+        icon: '🛡️',
+        rarity: 'legendary',
+        desc: 'Grants +150 Maximum Shield that automatically regenerates +25 Shield every 3 seconds.',
+        color: '#fbbf24',
+        apply: () => { GAME.maxShield = (GAME.maxShield || 0) + 150; GAME.shield += 150; BUFFS.solAegis = true; }
+    },
+    {
+        id: 'ares_fury',
+        name: "🩸 Blood of Ares",
+        icon: '🩸',
+        rarity: 'legendary',
+        desc: '+40% Overall Damage Multiplier and +10% Lifesteal on all melee and ranged hits.',
+        color: '#ef4444',
+        apply: () => { INRUN.damageMult *= 1.4; EFFECTS.lifesteal += 10; }
+    },
+    {
+        id: 'hermes_speed',
+        name: "👟 Hermes's Divine Swiftness",
+        icon: '👟',
+        rarity: 'epic',
+        desc: '+40% Movement Speed and +50% Fire Rate, completely ignoring environmental slows.',
+        color: '#4ade80',
+        apply: () => { INRUN.speedMult *= 1.4; INRUN.fireRateMult *= 1.5; }
+    },
+    {
+        id: 'chronos_stasis',
+        name: "⏳ Chronos's Temporal Stasis",
+        icon: '⏳',
+        rarity: 'legendary',
+        desc: 'Reduces Tactical and Ultimate Cooldowns by 50% and restores full Mana every 10s.',
+        color: '#c084fc',
+        apply: () => { PLAYER.ultMaxCooldown = Math.max(6, PLAYER.ultMaxCooldown * 0.5); PLAYER.tacticalMaxCooldown = Math.max(2, PLAYER.tacticalMaxCooldown * 0.5); }
+    },
+    {
+        id: 'midas_blessing',
+        name: "👑 Midas's Sovereign Treasury",
+        icon: '👑',
+        rarity: 'epic',
+        desc: 'Instantly awards +1500 Gold, +300 Essence and +2 Class Talent Points.',
+        color: '#fde047',
+        apply: () => { GAME.gold += 1500; SAVE.essence += 300; SAVE.talentPoints = (SAVE.talentPoints || 0) + 2; writeSave(); }
+    },
+    {
+        id: 'poseidon_surge',
+        name: "🌊 Poseidon's Tidal Rupture",
+        icon: '🌊',
+        rarity: 'legendary',
+        desc: 'Periodically blasts a high-velocity water wave pushing and dazing all enemies.',
+        color: '#0ea5e9',
+        apply: () => { BUFFS.poseidonSurge = true; }
+    }
+];
+
+let titanActiveColossus = null;
+let titanArenaMeshes = [];
+
+function initTitanGauntlet() {
+    clearTitanArena();
+    GAME.titanStage = 0;
+    GAME.titanTimer = 0;
+    GAME.titanDefeated = false;
+    GAME.titanBoons = [];
+
+    // Build Circular Colosseum Arena
+    buildTitanArena();
+    loadTitanStage(0);
+
+    const hudTitan = document.getElementById('hud-titan-stage');
+    if (hudTitan) hudTitan.style.display = 'flex';
+}
+
+function clearTitanArena() {
+    titanArenaMeshes.forEach(m => scene.remove(m));
+    titanArenaMeshes.length = 0;
+    if (titanActiveColossus && titanActiveColossus.mesh) {
+        scene.remove(titanActiveColossus.mesh);
+        titanActiveColossus = null;
+    }
+}
+
+function buildTitanArena() {
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x1e1e24, roughness: 0.85, metalness: 0.2 });
+    const colFloorGeo = new THREE.CircleGeometry(65, 48);
+    const colFloor = new THREE.Mesh(colFloorGeo, stoneMat);
+    colFloor.rotation.x = -Math.PI / 2;
+    colFloor.position.set(0, 0.05, 0);
+    scene.add(colFloor);
+    titanArenaMeshes.push(colFloor);
+
+    // Glowing Runes Ring
+    const runeRingGeo = new THREE.RingGeometry(58, 62, 48);
+    const runeMat = new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide, transparent: true, opacity: 0.7 });
+    const runeRing = new THREE.Mesh(runeRingGeo, runeMat);
+    runeRing.rotation.x = -Math.PI / 2;
+    runeRing.position.set(0, 0.1, 0);
+    scene.add(runeRing);
+    titanArenaMeshes.push(runeRing);
+
+    // Colosseum Pillars
+    const pillarCount = 12;
+    for (let i = 0; i < pillarCount; i++) {
+        const angle = (i / pillarCount) * Math.PI * 2;
+        const px = Math.cos(angle) * 62;
+        const pz = Math.sin(angle) * 62;
+        const pGeo = new THREE.CylinderGeometry(2.5, 3.0, 16, 12);
+        const pMesh = new THREE.Mesh(pGeo, stoneMat);
+        pMesh.position.set(px, 8, pz);
+        scene.add(pMesh);
+        titanArenaMeshes.push(pMesh);
+
+        // Pillar Fire Torch
+        const fireGeo = new THREE.DodecahedronGeometry(0.8);
+        const fireMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        const fire = new THREE.Mesh(fireGeo, fireMat);
+        fire.position.set(px, 17, pz);
+        scene.add(fire);
+        titanArenaMeshes.push(fire);
+    }
+}
+
+function loadTitanStage(stageIdx) {
+    GAME.titanStage = stageIdx;
+    const stage = TITAN_STAGES[stageIdx];
+    if (!stage) return;
+
+    SFX.titanRoar();
+    spawnFloatingText(new THREE.Vector3(0, 8, 0), `⚡ ${stage.name.toUpperCase()} AWAKENS!`, '#' + stage.color.toString(16), 26, true, '⚔️');
+    logMessage(`⚡ TITAN ${stageIdx + 1}/5: ${stage.name} entered the Colosseum!`, '#' + stage.color.toString(16));
+
+    const stageNumEl = document.getElementById('titan-stage-num');
+    const stageNameEl = document.getElementById('titan-stage-name');
+    if (stageNumEl) stageNumEl.innerText = `⚡ TITAN ${stageIdx + 1} / 5 \u2022 ${stage.title.toUpperCase()}`;
+    if (stageNameEl) stageNameEl.innerText = stage.name;
+
+    // Spawn Titan Boss Enemy
+    playerMesh.position.set(0, 1, 35);
+    const boss = new Enemy(0, -25, 'boss_warlord');
+    boss.isTitanBoss = true;
+    boss.titanStageIdx = stageIdx;
+    boss.hp = stage.hp;
+    boss.maxHp = stage.hp;
+    boss.damage = stage.damage;
+    boss.speed = stage.speed;
+    boss.mesh.scale.set(stage.scale, stage.scale, stage.scale);
+    boss.mesh.material.color.setHex(stage.color);
+    boss.name = stage.name;
+    boss.specialTimer = 2.5;
+
+    titanActiveColossus = boss;
+    updateBossHUD(boss);
+}
+
+function updateTitanGauntlet(dt, playerPos) {
+    if (GAME.mode !== 'titan') return;
+    GAME.titanTimer += dt;
+
+    const timerEl = document.getElementById('titan-stage-timer');
+    if (timerEl) {
+        const m = Math.floor(GAME.titanTimer / 60);
+        const s = Math.floor(GAME.titanTimer % 60).toString().padStart(2, '0');
+        timerEl.innerText = `${m}:${s}`;
+    }
+
+    // Keep player and arena bounded inside circular colosseum
+    const pDist = Math.hypot(playerPos.x, playerPos.z);
+    if (pDist > 60) {
+        const angle = Math.atan2(playerPos.z, playerPos.x);
+        playerPos.x = Math.cos(angle) * 60;
+        playerPos.z = Math.sin(angle) * 60;
+    }
+
+    // Titan special attack cycles
+    if (titanActiveColossus && titanActiveColossus.hp > 0) {
+        titanActiveColossus.specialTimer = (titanActiveColossus.specialTimer || 3.0) - dt;
+        if (titanActiveColossus.specialTimer <= 0) {
+            titanActiveColossus.specialTimer = 4.0;
+            executeTitanSpecialAttack(titanActiveColossus);
+        }
+        updateBossHUD(titanActiveColossus);
+    } else if (titanActiveColossus && titanActiveColossus.hp <= 0 && !GAME.boonDraftActive) {
+        // Colossus slain!
+        onTitanColossusSlain();
+    }
+}
+
+function executeTitanSpecialAttack(boss) {
+    const stageIdx = boss.titanStageIdx || 0;
+    const bPos = boss.mesh.position;
+
+    if (stageIdx === 0) {
+        // Terra Colossus: Boulder Rain
+        SFX.earthquake();
+        spawnFloatingText(bPos, '🪨 BOULDER SHATTER!', '#d97706', 20, true);
+        for (let i = 0; i < 6; i++) {
+            const rx = playerMesh.position.x + (Math.random() - 0.5) * 20;
+            const rz = playerMesh.position.z + (Math.random() - 0.5) * 20;
+            const bGeo = new THREE.DodecahedronGeometry(2.2);
+            const bMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+            const boulder = new THREE.Mesh(bGeo, bMat);
+            boulder.position.set(rx, 25, rz);
+            scene.add(boulder);
+            new VFXObject(boulder, 0.9, (m, prog) => {
+                m.position.y = 25 - prog * 24;
+                if (prog >= 0.95 && m.parent) {
+                    createImpact(new THREE.Vector3(rx, 0, rz), 0xd97706);
+                    if (playerMesh.position.distanceTo(new THREE.Vector3(rx, 0, rz)) < 5.5) {
+                        PLAYER.hp -= 40;
+                        showDamageVignette();
+                        checkPlayerDeath();
+                    }
+                }
+            });
+        }
+    } else if (stageIdx === 1) {
+        // Frost Wyrm: Ice Shard Nova
+        SFX.frostNova();
+        spawnFloatingText(bPos, '❄️ GLACIAL RING!', '#38bdf8', 20, true);
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            const p = new Projectile(bPos.clone().add(new THREE.Vector3(0, 2, 0)), dir);
+            p.speed = 30;
+            p.damage = 40;
+            p.mesh.material.color.setHex(0x38bdf8);
+        }
+    } else if (stageIdx === 2) {
+        // Infernal Balor: Hellfire Eruption
+        SFX.bomb();
+        spawnFloatingText(bPos, '🔥 HELLFIRE ERUPTION!', '#ef4444', 20, true);
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            const p = new Projectile(bPos.clone().add(new THREE.Vector3(0, 2, 0)), dir);
+            p.speed = 32;
+            p.damage = 50;
+            p.mesh.material.color.setHex(0xf97316);
+        }
+    } else if (stageIdx === 3) {
+        // Void Chronos: Singularity
+        SFX.blackHole();
+        spawnFloatingText(bPos, '🕳️ VOID SINGULARITY!', '#a855f7', 22, true);
+        // Pull player toward boss
+        const pullDir = bPos.clone().sub(playerMesh.position).normalize();
+        playerMesh.position.addScaledVector(pullDir, 8);
+    } else {
+        // Supreme Deus-Rex: Supernova Nova
+        SFX.titanRoar();
+        spawnFloatingText(bPos, '👑 CELESTIAL SUPERNOVA!', '#fbbf24', 24, true);
+        for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            const p = new Projectile(bPos.clone().add(new THREE.Vector3(0, 3, 0)), dir);
+            p.speed = 35;
+            p.damage = 60;
+            p.mesh.material.color.setHex(0xfbbf24);
+        }
+    }
+}
+
+function onTitanColossusSlain() {
+    GAME.boonDraftActive = true;
+    titanActiveColossus = null;
+    SFX.lootLegendary();
+
+    const stageBonus = (GAME.titanStage + 1) * 500;
+    GAME.score += stageBonus * 2;
+    GAME.gold += stageBonus;
+    SAVE.essence += 200;
+    SAVE.talentPoints = (SAVE.talentPoints || 0) + 1; // +1 Talent Point per Titan
+    writeSave();
+
+    if (GAME.titanStage >= 4) {
+        // Victory across all 5 Titans!
+        triggerTitanVictory();
+    } else {
+        // Trigger Divine Boon Draft
+        triggerTitanBoonDraft();
+    }
+}
+
+function triggerTitanBoonDraft() {
+    GAME.state = 'BOON_DRAFT';
+    SFX.boon();
+
+    const modal = document.getElementById('boon-draft-screen');
+    const container = document.getElementById('boon-choices-container');
+    if (!modal || !container) return;
+    modal.style.display = 'flex';
+    container.innerHTML = '';
+
+    // Pick 3 random boons
+    const pool = [...TITAN_BOONS];
+    pool.sort(() => Math.random() - 0.5);
+    const chosen3 = pool.slice(0, 3);
+
+    chosen3.forEach(boon => {
+        const card = document.createElement('div');
+        card.className = 'boon-card';
+        card.style.borderColor = boon.color;
+        card.onclick = () => selectTitanBoon(boon);
+
+        card.innerHTML = `
+            <div class="boon-card-header">
+                <span class="boon-card-icon" style="background:${boon.color}22; border:1px solid ${boon.color}66;">${boon.icon}</span>
+                <div>
+                    <h3 style="margin:0; font-size:1.05rem; color:${boon.color};">${boon.name}</h3>
+                    <span style="font-size:0.72rem; color:${boon.color}; font-weight:bold;">${boon.rarity.toUpperCase()} BOON</span>
+                </div>
+            </div>
+            <p class="boon-card-desc">${boon.desc}</p>
+            <div style="margin-top:12px;">
+                <button class="btn-emerald" style="width:100%; padding:8px 0; font-weight:bold; font-size:0.85rem; background:linear-gradient(135deg, ${boon.color}, #0284c7);">
+                    ✨ Claim Divine Boon
+                </button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+window.selectTitanBoon = function(boon) {
+    if (boon && typeof boon.apply === 'function') {
+        boon.apply();
+        GAME.titanBoons.push(boon.name);
+    }
+    SFX.item();
+    logMessage(`CLAIMED BOON: ${boon.name}!`, boon.color);
+    spawnFloatingText(playerMesh.position, `✨ ${boon.name.toUpperCase()} ACTIVATED!`, boon.color, 20, true);
+
+    const modal = document.getElementById('boon-draft-screen');
+    if (modal) modal.style.display = 'none';
+
+    GAME.boonDraftActive = false;
+    GAME.state = 'PLAYING';
+    lastTime = performance.now();
+
+    // Advance to next Titan stage
+    loadTitanStage(GAME.titanStage + 1);
+};
+
+function triggerTitanVictory() {
+    GAME.state = 'TITAN_VICTORY';
+    GAME.titanDefeated = true;
+    SFX.lootLegendary();
+
+    saveScoreToLeaderboard({ name: 'Grand Titan Slayer' });
+
+    const goldBonus = 2500;
+    const essenceBonus = 1000;
+    GAME.gold += goldBonus;
+    SAVE.essence += essenceBonus;
+    SAVE.talentPoints = (SAVE.talentPoints || 0) + 3;
+    writeSave();
+
+    // Display victory modal using game-over or dedicated banner
+    const go = document.getElementById('game-over');
+    if (go) {
+        go.style.display = 'flex';
+        go.querySelector('h1').innerText = '👑 TITAN GAUNTLET CONQUERED!';
+        go.querySelector('h1').style.color = '#fbbf24';
+        document.getElementById('go-wave').innerText = '5 / 5 Titans Slain';
+        document.getElementById('go-level').innerText = `${PLAYER.level}`;
+        document.getElementById('go-score').innerText = `${GAME.score}`;
+        document.getElementById('go-kills').innerText = `${GAME.kills}`;
+        document.getElementById('go-gold-banked').innerText = `${goldBonus}`;
+        document.getElementById('go-essence').innerText = `${SAVE.essence}`;
+    }
+}
+
 const projectiles = [];
 const enemies = [];
 const items = [];
@@ -1919,34 +2918,60 @@ window.togglePause = function() {
 
 window.addEventListener('keydown', (e) => {
     initAudio();
+    if (e.code === 'Digit1') {
+        usePrimaryAttack();
+        return;
+    }
+    if (e.code === 'Digit2' || e.code === 'KeyE') {
+        if (activeLootDrop) {
+            handleQuickEquipLoot();
+        } else {
+            useTacticalSkill();
+        }
+        return;
+    }
+    if (e.code === 'Digit3' || e.code === 'KeyR') {
+        useClassSkill1();
+        return;
+    }
+    if (e.code === 'Digit4' || e.code === 'KeyF') {
+        useClassSkill2();
+        return;
+    }
+    if (e.code === 'Digit5' || e.code === 'Space' || e.code === 'KeyQ') {
+        useUltimate();
+        return;
+    }
     if (e.code === 'KeyI') {
         toggleGearModal();
         return;
     }
-    if (e.code === 'KeyE') {
-        if (activeLootDrop) {
-            handleQuickEquipLoot();
-            return;
-        }
+    if (e.code === 'KeyN') {
+        toggleTalentsModal();
+        return;
+    }
+    if (e.code === 'KeyH' || e.code === 'KeyL') {
+        toggleLeaderboardModal();
+        return;
     }
     if (e.code === 'KeyB') {
         toggleShopModal();
         return;
     }
-    if (e.code === 'KeyL' || e.code === 'KeyJ') {
+    if (e.code === 'KeyJ') {
         toggleQuestsModal();
         return;
     }
-    if (e.code === 'Space' || e.code === 'KeyQ') {
-        useUltimate();
-        return;
-    }
     if (e.code === 'Escape') {
-        if (document.getElementById('gear-screen').style.display === 'flex') {
+        if (document.getElementById('gear-screen') && document.getElementById('gear-screen').style.display === 'flex') {
             closeGearModal();
-        } else if (document.getElementById('quests-screen').style.display === 'flex') {
+        } else if (document.getElementById('talents-screen') && document.getElementById('talents-screen').style.display === 'flex') {
+            closeTalentsModal();
+        } else if (document.getElementById('leaderboard-screen') && document.getElementById('leaderboard-screen').style.display === 'flex') {
+            closeLeaderboardModal();
+        } else if (document.getElementById('quests-screen') && document.getElementById('quests-screen').style.display === 'flex') {
             closeQuestsModal();
-        } else if (document.getElementById('shop-screen').style.display === 'flex') {
+        } else if (document.getElementById('shop-screen') && document.getElementById('shop-screen').style.display === 'flex') {
             closeShopModal();
         } else {
             togglePause();
@@ -3817,9 +4842,21 @@ function buildDungeonGeometry() {
             gate.userData = { chamberIdx: idx, open: false };
             scene.add(gate);
             dungeonMeshes.push(gate);
+
+            // Radiant Guide Beacon Columns at Chamber Exits (Clear Visual Wayfinding)
+            const beaconGeo = new THREE.CylinderGeometry(0.6, 0.6, 10, 16);
+            const beaconMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.5 });
+            const beaconL = new THREE.Mesh(beaconGeo, beaconMat);
+            beaconL.position.set(-fWidth * 0.42, 5, ch.gateZ);
+            const beaconR = new THREE.Mesh(beaconGeo, beaconMat);
+            beaconR.position.set(fWidth * 0.42, 5, ch.gateZ);
+            scene.add(beaconL, beaconR);
+            dungeonMeshes.push(beaconL, beaconR);
         }
     });
 }
+
+let dungeonWaypointArrow = null;
 
 function spawnDungeonCompanions() {
     // Generate 2 party companions matching missing raid archetypes
@@ -3838,10 +4875,29 @@ function spawnDungeonCompanions() {
         c.mesh.position.set((idx === 0 ? -4 : 4), 1, -54);
     });
 
-    updatePartyFramesHUD();
+    // Create 3D floating guiding waypoint arrow
+    if (!dungeonWaypointArrow) {
+        const arrGroup = new THREE.Group();
+        const coneGeo = new THREE.ConeGeometry(0.7, 1.8, 4);
+        const coneMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
+        const cone = new THREE.Mesh(coneGeo, coneMat);
+        cone.rotation.x = Math.PI / 2;
+        arrGroup.add(cone);
+        arrGroup.position.set(0, 3.2, -50);
+        scene.add(arrGroup);
+        dungeonWaypointArrow = arrGroup;
+        dungeonMeshes.push(arrGroup);
+    }
+
+    updatePartyFramesHUD(true);
 }
 
-function updatePartyFramesHUD() {
+let lastPartyHUDUpdate = 0;
+function updatePartyFramesHUD(force = false) {
+    const now = performance.now();
+    if (!force && now - lastPartyHUDUpdate < 120) return; // 120ms throttle prevents DOM thrash lag!
+    lastPartyHUDUpdate = now;
+
     const container = document.getElementById('hud-dungeon-party');
     if (!container) return;
     container.innerHTML = '';
@@ -3855,7 +4911,7 @@ function updatePartyFramesHUD() {
             <span class="party-member-name">⭐ You (${PLAYER.class})</span>
             <span class="party-member-role">${PLAYER.class === 'Warrior' ? '🛡️ TANK' : (PLAYER.class === 'Mage' ? '🔮 MAGE' : '🏹 DPS')}</span>
         </div>
-        <div class="bar-container" style="height:8px; margin:2px 0 0 0; background:#334155;">
+        <div class="bar-container" style="height:7px; margin:2px 0 0 0; background:#334155;">
             <div class="health-bar" style="width:${playerPct}%; background:${playerPct < 30 ? '#ef4444' : '#22c55e'};"></div>
         </div>
     `;
@@ -3871,7 +4927,7 @@ function updatePartyFramesHUD() {
                 <span class="party-member-name">${c.name}</span>
                 <span class="party-member-role">${c.role === 'Tank' ? '🛡️ TANK' : (c.role === 'Healer' ? '💚 HEAL' : '🏹 DPS')}</span>
             </div>
-            <div class="bar-container" style="height:8px; margin:2px 0 0 0; background:#334155;">
+            <div class="bar-container" style="height:7px; margin:2px 0 0 0; background:#334155;">
                 <div class="health-bar" style="width:${pct}%; background:${pct < 30 ? '#ef4444' : '#38bdf8'};"></div>
             </div>
         `;
@@ -3879,11 +4935,17 @@ function updatePartyFramesHUD() {
     });
 }
 
+let dungeonTraps = [];
+
 function loadDungeonChamber(chamberIdx) {
     currentDungeonRoomIdx = chamberIdx;
     GAME.dungeonRoom = chamberIdx;
     const ch = DUNGEON_CHAMBERS[chamberIdx];
     if (!ch) return;
+
+    // Clear old chamber traps
+    dungeonTraps.forEach(t => { if (t.mesh) scene.remove(t.mesh); });
+    dungeonTraps = [];
 
     // Update Dungeon HUD
     const nameEl = document.getElementById('dungeon-room-name');
@@ -3895,7 +4957,7 @@ function loadDungeonChamber(chamberIdx) {
     logMessage(`ENTERED: ${ch.name}`, '#c084fc');
     spawnFloatingText(playerMesh.position, ch.name, '#c084fc', 20, true, '🏰');
 
-    // Spawn Chamber Mobs in Formations
+    // Spawn Chamber Mobs in Formations with scaled hardcore stats
     ch.mobs.forEach(m => {
         const e = new Enemy(m.x, m.z, m.type);
         e.isDungeonMob = true;
@@ -3905,11 +4967,54 @@ function loadDungeonChamber(chamberIdx) {
         if (m.name) e.name = m.name;
         if (m.isFinalBoss) {
             malakorBossRef = e;
-            e.hp = 2400 + (SAVE.upgrades.power || 0) * 100;
+            e.hp = 3800 + (SAVE.upgrades.power || 0) * 150;
             e.maxHp = e.hp;
-            e.bossSpellTimer = 3.0;
+            e.bossSpellTimer = 2.5;
+            e.hasSpawnedMinions = false;
+            e.isEnraged = false;
+        } else {
+            // Scale chamber difficulty for hardcore experience
+            e.hp = Math.round(e.hp * (1.15 + chamberIdx * 0.12));
+            e.damage = Math.round(e.damage * (1.1 + chamberIdx * 0.08));
         }
     });
+
+    // Generate Dynamic Spike Traps and Hazards in Chamber
+    const trapCount = 2 + chamberIdx * 2;
+    for (let i = 0; i < trapCount; i++) {
+        const tx = (ch.xMin + 4) + Math.random() * (ch.xMax - ch.xMin - 8);
+        const tz = (ch.zMin + 8) + Math.random() * (ch.zMax - ch.zMin - 16);
+        
+        const trapGroup = new THREE.Group();
+        const baseGeo = new THREE.BoxGeometry(4, 0.2, 4);
+        const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+        const base = new THREE.Mesh(baseGeo, baseMat);
+        base.position.y = 0.1;
+        trapGroup.add(base);
+
+        const spikeGeo = new THREE.ConeGeometry(0.3, 1.8, 6);
+        const spikeMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8 });
+        for (let sx = -1.2; sx <= 1.2; sx += 1.2) {
+            for (let sz = -1.2; sz <= 1.2; sz += 1.2) {
+                const sp = new THREE.Mesh(spikeGeo, spikeMat);
+                sp.position.set(sx, 0.9, sz);
+                trapGroup.add(sp);
+            }
+        }
+
+        trapGroup.position.set(tx, 0, tz);
+        scene.add(trapGroup);
+
+        dungeonTraps.push({
+            group: trapGroup,
+            x: tx,
+            z: tz,
+            radius: 2.2,
+            timer: Math.random() * 3.0,
+            active: false,
+            cycleDuration: 3.0
+        });
+    }
 
     GAME.dungeonRoomTotal = ch.mobs.length;
     GAME.dungeonRoomKills = 0;
@@ -3925,7 +5030,36 @@ function updateDungeon(dt, playerPos) {
     raidCompanions.forEach(c => c.update(dt, playerPos));
     updatePartyFramesHUD();
 
-    // 2. Mob Aggro Pull Logic
+    // 2. Dynamic Traps Cycle & Hazard Damage
+    dungeonTraps.forEach(trap => {
+        trap.timer = (trap.timer + dt) % trap.cycleDuration;
+        trap.active = trap.timer > (trap.cycleDuration * 0.55);
+
+        // Animate trap spikes raising and retracting
+        const targetY = trap.active ? 0 : -1.6;
+        trap.group.children.forEach((child, i) => {
+            if (i > 0) child.position.y = THREE.MathUtils.lerp(child.position.y, targetY + 0.9, 0.2);
+        });
+
+        if (trap.active) {
+            const dist = Math.hypot(playerPos.x - trap.x, playerPos.z - trap.z);
+            if (dist < trap.radius) {
+                if (!PLAYER.trapHitCooldown || PLAYER.trapHitCooldown <= 0) {
+                    PLAYER.trapHitCooldown = 1.0;
+                    PLAYER.hp -= 22;
+                    SFX.trap();
+                    showDamageVignette();
+                    spawnFloatingText(playerPos, '⚠️ SPIKE TRAP! -22', '#ef4444', 18, true, '🩸');
+                    checkPlayerDeath();
+                    updateGUI();
+                }
+            }
+        }
+    });
+
+    if (PLAYER.trapHitCooldown > 0) PLAYER.trapHitCooldown -= dt;
+
+    // 3. Mob Aggro Pull Logic
     enemies.forEach(e => {
         if (!e.isDungeonMob || e.hp <= 0) return;
         if (!e.isAggroed) {
@@ -3936,7 +5070,7 @@ function updateDungeon(dt, playerPos) {
                 if (dc < dComp) dComp = dc;
             });
 
-            if (dPlayer < 22 || dComp < 20 || e.hp < e.maxHp) {
+            if (dPlayer < 24 || dComp < 22 || e.hp < e.maxHp) {
                 // Pull whole mob pack
                 e.isAggroed = true;
                 SFX.aggro();
@@ -3950,28 +5084,88 @@ function updateDungeon(dt, playerPos) {
         }
     });
 
-    // 3. Final Boss Malakor Mechanics
+    // 4. Hardcore Final Boss Malakor Mechanics with Multi-Phase Spells
     if (malakorBossRef && malakorBossRef.hp > 0) {
         malakorBossRef.bossSpellTimer = (malakorBossRef.bossSpellTimer || 3.0) - dt;
+        
+        // Phase 2 Minion Summon at 60% HP
+        if (malakorBossRef.hp <= malakorBossRef.maxHp * 0.60 && !malakorBossRef.hasSpawnedMinions) {
+            malakorBossRef.hasSpawnedMinions = true;
+            SFX.bossRoar();
+            spawnFloatingText(malakorBossRef.mesh.position, '👑 SHADOW MINIONS SUMMONED!', '#a855f7', 22, true);
+            const m1 = new Enemy(-12, 385, 'orc');
+            m1.isDungeonMob = true; m1.chamberIdx = 4; m1.isAggroed = true;
+            const m2 = new Enemy(12, 385, 'orc');
+            m2.isDungeonMob = true; m2.chamberIdx = 4; m2.isAggroed = true;
+        }
+
+        // Phase 3 Enrage at 30% HP
+        if (malakorBossRef.hp <= malakorBossRef.maxHp * 0.30 && !malakorBossRef.isEnraged) {
+            malakorBossRef.isEnraged = true;
+            malakorBossRef.speed *= 1.35;
+            SFX.titanRoar();
+            spawnFloatingText(malakorBossRef.mesh.position, '🔥 MALAKOR ENRAGED!', '#ef4444', 26, true);
+        }
+
         if (malakorBossRef.bossSpellTimer <= 0) {
-            malakorBossRef.bossSpellTimer = 4.5;
+            malakorBossRef.bossSpellTimer = malakorBossRef.isEnraged ? 2.5 : 4.0;
             SFX.frostNova();
             spawnFloatingText(malakorBossRef.mesh.position, '🔮 NETHER NOVA!', '#a855f7', 18, true);
-            // Spawn 8 Void energy orbs radiating outward
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
+            
+            // Spawn 10 Void energy orbs radiating outward
+            const orbCount = malakorBossRef.isEnraged ? 12 : 8;
+            for (let i = 0; i < orbCount; i++) {
+                const angle = (i / orbCount) * Math.PI * 2;
                 const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
                 const p = new Projectile(malakorBossRef.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
                 p.speed = 35;
-                p.damage = 35;
+                p.damage = 40;
                 p.mesh.material.color.setHex(0xa855f7);
             }
         }
         updateBossHUD(malakorBossRef);
     }
 
-    // 4. Chamber Gate & Progression Check
+    // 5. Chamber Gate & Progression Check
     const activeEnemiesInRoom = enemies.filter(e => e.isDungeonMob && e.chamberIdx === currentDungeonRoomIdx && e.hp > 0);
+    const gateTargetZ = (currentDungeonRoomIdx === 4) ? 395 : ch.gateZ;
+    const distToTarget = Math.max(0, Math.round(gateTargetZ - playerPos.z));
+
+    // Update 3D Guiding Waypoint Arrow
+    if (dungeonWaypointArrow) {
+        dungeonWaypointArrow.position.set(playerPos.x, playerPos.y + 3.2, playerPos.z);
+        const aimTarget = new THREE.Vector3(0, 1.5, gateTargetZ);
+        dungeonWaypointArrow.lookAt(aimTarget);
+        if (dungeonWaypointArrow.children[0]) {
+            if (activeEnemiesInRoom.length > 0) {
+                dungeonWaypointArrow.children[0].material.color.setHex(0xfbbf24); // Amber
+            } else {
+                dungeonWaypointArrow.children[0].material.color.setHex(0x34d399); // Emerald
+            }
+        }
+    }
+
+    // Update Top Center Dungeon Navigation HUD
+    const compassEl = document.getElementById('dungeon-compass-text');
+    const gateStatusEl = document.getElementById('dungeon-gate-status');
+    if (compassEl) {
+        if (activeEnemiesInRoom.length > 0) {
+            compassEl.innerHTML = `⚔️ ${activeEnemiesInRoom.length} Foes Left • Target: ${distToTarget}m Forward ⬆️`;
+        } else if (currentDungeonRoomIdx < 4) {
+            compassEl.innerHTML = `✨ GATE OPEN! Proceed ${distToTarget}m Forward ➡️`;
+        } else {
+            compassEl.innerHTML = `👑 OVERLORD'S THRONE ROOM`;
+        }
+    }
+    if (gateStatusEl) {
+        if (activeEnemiesInRoom.length > 0) {
+            gateStatusEl.innerText = `SEALED 🔒 (${activeEnemiesInRoom.length} left)`;
+            gateStatusEl.style.color = '#ef4444';
+        } else {
+            gateStatusEl.innerText = 'UNLOCKED 🔓';
+            gateStatusEl.style.color = '#34d399';
+        }
+    }
     
     if (activeEnemiesInRoom.length === 0 && currentDungeonRoomIdx < DUNGEON_CHAMBERS.length - 1) {
         // Open Gate to next chamber
@@ -3990,18 +5184,18 @@ function updateDungeon(dt, playerPos) {
         }
     }
 
-    // 5. Final Boss Defeat & Victory
+    // 6. Final Boss Defeat & Victory
     if (currentDungeonRoomIdx === 4 && malakorBossRef && malakorBossRef.hp <= 0 && !GAME.dungeonCleared) {
         GAME.dungeonCleared = true;
         triggerDungeonVictory();
     }
 
-    // 6. Loot Drops Update
+    // 7. Loot Drops Update
     for (let i = dungeonLootDrops.length - 1; i >= 0; i--) {
         dungeonLootDrops[i].update(dt, playerPos);
     }
 
-    // 7. Restrict Player Pathing to Chamber & Corridor Boundaries
+    // 8. Restrict Player Pathing to Chamber & Corridor Boundaries
     playerPos.x = Math.max(ch.xMin + 1.5, Math.min(ch.xMax - 1.5, playerPos.x));
     playerPos.z = Math.max(ch.zMin + 1.0, playerPos.z);
     if (!dungeonMeshes.some(m => m.userData && m.userData.chamberIdx === currentDungeonRoomIdx && m.userData.open)) {
@@ -4035,10 +5229,13 @@ function triggerDungeonVictory() {
     GAME.state = 'DUNGEON_VICTORY';
     SFX.lootLegendary();
 
-    const goldBonus = 650 + (SAVE.upgrades.greed || 0) * 80;
-    const essenceBonus = 350;
+    saveScoreToLeaderboard({ name: 'Chamber V Conquered' });
+
+    const goldBonus = 1200 + (SAVE.upgrades.greed || 0) * 120;
+    const essenceBonus = 600;
     GAME.gold += goldBonus;
     SAVE.essence += essenceBonus;
+    SAVE.talentPoints = (SAVE.talentPoints || 0) + 2; // +2 Talent points for conquering the dungeon
     writeSave();
 
     // Spawn grand loot beams around Malakor's throne
@@ -4075,6 +5272,7 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
 
     applyPermanentUpgrades();
     applyEquipmentStats(heroName);
+    applyTalentPassives();
 
     PLAYER.hp = PLAYER.maxHp;
     PLAYER.mana = PLAYER.maxMana;
@@ -4093,6 +5291,9 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
     GAME.isDowned = false;
     GAME.reviveTokens = 0;
     GAME.shield = (PLAYER.gearBonus && PLAYER.gearBonus.shield) ? PLAYER.gearBonus.shield : 0;
+    GAME.comboCount = 0;
+    GAME.comboMultiplier = 1.0;
+    GAME.comboTimer = 0;
 
     INRUN.damageMult = 1.0;
     INRUN.fireRateMult = 1.0;
@@ -4114,16 +5315,30 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
     updateEffects();
     updateGUI();
 
+    const waveHUD = document.getElementById('hud-top-center');
+    const dunObj = document.getElementById('hud-dungeon-obj');
+    const dunParty = document.getElementById('hud-dungeon-party');
+    const titanHUD = document.getElementById('hud-titan-stage');
+
     if (GAME.mode === 'dungeon') {
-        const waveHUD = document.getElementById('hud-top-center');
-        const dunObj = document.getElementById('hud-dungeon-obj');
-        const dunParty = document.getElementById('hud-dungeon-party');
         if (waveHUD) waveHUD.style.display = 'none';
         if (dunObj) dunObj.style.display = 'block';
         if (dunParty) dunParty.style.display = 'flex';
+        if (titanHUD) titanHUD.style.display = 'none';
+        clearTitanArena();
         initDungeonMode();
+        camera.position.set(playerMesh.position.x, 38, playerMesh.position.z + 24);
+    } else if (GAME.mode === 'titan') {
+        if (waveHUD) waveHUD.style.display = 'none';
+        if (dunObj) dunObj.style.display = 'none';
+        if (dunParty) dunParty.style.display = 'none';
+        if (titanHUD) titanHUD.style.display = 'flex';
+        clearDungeonState();
+        initTitanGauntlet();
+        camera.position.set(playerMesh.position.x, 46, playerMesh.position.z + 30);
     } else {
         clearDungeonState();
+        clearTitanArena();
         enemies.forEach(e => scene.remove(e.mesh));
         enemies.length = 0;
         items.forEach(i => scene.remove(i.mesh));
@@ -4136,14 +5351,13 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
         chests.length = 0;
         clearSpellEntities();
 
-        const waveHUD = document.getElementById('hud-top-center');
-        const dunObj = document.getElementById('hud-dungeon-obj');
-        const dunParty = document.getElementById('hud-dungeon-party');
         if (waveHUD) waveHUD.style.display = 'block';
         if (dunObj) dunObj.style.display = 'none';
         if (dunParty) dunParty.style.display = 'none';
+        if (titanHUD) titanHUD.style.display = 'none';
         updateWaveHUD();
         playerMesh.position.set(0, 1, 0);
+        camera.position.set(playerMesh.position.x, 60, playerMesh.position.z + 35);
     }
 
     if (initPayload) {
@@ -4165,7 +5379,6 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
         if (tmHUD) tmHUD.style.display = 'block';
     }
 
-    camera.position.set(playerMesh.position.x, 60, playerMesh.position.z + 35);
     camera.lookAt(playerMesh.position);
 
     GAME.state = 'PLAYING';
@@ -4222,15 +5435,6 @@ function clearSpellEntities() {
     activeOrbitMeshes.length = 0;
     groundTraps.forEach(t => scene.remove(t.mesh));
     groundTraps.length = 0;
-}
-
-function getRarityBorder(rarity) {
-    switch (rarity) {
-        case 'legendary': return '#f59e0b';
-        case 'epic': return '#a855f7';
-        case 'rare': return '#38bdf8';
-        default: return '#94a3b8';
-    }
 }
 
 function generateSkillOptions() {
@@ -4570,6 +5774,302 @@ window.useTacticalSkill = function() {
     updateGUI();
 };
 
+window.usePrimaryAttack = function() {
+    attemptFire();
+};
+
+// --- CLASS SKILL 1 (SLOT 3: R / 3) ---
+window.useClassSkill1 = function() {
+    if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
+    if (PLAYER.skill1Cooldown > 0) {
+        logMessage(`Skill 1 cooling down (${Math.ceil(PLAYER.skill1Cooldown)}s)`, '#94a3b8');
+        return;
+    }
+
+    const playerPos = playerMesh.position;
+    const aimDir = new THREE.Vector3();
+    playerMesh.getWorldDirection(aimDir);
+
+    if (PLAYER.class === 'Warrior') {
+        // Whirlwind: 360° Cleave Spin
+        PLAYER.skill1MaxCooldown = 4.2;
+        PLAYER.skill1Cooldown = 4.2;
+        SFX.whirlwind();
+        cameraShakeTimer = 0.18;
+        logMessage('🌀 WHIRLWIND SLASH!', '#f87171');
+        spawnFloatingText(playerPos, '🌀 WHIRLWIND!', '#f87171', 20, true);
+
+        // Spin animation
+        weaponGroup.rotation.y += Math.PI * 4;
+        setTimeout(() => { if (GAME.state === 'PLAYING') weaponGroup.rotation.y -= Math.PI * 4; }, 180);
+
+        // Cyclone Ring VFX
+        const ringGeo = new THREE.RingGeometry(2.5, 9.5, 32);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0xfca5a5, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.8, playerPos.z);
+        new VFXObject(ringMesh, 0.35, (m, prog) => {
+            m.rotation.z += 0.25;
+            m.scale.set(1 + prog * 0.4, 1 + prog * 0.4, 1 + prog * 0.4);
+            m.material.opacity = (1 - prog) * 0.9;
+        });
+
+        const radius = 11.5;
+        const damage = 115 + PLAYER.level * 16 + (SAVE.upgrades.power || 0) * 10;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= radius) {
+                const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerPos).normalize();
+                e.mesh.position.addScaledVector(pushDir, 5.0);
+                e.takeDamage(damage, true, '🌀 WHIRL!');
+                if (EFFECTS.lifesteal > 0) {
+                    const heal = Math.max(1, Math.round(damage * 0.25));
+                    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + heal);
+                }
+            }
+        });
+        chests.forEach(c => {
+            if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(damage);
+        });
+
+    } else if (PLAYER.class === 'Mage') {
+        // Arcane Nova: Radial Burst
+        PLAYER.skill1MaxCooldown = 4.5;
+        PLAYER.skill1Cooldown = 4.5;
+        SFX.frostNova();
+        logMessage('🔮 ARCANE NOVA!', '#38bdf8');
+        spawnFloatingText(playerPos, '🔮 ARCANE NOVA!', '#38bdf8', 20, true);
+
+        const novaGeo = new THREE.RingGeometry(1.5, 12.0, 32);
+        const novaMat = new THREE.MeshBasicMaterial({ color: 0x818cf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const novaMesh = new THREE.Mesh(novaGeo, novaMat);
+        novaMesh.rotation.x = -Math.PI / 2;
+        novaMesh.position.set(playerPos.x, 0.4, playerPos.z);
+        new VFXObject(novaMesh, 0.4, (m, prog) => {
+            m.scale.set(1 + prog * 0.6, 1 + prog * 0.6, 1 + prog * 0.6);
+            m.material.opacity = (1 - prog) * 0.9;
+        });
+
+        const radius = 13.0;
+        const damage = 100 + PLAYER.level * 15 + (SAVE.upgrades.power || 0) * 10;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= radius) {
+                e.freezeTimer = 2.0;
+                e.takeDamage(damage, true, '🔮 NOVA');
+            }
+        });
+
+    } else if (PLAYER.class === 'Archer') {
+        // Piercing Ballista: Giant Arrow
+        PLAYER.skill1MaxCooldown = 4.0;
+        PLAYER.skill1Cooldown = 4.0;
+        SFX.shoot('Archer');
+        logMessage('🏹 PIERCING BALLISTA!', '#34d399');
+        spawnFloatingText(playerPos, '🏹 BALLISTA!', '#34d399', 20, true);
+
+        const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), aimDir, true, 0x34d399, 130, 2.2);
+        p.mesh.scale.set(3.0, 3.0, 4.5);
+        p.pierce = 999;
+        p.damage = 140 + PLAYER.level * 20 + (SAVE.upgrades.power || 0) * 12;
+    }
+
+    updateGUI();
+};
+
+// --- CLASS SKILL 2 (SLOT 4: F / 4) ---
+window.useClassSkill2 = function() {
+    if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
+    if (PLAYER.skill2Cooldown > 0) {
+        logMessage(`Skill 2 cooling down (${Math.ceil(PLAYER.skill2Cooldown)}s)`, '#94a3b8');
+        return;
+    }
+
+    const playerPos = playerMesh.position;
+    const aimDir = new THREE.Vector3();
+    playerMesh.getWorldDirection(aimDir);
+
+    if (PLAYER.class === 'Warrior') {
+        // Thunder Clap: Ground Stun Shockwave
+        PLAYER.skill2MaxCooldown = 6.5;
+        PLAYER.skill2Cooldown = 6.5;
+        SFX.thunder();
+        cameraShakeTimer = 0.28;
+        logMessage('⚡ THUNDER CLAP!', '#38bdf8');
+        spawnFloatingText(playerPos, '⚡ THUNDER CLAP!', '#38bdf8', 22, true);
+
+        const ringGeo = new THREE.RingGeometry(1.0, 10.0, 24);
+        const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
+        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.2, playerPos.z);
+        new VFXObject(ringMesh, 0.45, (m, prog) => {
+            const sc = 1 + prog * 1.2;
+            m.scale.set(sc, sc, sc);
+            m.material.opacity = (1 - prog) * 0.95;
+        });
+
+        const radius = 11.0;
+        const damage = 130 + PLAYER.level * 18 + (SAVE.upgrades.power || 0) * 12;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= radius) {
+                e.stunTimer = 2.5;
+                e.takeDamage(damage, true, '⚡ STUNNED!');
+            }
+        });
+        chests.forEach(c => {
+            if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(damage);
+        });
+
+    } else if (PLAYER.class === 'Mage') {
+        // Meteor Strike
+        PLAYER.skill2MaxCooldown = 7.0;
+        PLAYER.skill2Cooldown = 7.0;
+        SFX.earthquake();
+        cameraShakeTimer = 0.3;
+        logMessage('☄️ METEOR STRIKE!', '#f97316');
+        
+        const targetPos = playerPos.clone().addScaledVector(aimDir, 12);
+        spawnFloatingText(targetPos, '☄️ METEOR!', '#f97316', 22, true);
+
+        const craterGeo = new THREE.RingGeometry(1.0, 8.0, 24);
+        const craterMat = new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
+        const craterMesh = new THREE.Mesh(craterGeo, craterMat);
+        craterMesh.rotation.x = -Math.PI / 2;
+        craterMesh.position.set(targetPos.x, 0.2, targetPos.z);
+        new VFXObject(craterMesh, 0.7, (m, prog) => {
+            m.scale.set(1 + prog * 0.5, 1 + prog * 0.5, 1 + prog * 0.5);
+            m.material.opacity = (1 - prog) * 0.9;
+        });
+
+        const radius = 9.5;
+        const damage = 160 + PLAYER.level * 22 + (SAVE.upgrades.power || 0) * 15;
+        enemies.forEach(e => {
+            if (targetPos.distanceTo(e.mesh.position) <= radius) {
+                e.burnTimer = 4.0;
+                e.takeDamage(damage, true, '🔥 METEOR');
+            }
+        });
+
+    } else if (PLAYER.class === 'Archer') {
+        // Arrow Volley: Fan of 14 Arrows
+        PLAYER.skill2MaxCooldown = 6.0;
+        PLAYER.skill2Cooldown = 6.0;
+        SFX.arrowStorm();
+        logMessage('🏹 ARROW VOLLEY!', '#fbbf24');
+        spawnFloatingText(playerPos, '🏹 VOLLEY!', '#fbbf24', 20, true);
+
+        const arrowCount = 14;
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < arrowCount; i++) {
+            const offset = ((i - arrowCount / 2) / (arrowCount / 2)) * (Math.PI / 4);
+            const ang = baseAngle + offset;
+            const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1, 0)), dir, true, 0xfde047, 95, 1.8);
+            p.pierce = 2;
+            p.damage = 70 + PLAYER.level * 10;
+        }
+    }
+
+    updateGUI();
+};
+
+function performWarriorMeleeCleave() {
+    if (GAME.isDowned) return;
+    if (PLAYER.fireCooldown > 0) return;
+
+    const baseCooldown = 0.28;
+    PLAYER.fireCooldown = baseCooldown / EFFECTS.fireRateMult;
+
+    playerMesh.updateMatrixWorld(true);
+    weaponGroup.updateMatrixWorld(true);
+
+    const dir = new THREE.Vector3();
+    playerMesh.getWorldDirection(dir);
+    const playerPos = playerMesh.position;
+
+    // Swing weapon visual animation
+    SFX.slash();
+    weaponGroup.position.z -= 0.6;
+    weaponGroup.rotation.y += 1.2;
+    setTimeout(() => {
+        if (GAME.state === 'PLAYING') {
+            weaponGroup.position.z += 0.6;
+            weaponGroup.rotation.y -= 1.2;
+        }
+    }, Math.min(90, (baseCooldown * 1000) / 2));
+
+    // Spawn vibrant crescent blade arc VFX
+    const arcRadius = 5.8 * (EFFECTS.projRadius || 1.0);
+    const slashGeo = new THREE.RingGeometry(arcRadius * 0.35, arcRadius, 20, 1, -Math.PI * 0.4, Math.PI * 0.8);
+    const slashMat = new THREE.MeshBasicMaterial({ 
+        color: 0xf87171, 
+        side: THREE.DoubleSide, 
+        transparent: true, 
+        opacity: 0.95 
+    });
+    const slashMesh = new THREE.Mesh(slashGeo, slashMat);
+    slashMesh.rotation.x = -Math.PI / 2;
+    const spawnPos = playerPos.clone().addScaledVector(dir, 2.2);
+    slashMesh.position.set(spawnPos.x, 0.9, spawnPos.z);
+    slashMesh.rotation.z = Math.atan2(-dir.z, dir.x);
+    new VFXObject(slashMesh, 0.16, (m, prog) => {
+        const sc = 1 + prog * 0.4;
+        m.scale.set(sc, sc, sc);
+        m.material.opacity = (1 - prog) * 0.95;
+    });
+
+    // Melee Hit Detection Cone
+    const { dmg, isCrit } = rollDamage();
+    const meleeDmg = Math.round(dmg * 1.35); // 35% Melee Bonus for high impact
+    const hitRadius = 8.8 * (EFFECTS.projRadius || 1.0);
+    let hitAny = false;
+
+    enemies.forEach(e => {
+        if (e.hp <= 0) return;
+        const toEnemy = new THREE.Vector3().subVectors(e.mesh.position, playerPos);
+        const dist = toEnemy.length();
+        if (dist <= hitRadius) {
+            toEnemy.normalize();
+            const dot = dir.dot(toEnemy);
+            if (dot >= 0.15 || dist <= 3.5) {
+                hitAny = true;
+                e.takeDamage(meleeDmg, isCrit, isCrit ? '⚔️ CRIT!' : '⚔️ SLASH');
+                
+                // Knockback
+                const pushDir = toEnemy.clone();
+                e.mesh.position.addScaledVector(pushDir, 3.5);
+
+                // Melee Lifesteal
+                if (EFFECTS.lifesteal > 0) {
+                    const heal = Math.max(1, Math.round(meleeDmg * EFFECTS.lifesteal));
+                    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + heal);
+                    spawnFloatingText(playerPos, `+${heal} HP`, '#4ade80', 14, false, '💚');
+                }
+            }
+        }
+    });
+
+    // Break chests in melee range
+    chests.forEach(c => {
+        if (!c.destroyed && playerPos.distanceTo(c.group.position) <= hitRadius) {
+            c.takeDamage(meleeDmg);
+            hitAny = true;
+        }
+    });
+
+    if (hitAny) SFX.hit();
+
+    // Sword Beam Shockwave (Warrior talent w5)
+    const w5 = (PLAYER.skills.find(s => s.id === 'w5') || { level: 0 }).level;
+    if (w5 > 0) {
+        const beamProj = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1, 0)), dir.clone(), true, 0x60a5fa, 75, 1.8);
+        beamProj.mesh.scale.set(3.5, 0.2, 1.8);
+        beamProj.pierce = 3 + w5 * 2;
+    }
+
+    updateGUI();
+}
+
 // --- PERIODIC SKILL ENGINE ---
 function updateClassSkills(dt) {
     if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
@@ -4587,6 +6087,16 @@ function updateClassSkills(dt) {
     // Tactical cooldown timer
     if (PLAYER.tacticalCooldown > 0) {
         PLAYER.tacticalCooldown = Math.max(0, PLAYER.tacticalCooldown - dt);
+        updateGUI();
+    }
+    // Skill 1 cooldown timer
+    if (PLAYER.skill1Cooldown > 0) {
+        PLAYER.skill1Cooldown = Math.max(0, PLAYER.skill1Cooldown - dt);
+        updateGUI();
+    }
+    // Skill 2 cooldown timer
+    if (PLAYER.skill2Cooldown > 0) {
+        PLAYER.skill2Cooldown = Math.max(0, PLAYER.skill2Cooldown - dt);
         updateGUI();
     }
 
@@ -5127,11 +6637,16 @@ class Projectile {
 function attemptFire() {
     if (GAME.isDowned) return;
     if (PLAYER.fireCooldown > 0) return;
+
+    if (PLAYER.class === 'Warrior') {
+        performWarriorMeleeCleave();
+        return;
+    }
+
     if (PLAYER.class === 'Mage' && PLAYER.mana < 4) return;
-    
     if (PLAYER.class === 'Mage') PLAYER.mana -= 4;
     
-    const baseCooldown = PLAYER.class === 'Archer' ? 0.15 : (PLAYER.class === 'Warrior' ? 0.35 : 0.25);
+    const baseCooldown = PLAYER.class === 'Archer' ? 0.15 : 0.25;
     PLAYER.fireCooldown = baseCooldown / EFFECTS.fireRateMult;
 
     playerMesh.updateMatrixWorld(true);
@@ -5669,6 +7184,132 @@ function updateGUI() {
             tacStatus.style.color = '#94a3b8';
         }
     }
+
+    // --- BOTTOM ACTION BAR (SLOTS 1 - 5) ---
+    // Slot 1: Primary Attack
+    const s1Icon = document.getElementById('skill-icon-1');
+    const s1Name = document.getElementById('skill-name-1');
+    const s1Cd = document.getElementById('skill-cd-1');
+    const s1CdText = document.getElementById('skill-cd-text-1');
+    const s1Btn = document.getElementById('skill-slot-1');
+    if (s1Icon && s1Name) {
+        if (PLAYER.class === 'Warrior') { s1Icon.innerText = '⚔️'; s1Name.innerText = 'Cleave'; }
+        else if (PLAYER.class === 'Mage') { s1Icon.innerText = '🔮'; s1Name.innerText = 'Arcane'; }
+        else { s1Icon.innerText = '🏹'; s1Name.innerText = 'Shot'; }
+    }
+    if (s1Cd && s1Btn) {
+        if (PLAYER.fireCooldown > 0) {
+            const fireMax = PLAYER.class === 'Archer' ? 0.15 : (PLAYER.class === 'Warrior' ? 0.28 : 0.25);
+            const pct = Math.min(100, (PLAYER.fireCooldown / fireMax) * 100);
+            s1Cd.style.height = pct + '%';
+            s1Btn.classList.remove('ready-glow');
+            if (s1CdText) s1CdText.innerText = '';
+        } else {
+            s1Cd.style.height = '0%';
+            s1Btn.classList.add('ready-glow');
+            if (s1CdText) s1CdText.innerText = '';
+        }
+    }
+
+    // Slot 2: Tactical Skill
+    const s2Icon = document.getElementById('skill-icon-2');
+    const s2Name = document.getElementById('skill-name-2');
+    const s2Cd = document.getElementById('skill-cd-2');
+    const s2CdText = document.getElementById('skill-cd-text-2');
+    const s2Btn = document.getElementById('skill-slot-2');
+    if (s2Icon && s2Name) {
+        if (PLAYER.class === 'Warrior') { s2Icon.innerText = '🛡️'; s2Name.innerText = 'Charge'; }
+        else if (PLAYER.class === 'Mage') { s2Icon.innerText = '✨'; s2Name.innerText = 'Blink'; }
+        else { s2Icon.innerText = '💨'; s2Name.innerText = 'Roll'; }
+    }
+    if (s2Cd && s2CdText && s2Btn) {
+        const tMax = PLAYER.tacticalMaxCooldown || 5.0;
+        if (PLAYER.tacticalCooldown > 0) {
+            const pct = Math.min(100, (PLAYER.tacticalCooldown / tMax) * 100);
+            s2Cd.style.height = pct + '%';
+            s2CdText.innerText = `${PLAYER.tacticalCooldown.toFixed(1)}s`;
+            s2Btn.classList.remove('ready-glow');
+        } else {
+            s2Cd.style.height = '0%';
+            s2CdText.innerText = '';
+            s2Btn.classList.add('ready-glow');
+        }
+    }
+
+    // Slot 3: Class Skill 1
+    const s3Icon = document.getElementById('skill-icon-3');
+    const s3Name = document.getElementById('skill-name-3');
+    const s3Cd = document.getElementById('skill-cd-3');
+    const s3CdText = document.getElementById('skill-cd-text-3');
+    const s3Btn = document.getElementById('skill-slot-3');
+    if (s3Icon && s3Name) {
+        if (PLAYER.class === 'Warrior') { s3Icon.innerText = '🌀'; s3Name.innerText = 'Whirlwind'; }
+        else if (PLAYER.class === 'Mage') { s3Icon.innerText = '🔮'; s3Name.innerText = 'Nova'; }
+        else { s3Icon.innerText = '🎯'; s3Name.innerText = 'Ballista'; }
+    }
+    if (s3Cd && s3CdText && s3Btn) {
+        const sk1Max = PLAYER.skill1MaxCooldown || 4.2;
+        if (PLAYER.skill1Cooldown > 0) {
+            const pct = Math.min(100, (PLAYER.skill1Cooldown / sk1Max) * 100);
+            s3Cd.style.height = pct + '%';
+            s3CdText.innerText = `${PLAYER.skill1Cooldown.toFixed(1)}s`;
+            s3Btn.classList.remove('ready-glow');
+        } else {
+            s3Cd.style.height = '0%';
+            s3CdText.innerText = '';
+            s3Btn.classList.add('ready-glow');
+        }
+    }
+
+    // Slot 4: Class Skill 2
+    const s4Icon = document.getElementById('skill-icon-4');
+    const s4Name = document.getElementById('skill-name-4');
+    const s4Cd = document.getElementById('skill-cd-4');
+    const s4CdText = document.getElementById('skill-cd-text-4');
+    const s4Btn = document.getElementById('skill-slot-4');
+    if (s4Icon && s4Name) {
+        if (PLAYER.class === 'Warrior') { s4Icon.innerText = '⚡'; s4Name.innerText = 'Thunder'; }
+        else if (PLAYER.class === 'Mage') { s4Icon.innerText = '☄️'; s4Name.innerText = 'Meteor'; }
+        else { s4Icon.innerText = '🔥'; s4Name.innerText = 'Volley'; }
+    }
+    if (s4Cd && s4CdText && s4Btn) {
+        const sk2Max = PLAYER.skill2MaxCooldown || 6.5;
+        if (PLAYER.skill2Cooldown > 0) {
+            const pct = Math.min(100, (PLAYER.skill2Cooldown / sk2Max) * 100);
+            s4Cd.style.height = pct + '%';
+            s4CdText.innerText = `${PLAYER.skill2Cooldown.toFixed(1)}s`;
+            s4Btn.classList.remove('ready-glow');
+        } else {
+            s4Cd.style.height = '0%';
+            s4CdText.innerText = '';
+            s4Btn.classList.add('ready-glow');
+        }
+    }
+
+    // Slot 5: Ultimate Ability
+    const s5Icon = document.getElementById('skill-icon-5');
+    const s5Name = document.getElementById('skill-name-5');
+    const s5Cd = document.getElementById('skill-cd-5');
+    const s5CdText = document.getElementById('skill-cd-text-5');
+    const s5Btn = document.getElementById('skill-slot-5');
+    if (s5Icon && s5Name) {
+        if (PLAYER.class === 'Warrior') { s5Icon.innerText = '💥'; s5Name.innerText = 'Colossus'; }
+        else if (PLAYER.class === 'Mage') { s5Icon.innerText = '❄️'; s5Name.innerText = 'Blizzard'; }
+        else { s5Icon.innerText = '🏹'; s5Name.innerText = 'Storm'; }
+    }
+    if (s5Cd && s5CdText && s5Btn) {
+        const ultMax = PLAYER.ultMaxCooldown || 20.0;
+        if (PLAYER.ultCooldown > 0) {
+            const pct = Math.min(100, (PLAYER.ultCooldown / ultMax) * 100);
+            s5Cd.style.height = pct + '%';
+            s5CdText.innerText = `${Math.ceil(PLAYER.ultCooldown)}s`;
+            s5Btn.classList.remove('ready-glow');
+        } else {
+            s5Cd.style.height = '0%';
+            s5CdText.innerText = 'READY';
+            s5Btn.classList.add('ready-glow');
+        }
+    }
 }
 
 function gameOver() {
@@ -5677,8 +7318,10 @@ function gameOver() {
     SAVE.essence += banked;
     writeSave();
 
+    saveScoreToLeaderboard({ name: `Hero ${PLAYER.class}` });
+
     document.getElementById('game-over').style.display = 'flex';
-    document.getElementById('go-wave').innerText = GAME.wave;
+    document.getElementById('go-wave').innerText = (GAME.mode === 'dungeon' ? `Chamber ${GAME.dungeonRoom + 1}` : (GAME.mode === 'titan' ? `Titan ${GAME.titanStage + 1} / 5` : GAME.wave));
     document.getElementById('go-level').innerText = PLAYER.level;
     document.getElementById('go-score').innerText = GAME.score;
     document.getElementById('go-kills').innerText = GAME.kills;
@@ -5912,12 +7555,33 @@ function animate() {
         pos.x = Math.max(-490, Math.min(490, pos.x));
         pos.z = Math.max(-490, Math.min(490, pos.z));
 
-        const cameraTargetX = playerMesh.position.x;
-        const cameraTargetZ = playerMesh.position.z + 35; 
+        // Dynamic Camera Setup by Game Mode
+        let cameraTargetX = playerMesh.position.x;
+        let cameraTargetZ = playerMesh.position.z + 35; 
+        let targetCamY = 60;
+        let targetLookX = playerMesh.position.x;
+        let targetLookY = 0;
+        let targetLookZ = playerMesh.position.z;
+
+        if (GAME.mode === 'dungeon') {
+            // Isometric side-angle camera with lookahead forward into the dungeon corridor
+            cameraTargetX = playerMesh.position.x - 22; // Side-offset so the entire chamber and corridor paths are visible from the side
+            cameraTargetZ = playerMesh.position.z + 14; // Slightly back
+            targetCamY = 28; // Elevated side vantage angle
+            targetLookX = playerMesh.position.x + 3;
+            targetLookY = 1.2;
+            targetLookZ = playerMesh.position.z + 18; // Lookahead forward down the hall toward the exit gate!
+        } else if (GAME.mode === 'titan') {
+            // Colosseum Boss Arena cinematic camera
+            cameraTargetZ = playerMesh.position.z + 30;
+            targetCamY = 46;
+            targetLookY = 1.5;
+            targetLookZ = playerMesh.position.z + 2.0;
+        }
         
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraTargetX, 0.1);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, cameraTargetZ, 0.1);
-        camera.position.y = 60; 
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraTargetX, 0.12);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, cameraTargetZ, 0.12);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, 0.1);
 
         // Camera Shake effect
         if (cameraShakeTimer > 0) {
@@ -5927,7 +7591,17 @@ function animate() {
             camera.position.z += (Math.random() - 0.5) * 1.5;
         }
 
-        camera.lookAt(playerMesh.position.x, 0, playerMesh.position.z);
+        camera.lookAt(targetLookX, targetLookY, targetLookZ);
+
+        // Combo Decay Update
+        if (GAME.comboTimer > 0) {
+            GAME.comboTimer -= dt;
+            if (GAME.comboTimer <= 0) {
+                GAME.comboCount = 0;
+                GAME.comboMultiplier = 1.0;
+                updateComboHUD();
+            }
+        }
 
         if (keys.w || keys.a || keys.s || keys.d || joystickMove.active) {
             if (bodyMesh) bodyMesh.position.y = 1 + Math.sin(GAME.time * 15) * 0.15;
@@ -5968,6 +7642,18 @@ function animate() {
                 else enemies[i].update(dt, playerPos);
             }
             updateDungeon(dt, playerPos);
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                items[i].update(dt, playerMesh.position);
+                if (items[i].life === -1) items.splice(i, 1);
+            }
+        } else if (GAME.mode === 'titan') {
+            const playerPos = playerMesh.position;
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                if (enemies[i].hp <= 0) enemies.splice(i, 1);
+                else enemies[i].update(dt, playerPos);
+            }
+            updateTitanGauntlet(dt, playerPos);
 
             for (let i = items.length - 1; i >= 0; i--) {
                 items[i].update(dt, playerMesh.position);
