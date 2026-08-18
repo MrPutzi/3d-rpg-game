@@ -10,11 +10,11 @@
         #teammate-arrows-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
         .panel { position: absolute; background: rgba(15, 20, 30, 0.85); border: 2px solid #3d4d65; border-radius: 8px; color: #fff; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); pointer-events: auto; backdrop-filter: blur(4px); }
         
-        #hud-top-left { top: 10px; left: 10px; width: 220px; font-size: 0.85rem; }
-        #hud-top-center { top: 10px; left: 50%; transform: translateX(-50%); text-align: center; width: auto; min-width: 240px; max-width: 380px; box-sizing: border-box; }
-        #hud-bottom-right { bottom: 10px; right: 10px; text-align: right; font-size: 0.85rem; max-width: 220px; box-sizing: border-box; }
-        #hud-bottom-left { bottom: 10px; left: 10px; font-size: 0.85rem; max-width: 220px; }
-        #hud-teammates { top: 175px; left: 10px; width: 220px; font-size: 0.8rem; display: none; }
+        #hud-top-left { top: 10px; left: 10px; width: 210px; font-size: 0.85rem; z-index: 10; }
+        #hud-top-center { top: 10px; left: 50%; transform: translateX(-50%); text-align: center; width: auto; min-width: 240px; max-width: 380px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; align-items: center; }
+        #hud-bottom-right { bottom: 12px; right: 10px; text-align: right; font-size: 0.85rem; max-width: 200px; box-sizing: border-box; z-index: 10; }
+        #hud-bottom-left { bottom: 12px; left: 10px; font-size: 0.85rem; max-width: 200px; z-index: 10; }
+        #hud-teammates { top: 112px; left: 10px; width: 210px; font-size: 0.8rem; display: none; z-index: 8; }
         
         .bar-container { width: 100%; height: 14px; background: #1a202c; margin-top: 4px; border-radius: 8px; overflow: hidden; border: 1px solid #4a5568;}
         .health-bar { height: 100%; background: linear-gradient(90deg, #e74c3c, #ff6b6b); width: 100%; transition: width 0.2s; }
@@ -163,12 +163,109 @@
         #joystick-left { left: 16px; }
         #joystick-right { right: 16px; }
 
-        /* Top Action Bar (Clean Header Row) */
-        .top-action-bar { position: absolute; top: 8px; right: 120px; display: flex; gap: 5px; z-index: 22; pointer-events: auto; }
+        /* Top Action Bar (Dedicated Utility Bar - Clean, non-overlapping) */
+        .top-action-bar {
+            position: absolute;
+            top: 10px;
+            right: 155px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            z-index: 22;
+            pointer-events: auto;
+            max-width: calc(50vw - 200px);
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
         .action-btn { background: rgba(15, 23, 42, 0.9); border: 1.5px solid #475569; color: white; padding: 5px 9px; border-radius: 7px; font-weight: bold; cursor: pointer; font-size: 0.8rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.3); transition: 0.15s; }
         .action-btn:hover { background: #334155; border-color: #94a3b8; }
 
+        /* Camera Orbit & Zoom Control Bar */
+        .camera-ctrl-bar {
+            display: flex;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1.5px solid #475569;
+            border-radius: 7px;
+            padding: 2px 4px;
+            gap: 3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .cam-ctrl-btn {
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid #334155;
+            color: #cbd5e1;
+            padding: 3px 6px;
+            border-radius: 5px;
+            font-size: 0.76rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 22px;
+            height: 24px;
+            box-shadow: none;
+        }
+        .cam-ctrl-btn:hover {
+            background: #38bdf8;
+            color: #0f172a;
+            border-color: #38bdf8;
+            transform: translateY(-1px);
+        }
+        .cam-compass-btn {
+            background: rgba(15, 23, 42, 0.95);
+            border-color: #f59e0b;
+            color: #fde047;
+            font-size: 0.85rem;
+        }
+        .cam-compass-btn:hover {
+            background: #f59e0b;
+            color: #000;
+            border-color: #fbbf24;
+        }
+        #hud-zoom-indicator {
+            position: absolute;
+            top: 52px;
+            right: 155px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1.5px solid #38bdf8;
+            color: #38bdf8;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            z-index: 25;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-6px);
+            transition: all 0.25s ease-out;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+        }
+        #hud-zoom-indicator.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
         /* Responsive Breakpoints */
+        @media (max-width: 1280px) {
+            .top-action-bar {
+                top: 145px;
+                right: 10px;
+                max-width: 160px;
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 4px;
+            }
+            #hud-zoom-indicator {
+                top: 130px;
+                right: 10px;
+            }
+        }
+
         @media (max-width: 1024px) {
             #mobile-controls { display: block; }
             #hud-top-left { transform: scale(0.88); transform-origin: top left; }
@@ -177,7 +274,7 @@
             #hud-teammates { display: none !important; }
             #minimap-container { top: 8px !important; right: 8px !important; width: 95px !important; height: 95px !important; }
             #hud-top-center { transform: translateX(-50%); max-width: 250px; min-width: 0; padding: 6px 10px; font-size: 0.8rem; }
-            .top-action-bar { right: 110px !important; top: 8px; }
+            .top-action-bar { top: 110px !important; right: 8px !important; max-width: 130px; }
             #hud-action-bar { bottom: 12px; gap: 6px; }
             .skill-square-btn { width: 50px; height: 50px; border-radius: 8px; }
             .skill-square-icon { font-size: 1.25rem; }
@@ -196,7 +293,7 @@
             #hud-bottom-right { bottom: 85px; right: 6px; font-size: 0.72rem; padding: 4px 6px; max-width: 120px; line-height: 1.2; }
             #hud-bottom-right h3 { font-size: 0.76rem; margin-bottom: 1px; }
 
-            .top-action-bar { top: 6px; right: 88px !important; gap: 3px; }
+            .top-action-bar { top: 90px !important; right: 6px !important; gap: 3px; max-width: 90px; }
             .action-btn { padding: 4px 6px; font-size: 0.72rem; border-radius: 5px; }
             .action-btn .btn-text { display: none; }
             #minimap-container { top: 6px !important; right: 6px !important; width: 76px !important; height: 76px !important; }
@@ -407,8 +504,8 @@
         #btn-tactical-mobile.ready { border-color: #38bdf8; background: linear-gradient(135deg, #0369a1, #0284c7); animation: tacticalGlow 1.2s infinite alternate; }
         #btn-tactical-mobile .ult-cd-text { font-size: 0.65rem; color: #cbd5e1; }
 
-        /* Shrine Buffs HUD */
-        #hud-buffs { position: absolute; top: 72px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; z-index: 10; pointer-events: none; }
+        /* Shrine Buffs HUD - Flow seamlessly below top center header */
+        #hud-buffs { position: relative; margin-top: 6px; display: flex; gap: 6px; justify-content: center; z-index: 10; pointer-events: none; flex-wrap: wrap; }
         .buff-pill { background: rgba(15, 23, 42, 0.9); border: 2px solid #38bdf8; color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: bold; display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
         .buff-swiftness { border-color: #10b981; color: #6ee7b7; }
         .buff-wrath { border-color: #ef4444; color: #fca5a5; }
@@ -426,8 +523,8 @@
         .mode-btn.active { background: #0284c7; color: white; box-shadow: 0 0 12px rgba(2,132,199,0.5); }
         .mode-btn.dungeon.active { background: linear-gradient(135deg, #9333ea, #7e22ce); box-shadow: 0 0 14px rgba(147,51,234,0.6); }
 
-        /* Party Member Frames HUD (Classic MMORPG Style) */
-        #hud-dungeon-party { position: absolute; top: 185px; left: 10px; width: 220px; display: none; flex-direction: column; gap: 6px; z-index: 5; pointer-events: auto; }
+        /* Party Member Frames HUD (Placed neatly under hero info) */
+        #hud-dungeon-party { position: absolute; top: 112px; left: 10px; width: 210px; display: none; flex-direction: column; gap: 6px; z-index: 8; pointer-events: auto; }
         .party-member-card { background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 8px; padding: 6px 10px; backdrop-filter: blur(4px); box-shadow: 0 2px 8px rgba(0,0,0,0.5); }
         .party-member-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; font-weight: bold; margin-bottom: 2px; }
         .party-member-bars { display: flex; flex-direction: column; gap: 2px; }
@@ -545,49 +642,469 @@
         .btn-lobby-launch:hover:not(:disabled) { transform: scale(1.03); filter: brightness(1.1); }
         .btn-lobby-launch:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
-        /* Start Screen Multiplayer Hub Card */
-        .mp-hub-card { background: rgba(15, 23, 42, 0.85); border: 2px solid #38bdf8; border-radius: 12px; padding: 14px 18px; width: 100%; max-width: 600px; box-sizing: border-box; margin: 8px 0; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 4px 16px rgba(56,189,248,0.2); }
-        .mp-hub-title { font-weight: 800; font-size: 0.95rem; color: #38bdf8; display: flex; align-items: center; justify-content: space-between; }
-        .mp-input-row { display: flex; gap: 8px; width: 100%; }
-        .mp-name-input { flex: 1; background: #090d16; border: 1px solid #475569; border-radius: 6px; color: white; padding: 8px 12px; font-size: 0.85rem; outline: none; }
-        .mp-code-input { width: 130px; background: #090d16; border: 2px solid #a855f7; border-radius: 6px; color: #fde047; padding: 8px 10px; font-size: 0.95rem; font-weight: bold; font-family: monospace; text-align: center; text-transform: uppercase; outline: none; }
+        /* Character Creation & Class Selection Modal */
+        .char-create-class-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 12px 0 16px 0;
+            width: 100%;
+        }
+        .char-create-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 2px solid #334155;
+            border-radius: 12px;
+            padding: 12px 10px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            position: relative;
+        }
+        .char-create-card:hover {
+            transform: translateY(-2px);
+            border-color: #64748b;
+            background: rgba(30, 41, 59, 0.9);
+        }
+        .char-create-card.selected {
+            border-color: #fbbf24;
+            background: rgba(30, 41, 59, 0.98);
+            box-shadow: 0 0 20px rgba(251,191,36,0.3);
+        }
+        .char-create-card.warrior.selected { border-color: #f87171; box-shadow: 0 0 20px rgba(248,113,113,0.4); }
+        .char-create-card.mage.selected { border-color: #38bdf8; box-shadow: 0 0 20px rgba(56,189,248,0.4); }
+        .char-create-card.archer.selected { border-color: #34d399; box-shadow: 0 0 20px rgba(52,211,153,0.4); }
+        
+        .char-create-check {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            font-size: 0.75rem;
+            color: #fbbf24;
+            display: none;
+        }
+        .char-create-card.selected .char-create-check { display: block; }
 
-        @media (max-width: 1024px) {
-            #btn-ultimate-mobile { display: flex; }
+        /* Start Screen Hero Dossier Card */
+        .start-hero-dossier-card {
+            background: radial-gradient(ellipse at top, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%);
+            border: 2px solid #38bdf8;
+            border-radius: 16px;
+            padding: 16px 20px;
+            width: 100%;
+            max-width: 780px;
+            box-sizing: border-box;
+            margin: 6px 0 10px 0;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+        }
+        .dossier-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            border-bottom: 1px solid rgba(51,65,85,0.7);
+            padding-bottom: 8px;
+        }
+        .dossier-hero-identity {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .dossier-hero-avatar {
+            font-size: 2.2rem;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15,23,42,0.8);
+            border: 2px solid #38bdf8;
+            border-radius: 12px;
+            box-shadow: 0 0 14px rgba(56,189,248,0.3);
+        }
+        .dossier-hero-name {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #f8fafc;
+            line-height: 1.2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .account-bound-tag {
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: rgba(251,191,36,0.18);
+            color: #fde047;
+            border: 1px solid #fbbf24;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        
+        /* Power Score Display Section */
+        .power-score-banner {
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            border-radius: 12px;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            box-shadow: inset 0 0 20px rgba(251,191,36,0.08);
+        }
+        .power-score-main {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .power-score-val {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #fbbf24;
+            text-shadow: 0 0 16px rgba(251,191,36,0.6);
+            letter-spacing: 0.5px;
+        }
+        .power-tier-badge {
+            font-size: 0.82rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         }
 
-        @media (max-width: 640px) {
-            #btn-ultimate-mobile { bottom: 145px; right: 18px; width: 54px; height: 54px; font-size: 0.75rem; }
-            #hud-buffs { top: 60px; gap: 4px; }
-            .buff-pill { padding: 3px 8px; font-size: 0.7rem; }
-            .gear-container { flex-direction: column; align-items: center; }
-            .paperdoll-panel, .inventory-panel { width: 100%; }
-            #hud-dungeon-party { top: 160px; width: 170px; transform: scale(0.85); transform-origin: top left; }
+        /* Subscore Pills Row */
+        .power-subscores-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .subscore-pill {
+            flex: 1;
+            min-width: 140px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 6px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .subscore-pill:hover {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: #64748b;
+            transform: translateY(-1px);
+        }
+        .subscore-pill.gear { border-left: 3px solid #38bdf8; }
+        .subscore-pill.talents { border-left: 3px solid #c084fc; }
+        .subscore-pill.sanctuary { border-left: 3px solid #fbbf24; }
+
+        /* Combat Stats Mini Grid */
+        .dossier-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            width: 100%;
+        }
+        .dossier-stat-box {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid #1e293b;
+            border-radius: 6px;
+            padding: 5px 4px;
+            text-align: center;
+        }
+        .dossier-stat-label { font-size: 0.64rem; color: #94a3b8; text-transform: uppercase; }
+        .dossier-stat-val { font-size: 0.82rem; font-weight: bold; color: #f8fafc; margin-top: 1px; }
+
+        /* Power Breakdown Modal */
+        .power-breakdown-card {
+            background: rgba(15, 23, 42, 0.95);
+            border: 2px solid #fbbf24;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 720px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-sizing: border-box;
+            box-shadow: 0 0 40px rgba(251,191,36,0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .breakdown-pillars-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .breakdown-pillar-col {
+            background: #090d16;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+        }
+        .tier-ladder-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: rgba(15,23,42,0.6);
+            border: 1px solid #1e293b;
+            font-size: 0.82rem;
+        }
+        .tier-ladder-row.current-tier {
+            background: rgba(251,191,36,0.15);
+            border-color: #fbbf24;
+            font-weight: bold;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
+    <!-- Character Creation & Account-Binding Screen -->
+    <div id="player-name-screen" class="overlay" style="display: none; z-index: 10000; background: radial-gradient(circle at center, rgba(15,23,42,0.97) 0%, rgba(2,6,23,0.99) 100%);">
+        <div class="name-entry-card" style="background: rgba(15, 23, 42, 0.95); border: 2px solid #fbbf24; border-radius: 18px; padding: 24px 28px; width: 100%; max-width: 580px; box-sizing: border-box; text-align: center; box-shadow: 0 0 45px rgba(251,191,36,0.35); position: relative;">
+            
+            <!-- Language Switcher in Name Entry -->
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
+                <div class="lang-switcher-bar">
+                    <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">🇬🇧 EN</button>
+                    <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 SK</button>
+                    <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 HU</button>
+                </div>
+            </div>
+
+            <div style="font-size: 2.6rem; margin-bottom: 2px; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">👑</div>
+            <h1 id="name-modal-title" style="color: #fbbf24; margin: 0 0 4px 0; font-size: 1.45rem; letter-spacing: 0.5px;">CREATE &amp; BIND YOUR HERO</h1>
+            <p id="name-modal-desc" style="color: #cbd5e1; font-size: 0.84rem; margin: 0 0 14px 0; line-height: 1.4;">
+                Choose your hero name and archetype. This selection binds permanently to your account save file!
+            </p>
+
+            <!-- Name Input Field -->
+            <div style="margin-bottom: 12px; text-align: left;">
+                <label id="name-modal-label" for="player-name-input" style="display: block; font-size: 0.75rem; font-weight: bold; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px;">Hero Name / Nickname:</label>
+                <input type="text" id="player-name-input" class="player-name-main-input" placeholder="Enter your name (e.g. Roland, Shadow...)" maxlength="16" autocomplete="off" spellcheck="false" style="width: 100%; box-sizing: border-box; background: #090d16; border: 2px solid #38bdf8; border-radius: 8px; color: #f8fafc; padding: 10px 14px; font-size: 1.1rem; font-weight: bold; outline: none; transition: 0.2s;">
+                <div id="player-name-error" style="display: none; color: #ef4444; font-size: 0.78rem; font-weight: bold; margin-top: 4px;">Please enter a valid name (at least 2 characters).</div>
+            </div>
+
+            <!-- Class Archetype Selection inside Account Creation -->
+            <div style="text-align: left;">
+                <label id="name-modal-class-label" style="display: block; font-size: 0.75rem; font-weight: bold; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Select Account-Bound Class:</label>
+                <div class="char-create-class-grid">
+                    <!-- Warrior -->
+                    <div class="char-create-card warrior selected" id="char-opt-warrior" onclick="selectCreationClass('Warrior')">
+                        <span class="char-create-check">✓ BOUND</span>
+                        <div style="font-size: 1.6rem;">⚔️</div>
+                        <strong style="color: #f87171; font-size: 0.92rem;">Warrior</strong>
+                        <span style="font-size: 0.66rem; color: #fca5a5; font-weight: bold;">🛡️ Tank &amp; Cleave</span>
+                        <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 4px;">160 HP • 24 DMG • Greatswords</div>
+                        <div style="font-size: 0.65rem; color: #f87171; margin-top: 2px; font-weight: bold;">⚡ Ult: Earthquake Slam</div>
+                    </div>
+
+                    <!-- Mage -->
+                    <div class="char-create-card mage" id="char-opt-mage" onclick="selectCreationClass('Mage')">
+                        <span class="char-create-check">✓ BOUND</span>
+                        <div style="font-size: 1.6rem;">🔮</div>
+                        <strong style="color: #38bdf8; font-size: 0.92rem;">Mage</strong>
+                        <span style="font-size: 0.66rem; color: #7dd3fc; font-weight: bold;">✨ Sorcery &amp; AoE</span>
+                        <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 4px;">90 HP • 32 DMG • Staves &amp; Mana</div>
+                        <div style="font-size: 0.65rem; color: #38bdf8; margin-top: 2px; font-weight: bold;">⚡ Ult: Frost Blizzard</div>
+                    </div>
+
+                    <!-- Archer -->
+                    <div class="char-create-card archer" id="char-opt-archer" onclick="selectCreationClass('Archer')">
+                        <span class="char-create-check">✓ BOUND</span>
+                        <div style="font-size: 1.6rem;">🏹</div>
+                        <strong style="color: #34d399; font-size: 0.92rem;">Archer</strong>
+                        <span style="font-size: 0.66rem; color: #6ee7b7; font-weight: bold;">🎯 Rapid DPS &amp; Agility</span>
+                        <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 4px;">115 HP • 15% Crit • Longbows</div>
+                        <div style="font-size: 0.65rem; color: #34d399; margin-top: 2px; font-weight: bold;">⚡ Ult: Arrow Barrage</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+                <button id="btn-cancel-name" onclick="closeNameModal()" style="display: none; background: #334155; border: 1px solid #64748b; padding: 10px 18px; font-size: 0.9rem; border-radius: 8px; font-weight: bold; color: #cbd5e1; cursor: pointer;">Cancel</button>
+                <button id="btn-confirm-name" onclick="confirmPlayerName()" class="btn-emerald" style="padding: 12px 24px; font-size: 1rem; font-weight: 800; border-radius: 8px; flex: 1; box-shadow: 0 0 20px rgba(34,197,94,0.4); cursor: pointer;">
+                    ⚔️ Bind Hero &amp; Enter Game
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Power Score Formula & Breakdown Modal -->
+    <div id="power-breakdown-screen" class="overlay" style="display: none; z-index: 9999;">
+        <div class="power-breakdown-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 10px;">
+                <div>
+                    <h2 id="power-modal-title" style="color: #fbbf24; margin: 0; font-size: 1.35rem; display: flex; align-items: center; gap: 8px;">
+                        ⚡ HERO POWER RATING &amp; SCORING SYSTEM
+                    </h2>
+                    <p id="power-modal-desc" style="color: #cbd5e1; font-size: 0.8rem; margin: 3px 0 0 0;">
+                        Overall score computed across your equipped Gear, Class Talents, and Meta Sanctuary upgrades.
+                    </p>
+                </div>
+                <button onclick="closePowerBreakdownModal()" style="background: #334155; border: 1px solid #475569; padding: 6px 14px; border-radius: 6px; color: #f8fafc; font-weight: bold; cursor: pointer;">✕</button>
+            </div>
+
+            <!-- Total Score Spotlight -->
+            <div style="background: radial-gradient(circle at center, rgba(251,191,36,0.15) 0%, rgba(15,23,42,0.9) 100%); border: 1px solid #fbbf24; border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Current Total Hero Power:</div>
+                    <div style="font-size: 2.2rem; font-weight: 900; color: #fbbf24; text-shadow: 0 0 16px rgba(251,191,36,0.6);" id="pb-total-power">0</div>
+                </div>
+                <div style="text-align: right;">
+                    <div id="pb-tier-badge" class="power-tier-badge" style="background: #c084fc33; border: 1px solid #c084fc; color: #c084fc; font-size: 0.95rem; padding: 5px 14px;">
+                        🛡️ Elite Champion
+                    </div>
+                    <div id="pb-tier-progress-text" style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">450 / 600 XP to Dungeon Warlord</div>
+                </div>
+            </div>
+
+            <!-- 3 Scoring Pillars -->
+            <div class="breakdown-pillars-grid">
+                <!-- Pillar 1: Gear -->
+                <div class="breakdown-pillar-col" style="border-top: 3px solid #38bdf8;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #38bdf8; font-size: 0.92rem;">🎒 Gear &amp; Items</strong>
+                        <span id="pb-gear-val" style="font-weight: 900; color: #38bdf8; font-size: 1.1rem;">0</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #cbd5e1; line-height: 1.4;">
+                        • <strong>5 Equipped Slots:</strong> Stats weighted by Damage (x3.2), HP (x1.2), Armor (x5.0), Crit (x4.0), Vamp (x6.5).<br>
+                        • <strong>Rarity Bonuses:</strong> Epic (+130), Legendary (+260).<br>
+                        • <strong>Stash Collector:</strong> +5 pts per unique item stored.
+                    </div>
+                </div>
+
+                <!-- Pillar 2: Talents -->
+                <div class="breakdown-pillar-col" style="border-top: 3px solid #c084fc;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #c084fc; font-size: 0.92rem;">🌟 Talents Mastery</strong>
+                        <span id="pb-talent-val" style="font-weight: 900; color: #c084fc; font-size: 1.1rem;">0</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #cbd5e1; line-height: 1.4;">
+                        • <strong>Invested Ranks:</strong> +50 pts per talent point active in class spec trees.<br>
+                        • <strong>Tier 3 Keystones:</strong> +120 bonus points each.<br>
+                        • <strong>Unspent Reserve:</strong> +20 pts per available talent point.
+                    </div>
+                </div>
+
+                <!-- Pillar 3: Meta Sanctuary -->
+                <div class="breakdown-pillar-col" style="border-top: 3px solid #fbbf24;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #fbbf24; font-size: 0.92rem;">🏛️ Meta Sanctuary</strong>
+                        <span id="pb-sanctuary-val" style="font-weight: 900; color: #fbbf24; font-size: 1.1rem;">0</span>
+                    </div>
+                    <div style="font-size: 0.75rem; color: #cbd5e1; line-height: 1.4;">
+                        • <strong>18 Blessings:</strong> Points for every rank purchased across Defense, Offense &amp; Utility.<br>
+                        • <strong>Maxed Mastery:</strong> +80 bonus points per fully completed branch.<br>
+                        • <strong>Essence Reserve:</strong> Wealth scaling bonus.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progression Tiers Ladder -->
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="font-size: 0.78rem; font-weight: bold; color: #94a3b8; text-transform: uppercase;">Hero Power Titles &amp; Tier Ladder:</div>
+                <div class="tier-ladder-row" id="tier-row-novice">
+                    <span>🌱 <strong>Novice Adventurer</strong></span>
+                    <span style="color: #94a3b8;">0 &ndash; 399 Power</span>
+                </div>
+                <div class="tier-ladder-row" id="tier-row-adept">
+                    <span>🗡️ <strong style="color:#38bdf8;">Adept Raider</strong></span>
+                    <span style="color: #38bdf8;">400 &ndash; 899 Power</span>
+                </div>
+                <div class="tier-ladder-row" id="tier-row-champion">
+                    <span>🛡️ <strong style="color:#c084fc;">Elite Champion</strong></span>
+                    <span style="color: #c084fc;">900 &ndash; 1,499 Power</span>
+                </div>
+                <div class="tier-ladder-row" id="tier-row-warlord">
+                    <span>⚔️ <strong style="color:#f59e0b;">Dungeon Warlord</strong></span>
+                    <span style="color: #f59e0b;">1,500 &ndash; 2,299 Power</span>
+                </div>
+                <div class="tier-ladder-row" id="tier-row-titan_slayer">
+                    <span>⚡ <strong style="color:#ef4444;">Mythic Titan Slayer</strong></span>
+                    <span style="color: #ef4444;">2,300 &ndash; 3,199 Power</span>
+                </div>
+                <div class="tier-ladder-row" id="tier-row-grandmaster">
+                    <span>👑 <strong style="color:#fde047;">Grandmaster Colossus</strong></span>
+                    <span style="color: #fde047;">3,200+ Power</span>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 4px;">
+                <button onclick="closePowerBreakdownModal()" class="btn-gold" style="padding: 8px 30px; font-weight: bold; border-radius: 8px;">
+                    Close Breakdown
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Start Screen -->
     <div id="start-screen" class="overlay" style="display: flex;">
-        <h1 style="margin-bottom: 2px; letter-spacing: 0.5px;">⚔️ 3D RPG HORDE, DUNGEON &amp; TITAN RAID</h1>
-        <p style="margin-bottom: 8px; color: #cbd5e1;">Master 3 hero archetypes, raid dungeons with party AI, battle colossi in Titan's Gauntlet, and climb the Global Hall of Legends!</p>
         
+        <!-- Header Language Bar & Identity Badge -->
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 900px; margin-bottom: 4px;">
+            <div style="font-size: 0.8rem; color: #94a3b8; display: flex; align-items: center; gap: 6px;">
+                <span>🌐 Language / Jazyk / Nyelv:</span>
+                <div class="lang-switcher-bar">
+                    <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">🇬🇧 English</button>
+                    <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 Slovenčina</button>
+                    <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 Magyar</button>
+                </div>
+            </div>
+
+            <!-- Active Player Identity Badge Bar -->
+            <div class="hero-name-badge-bar" style="margin: 0;">
+                <span id="start-player-label" style="color: #94a3b8; font-size: 0.82rem;">👤 Player:</span>
+                <strong id="start-player-name-display" style="color: #fde047; font-size: 0.95rem; letter-spacing: 0.3px;">Hero</strong>
+                <button id="btn-start-change-name" onclick="openNameModal()" class="btn-gold" style="padding: 2px 10px; font-size: 0.74rem; margin: 0; border-radius: 12px; background: #0284c7; border: 1px solid #38bdf8;">✏️ Character Profile</button>
+            </div>
+        </div>
+
+        <h1 id="start-title" style="margin-bottom: 2px; letter-spacing: 0.5px;">⚔️ 3D RPG HORDE, DUNGEON &amp; TITAN RAID</h1>
+        <p id="start-subtitle" style="margin-bottom: 6px; color: #cbd5e1;">Master your account-bound hero archetype, raid dungeons with party AI, and claim high score glory!</p>
+
         <div class="currency-display" style="display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap;">
-            <span>✨ Essence: <strong id="start-essence" style="color: #c084fc;">0</strong></span>
-            <button onclick="openQuestsModal()" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #8b5cf6, #a855f7);">
+            <span><span id="start-essence-label">✨ Essence:</span> <strong id="start-essence" style="color: #c084fc;">0</strong></span>
+            <button id="btn-start-quests" onclick="openQuestsModal()" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #8b5cf6, #a855f7);">
                 📜 Daily Quests <span id="start-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
             </button>
-            <button onclick="openTalentsModal()" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #0ea5e9, #0284c7);">
+            <button id="btn-start-talents" onclick="openTalentsModal()" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #0ea5e9, #0284c7);">
                 🌟 Class Talents (N)
             </button>
-            <button onclick="openLeaderboardModal()" class="btn-gold" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #d97706, #f59e0b);">
+            <button id="btn-start-leaderboard" onclick="openLeaderboardModal()" class="btn-gold" style="padding:5px 12px; font-size:0.82rem; background: linear-gradient(135deg, #d97706, #f59e0b);">
                 🏆 Hall of Legends (L)
             </button>
-            <button onclick="openShopModal('sanctuary')" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem;">
+            <button id="btn-start-shop" onclick="openShopModal('sanctuary')" class="btn-emerald" style="padding:5px 12px; font-size:0.82rem;">
                 🛒 Meta Sanctuary
             </button>
-            <button onclick="openGearModal()" class="btn-gold" style="padding:5px 12px; font-size:0.82rem;">
+            <button id="btn-start-gear" onclick="openGearModal()" class="btn-gold" style="padding:5px 12px; font-size:0.82rem;">
                 🎒 Equipment (I)
             </button>
         </div>
@@ -599,98 +1116,134 @@
             <button id="mode-btn-titan" class="mode-btn" style="border:1px solid #ef4444;" onclick="selectGameMode('titan')">⚔️ Titan's Gauntlet</button>
         </div>
 
-        <div id="dungeon-info-banner" style="display: none; background: rgba(147, 51, 234, 0.18); border: 1px solid #a855f7; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 650px; text-align: center; font-size: 0.82rem; color: #e9d5ff; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
+        <div id="dungeon-info-banner" style="display: none; background: rgba(147, 51, 234, 0.18); border: 1px solid #a855f7; border-radius: 8px; padding: 8px 16px; margin-bottom: 6px; max-width: 780px; text-align: center; font-size: 0.82rem; color: #e9d5ff; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
             🗡️ <strong>Crypt of Overlord Malakor (Hardcore Isometric Mode)</strong> &bull; Traverse 5 perilous chambers featuring floor spike traps, flame fissures, elite shielded guards, and a 3-phase final boss!
         </div>
 
-        <div id="titan-info-banner" style="display: none; background: rgba(239, 68, 68, 0.18); border: 1px solid #ef4444; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 650px; text-align: center; font-size: 0.82rem; color: #fecaca; box-shadow: 0 4px 12px rgba(239,68,68,0.3);">
+        <div id="titan-info-banner" style="display: none; background: rgba(239, 68, 68, 0.18); border: 1px solid #ef4444; border-radius: 8px; padding: 8px 16px; margin-bottom: 6px; max-width: 780px; text-align: center; font-size: 0.82rem; color: #fecaca; box-shadow: 0 4px 12px rgba(239,68,68,0.3);">
             ⚡ <strong>Titan's Gauntlet (Boss Rush Colosseum)</strong> &bull; Face 5 gargantuan ancient Titans back-to-back! Draft divine boons after each kill and race against the clock for the ultimate score!
         </div>
 
-        <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 8px; max-width: 650px; text-align: center; font-size: 0.82rem; color: #bae6fd;">
+        <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 6px; max-width: 780px; text-align: center; font-size: 0.82rem; color: #bae6fd;">
             🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!
         </div>
+
+        <!-- Static Account-Bound Hero Dossier Card with Power Score -->
+        <div class="start-hero-dossier-card" id="start-hero-dossier">
+            <!-- Header Row: Hero Identity & Rebind Button -->
+            <div class="dossier-header-row">
+                <div class="dossier-hero-identity">
+                    <div class="dossier-hero-avatar" id="dossier-avatar">⚔️</div>
+                    <div>
+                        <div class="dossier-hero-name">
+                            <span id="dossier-hero-name-text">Roland</span>
+                            <span class="account-bound-tag" id="dossier-bound-tag">🔒 BOUND ACCOUNT HERO</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                            <span id="dossier-class-role-badge" style="font-size: 0.76rem; font-weight: bold; color: #f87171;">⚔️ WARRIOR &bull; 🛡️ TANK &amp; MELEE CLEAVE</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <button onclick="openNameModal()" class="btn-gold" style="padding: 4px 12px; font-size: 0.75rem; border-radius: 8px; margin: 0; background: #334155; border: 1px solid #64748b;" id="btn-dossier-rebind">
+                        🔄 Switch / Rebind Hero
+                    </button>
+                </div>
+            </div>
+
+            <!-- Central Hero Power Score Spotlight Banner -->
+            <div class="power-score-banner">
+                <div class="power-score-main">
+                    <span style="font-size: 0.8rem; font-weight: bold; color: #94a3b8; text-transform: uppercase;" id="dossier-power-label">⚡ HERO POWER:</span>
+                    <span class="power-score-val" id="dossier-power-score">0</span>
+                    <span id="dossier-tier-badge" class="power-tier-badge" style="background: #c084fc33; border: 1px solid #c084fc; color: #c084fc;">
+                        🛡️ Elite Champion
+                    </span>
+                </div>
+                <button onclick="openPowerBreakdownModal()" class="btn-emerald" style="padding: 5px 12px; font-size: 0.76rem; margin: 0; background: rgba(56,189,248,0.2); border: 1px solid #38bdf8; color: #38bdf8;" id="btn-dossier-breakdown">
+                    ℹ️ Scoring Breakdown
+                </button>
+            </div>
+
+            <!-- Interactive Subscores Row (Gear, Talents, Sanctuary) -->
+            <div class="power-subscores-row">
+                <div class="subscore-pill gear" onclick="openGearModal()" title="Click to open Equipment & Stash">
+                    <span style="color: #cbd5e1;" id="dossier-gear-label">🎒 Gear Score:</span>
+                    <strong style="color: #38bdf8; font-size: 0.95rem;" id="dossier-gear-score">0</strong>
+                </div>
+                <div class="subscore-pill talents" onclick="openTalentsModal()" title="Click to open Class Talents Tree">
+                    <span style="color: #cbd5e1;" id="dossier-talents-label">🌟 Talents Mastery:</span>
+                    <strong style="color: #c084fc; font-size: 0.95rem;" id="dossier-talents-score">0</strong>
+                </div>
+                <div class="subscore-pill sanctuary" onclick="openShopModal('sanctuary')" title="Click to open Meta Sanctuary">
+                    <span style="color: #cbd5e1;" id="dossier-sanctuary-label">🏛️ Sanctuary Power:</span>
+                    <strong style="color: #fbbf24; font-size: 0.95rem;" id="dossier-sanctuary-score">0</strong>
+                </div>
+            </div>
+
+            <!-- Base Combat Stats Grid -->
+            <div class="dossier-stats-grid">
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">❤️ Max HP</div>
+                    <div class="dossier-stat-val" id="dossier-stat-hp">160</div>
+                </div>
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">⚔️ Damage</div>
+                    <div class="dossier-stat-val" id="dossier-stat-dmg">24</div>
+                </div>
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">🛡️ Armor DR</div>
+                    <div class="dossier-stat-val" id="dossier-stat-armor">4</div>
+                </div>
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">👟 Speed</div>
+                    <div class="dossier-stat-val" id="dossier-stat-spd">12 m/s</div>
+                </div>
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">🎯 Crit Rate</div>
+                    <div class="dossier-stat-val" id="dossier-stat-crit">5%</div>
+                </div>
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">🩸 Vampirism</div>
+                    <div class="dossier-stat-val" id="dossier-stat-vamp">0</div>
+                </div>
+                <div class="dossier-stat-box">
+                    <div class="dossier-stat-label">🛡️ Barrier</div>
+                    <div class="dossier-stat-val" id="dossier-stat-shield">0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Big Launch Button for Solo -->
+        <button id="btn-start-launch" class="btn-gold" onclick="startSoloGame()" style="font-size: 1.12rem; padding: 12px 36px; border-radius: 10px; margin-top: 6px; box-shadow: 0 0 20px rgba(245,158,11,0.5); width: 100%; max-width: 460px;">
+            🎮 PLAY SOLO + 2 AI COMPANIONS
+        </button>
 
         <!-- Multiplayer Lobby Hub Panel -->
         <div class="mp-hub-card">
             <div class="mp-hub-title">
-                <span>👥 Multiplayer Online Co-Op Lobby</span>
-                <span style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">Assemble party before starting</span>
+                <span id="mp-hub-title-text">👥 Multiplayer Online Co-Op Lobby</span>
+                <span id="mp-hub-subtitle-text" style="font-size:0.75rem; color:#94a3b8; font-weight:normal;">Assemble party before starting</span>
             </div>
             <div class="mp-input-row">
                 <input type="text" id="mp-hero-name" class="mp-name-input" placeholder="Your Hero Name (e.g. Roland)" maxlength="16">
-                <button onclick="createPartyLobby()" class="btn-emerald" style="padding: 8px 14px; font-size: 0.82rem; font-weight: bold; margin: 0; white-space: nowrap;">
+                <button id="btn-mp-create" onclick="createPartyLobby()" class="btn-emerald" style="padding: 8px 14px; font-size: 0.82rem; font-weight: bold; margin: 0; white-space: nowrap;">
                     ✨ Create Lobby
                 </button>
             </div>
             <div class="mp-input-row" style="margin-top: 2px;">
                 <input type="text" id="mp-join-code" class="mp-code-input" placeholder="CODE" maxlength="8">
-                <button onclick="joinPartyLobby()" class="btn-gold" style="padding: 8px 16px; font-size: 0.82rem; font-weight: bold; margin: 0; flex: 1; white-space: nowrap;">
+                <button id="btn-mp-join" onclick="joinPartyLobby()" class="btn-gold" style="padding: 8px 16px; font-size: 0.82rem; font-weight: bold; margin: 0; flex: 1; white-space: nowrap;">
                     🚀 Join Party Lobby
                 </button>
             </div>
         </div>
 
-        <!-- Class Selection Cards -->
-        <div class="class-grid" id="start-hero-grid">
-            <!-- Warrior -->
-            <div class="class-card selected" id="hero-card-warrior" onclick="selectStartHero('Warrior')" ondblclick="startGame('Warrior')">
-                <span class="class-badge-selected" id="badge-warrior-selected">✓ ACTIVE HERO</span>
-                <h2 style="color:#f87171;">⚔️ Warrior</h2>
-                <div style="font-size:0.75rem; color:#fca5a5; font-weight:bold; margin-bottom:6px;">🛡️ TANK &amp; MELEE CLEAVE</div>
-                <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">Wields Heavy Greatswords &amp; Plate Armor</div>
-                <div style="background:rgba(15,23,42,0.8); border-radius:6px; padding:6px; text-align:left; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
-                    <div>❤️ <strong>Health:</strong> 160 HP <span style="color:#f87171;">(High)</span></div>
-                    <div>⚔️ <strong>Damage:</strong> 24 Slash + Wide Cleave</div>
-                    <div>🛡️ <strong>Base Armor:</strong> 4 DR</div>
-                    <div>👟 <strong>Speed:</strong> 12 m/s</div>
-                </div>
-                <div style="color:#f87171; font-size:0.75rem; font-weight:bold;">⚡ Ult: Earthquake Slam</div>
-                <div style="color:#94a3b8; font-size:0.72rem;">Radial shockwave dealing massive damage &amp; 3.5s stun</div>
-            </div>
-
-            <!-- Mage -->
-            <div class="class-card" id="hero-card-mage" onclick="selectStartHero('Mage')" ondblclick="startGame('Mage')">
-                <span class="class-badge-selected" id="badge-mage-selected" style="display:none;">✓ ACTIVE HERO</span>
-                <h2 style="color:#38bdf8;">🔮 Mage</h2>
-                <div style="font-size:0.75rem; color:#7dd3fc; font-weight:bold; margin-bottom:6px;">✨ RANGED SORCERY &amp; AOE</div>
-                <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">Wields Magic Staves &amp; Arcane Robes</div>
-                <div style="background:rgba(15,23,42,0.8); border-radius:6px; padding:6px; text-align:left; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
-                    <div>❤️ <strong>Health:</strong> 90 HP</div>
-                    <div>🔮 <strong>Mana:</strong> 100 Mana + Fast Regen</div>
-                    <div>⚔️ <strong>Damage:</strong> 32 Arcane Bolts (Piercing)</div>
-                    <div>👟 <strong>Speed:</strong> 14 m/s</div>
-                </div>
-                <div style="color:#38bdf8; font-size:0.75rem; font-weight:bold;">⚡ Ult: Frost Nova &amp; Blizzard</div>
-                <div style="color:#94a3b8; font-size:0.72rem;">Freezes all nearby foes solid with massive AoE burst</div>
-            </div>
-
-            <!-- Archer -->
-            <div class="class-card" id="hero-card-archer" onclick="selectStartHero('Archer')" ondblclick="startGame('Archer')">
-                <span class="class-badge-selected" id="badge-archer-selected" style="display:none;">✓ ACTIVE HERO</span>
-                <h2 style="color:#34d399;">🏹 Archer</h2>
-                <div style="font-size:0.75rem; color:#6ee7b7; font-weight:bold; margin-bottom:6px;">🎯 RAPID DPS &amp; MOBILITY</div>
-                <div style="font-size:0.78rem; color:#cbd5e1; margin-bottom:6px;">Wields Rapid Longbows &amp; Leather</div>
-                <div style="background:rgba(15,23,42,0.8); border-radius:6px; padding:6px; text-align:left; font-size:0.72rem; color:#94a3b8; margin-bottom:6px;">
-                    <div>❤️ <strong>Health:</strong> 115 HP</div>
-                    <div>⚔️ <strong>Damage:</strong> 18 x 2 Rapid Arrows</div>
-                    <div>🎯 <strong>Crit Rate:</strong> 15% Base Crit</div>
-                    <div>👟 <strong>Speed:</strong> 16 m/s <span style="color:#34d399;">(Fastest)</span></div>
-                </div>
-                <div style="color:#34d399; font-size:0.75rem; font-weight:bold;">⚡ Ult: Arrow Barrage &amp; Dash</div>
-                <div style="color:#94a3b8; font-size:0.72rem;">Invulnerable evasion dash + 360° piercing arrow storm</div>
-            </div>
-        </div>
-
-        <!-- Big Launch Button for Solo -->
-        <button id="btn-start-launch" class="btn-gold" onclick="startSoloGame()" style="font-size: 1.15rem; padding: 12px 36px; border-radius: 10px; margin-top: 14px; box-shadow: 0 0 20px rgba(245,158,11,0.5); width: 100%; max-width: 440px;">
-            🎮 PLAY SOLO + 2 AI COMPANIONS
-        </button>
-
         <!-- Controls Cheat Sheet -->
-        <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 0.76rem; color: #94a3b8;">
+        <div id="controls-cheat-sheet" style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 0.76rem; color: #94a3b8;">
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[WASD / Sticks] Move</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Mouse] Aim &amp; Attack</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Wheel / +/-] Zoom</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[Space / Q] Ultimate</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[I] Gear</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">[B] Shop</span>
@@ -940,8 +1493,8 @@
             <div id="loot-modal-compare" style="font-size: 0.75rem; color: #34d399; font-weight: bold;">+12 DMG vs equipped</div>
         </div>
         <div style="display: flex; gap: 6px; flex-direction: column;">
-            <button id="btn-quick-equip" onclick="handleQuickEquipLoot()" class="btn-emerald" style="padding: 5px 12px; font-size: 0.8rem; margin: 0;">⚡ Equip Now (E)</button>
-            <button onclick="handleQuickBagLoot()" style="background: #334155; padding: 4px 10px; font-size: 0.75rem; margin: 0;">🎒 Stash to Bag</button>
+            <button id="btn-quick-equip" onclick="handleQuickEquipLoot()" class="btn-emerald" style="padding: 5px 12px; font-size: 0.8rem; margin: 0;">⚡ Equip (G)</button>
+            <button onclick="handleQuickBagLoot()" style="background: #334155; padding: 4px 10px; font-size: 0.75rem; margin: 0;">🎒 Stash (X)</button>
         </div>
     </div>
 
@@ -1036,14 +1589,35 @@
 
     <!-- Pause Screen -->
     <div id="pause-screen" class="overlay">
-        <h1>GAME PAUSED</h1>
-        <p>Take a breath or tweak your setup</p>
-        <button onclick="openTalentsModal()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding:10px 20px;">🌟 Class Talents (N)</button>
-        <button onclick="openLeaderboardModal()" style="background: linear-gradient(135deg, #d97706, #f59e0b); padding:10px 20px;">🏆 Hall of Legends (L)</button>
-        <button onclick="openQuestsModal()" style="background: linear-gradient(135deg, #8b5cf6, #a855f7); padding:10px 20px;">📜 Daily Quests</button>
-        <button onclick="openShopModal('merchant')" class="btn-gold" style="padding:10px 20px;">🛒 Open In-Game Shop</button>
-        <button onclick="resumeGame()">Resume Game</button>
-        <button onclick="location.reload()" style="background: #ef4444;">Quit to Menu</button>
+        <h1 id="pause-title">GAME PAUSED</h1>
+        <p id="pause-subtitle">Take a breath, adjust zoom or tweak your setup</p>
+        
+        <!-- Language Switcher in Pause Screen -->
+        <div style="margin: 6px 0 14px 0; display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.82rem; color: #94a3b8;">🌐 Language:</span>
+            <div class="lang-switcher-bar">
+                <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">🇬🇧 EN</button>
+                <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 SK</button>
+                <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 HU</button>
+            </div>
+        </div>
+
+        <!-- Camera Zoom Controls in Pause Screen -->
+        <div style="background: rgba(15,23,42,0.8); border: 1px solid #334155; border-radius: 10px; padding: 10px 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 0.85rem; color: #38bdf8; font-weight: bold;">🔍 Camera Zoom:</span>
+            <div class="zoom-group-bar">
+                <button class="zoom-ctrl-btn" onclick="adjustCameraZoom(0.15)" title="Zoom In (+ / Wheel Down)">➕ Zoom In</button>
+                <button class="zoom-ctrl-btn" onclick="resetCameraZoom()" title="Reset to 100% (Key: 0)">100% Reset</button>
+                <button class="zoom-ctrl-btn" onclick="adjustCameraZoom(-0.15)" title="Zoom Out (- / Wheel Up)">➖ Zoom Out</button>
+            </div>
+        </div>
+
+        <button id="btn-pause-talents" onclick="openTalentsModal()" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); padding:10px 20px;">🌟 Class Talents (N)</button>
+        <button id="btn-pause-leaderboard" onclick="openLeaderboardModal()" style="background: linear-gradient(135deg, #d97706, #f59e0b); padding:10px 20px;">🏆 Hall of Legends (L)</button>
+        <button id="btn-pause-quests" onclick="openQuestsModal()" style="background: linear-gradient(135deg, #8b5cf6, #a855f7); padding:10px 20px;">📜 Daily Quests</button>
+        <button id="btn-pause-shop" onclick="openShopModal('merchant')" class="btn-gold" style="padding:10px 20px;">🛒 Open In-Game Shop</button>
+        <button id="btn-pause-resume" onclick="resumeGame()" class="btn-emerald" style="padding:10px 20px; font-weight:bold;">▶️ Resume Game</button>
+        <button id="btn-pause-quit" onclick="location.reload()" style="background: #ef4444; padding:10px 20px;">🚪 Quit to Menu</button>
     </div>
 
     <!-- Leaderboard Modal (Hall of Legends) -->
@@ -1155,23 +1729,38 @@
 
     <!-- HUD -->
     <canvas id="teammate-arrows-canvas"></canvas>
+    <div id="hud-zoom-indicator">🔍 Zoom: 100%</div>
     <div id="gui">
-        <!-- Top Action Bar (Shop, Gear, Talents, Quests & Pause) -->
+        <!-- Top Action Bar (Shop, Gear, Talents, Quests, Zoom, Language & Pause) -->
         <div class="top-action-bar">
             <button class="action-btn btn-gold" onclick="toggleGearModal()" title="Open Hero Equipment & Stash (Hotkey: I)">
-                🎒 <span class="btn-text">Gear (I)</span>
+                🎒 <span class="btn-text" id="hud-btn-gear">Gear (I)</span>
             </button>
             <button class="action-btn btn-emerald" onclick="toggleTalentsModal()" style="background: rgba(14, 165, 233, 0.25); border-color: #38bdf8;" title="Class Talents (Hotkey: N)">
-                🌟 <span class="btn-text">Talents (N)</span>
+                🌟 <span class="btn-text" id="hud-btn-talents">Talents (N)</span>
             </button>
             <button class="action-btn btn-gold" onclick="toggleLeaderboardModal()" style="background: rgba(245, 158, 11, 0.25); border-color: #f59e0b;" title="Hall of Legends (Hotkey: L)">
-                🏆 <span class="btn-text">Hall (L)</span>
+                🏆 <span class="btn-text" id="hud-btn-hall">Hall (L)</span>
             </button>
             <button class="action-btn btn-emerald" onclick="toggleShopModal()" title="Open live shop (Hotkey: B)">
-                🛒 <span class="btn-text">Shop (B)</span>
+                🛒 <span class="btn-text" id="hud-btn-shop">Shop (B)</span>
             </button>
             <button class="action-btn" onclick="toggleQuestsModal()" style="background: rgba(139, 92, 246, 0.25); border-color: #8b5cf6;" title="Daily Quests">
-                📜 <span class="btn-text">Quests</span> <span id="top-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
+                📜 <span class="btn-text" id="hud-btn-quests">Quests</span> <span id="top-quest-badge" class="quest-notify-badge" style="display:none;">0</span>
+            </button>
+            <!-- Camera Orbit & Zoom Controls in Action Bar -->
+            <div class="camera-ctrl-bar" title="Camera Orbit & Zoom (Right Drag / Z, C / Wheel)">
+                <button class="cam-ctrl-btn" onclick="rotateCamera(-Math.PI / 8)" title="Rotate Camera Left (Key: Z / [ / Left Arrow)">↺</button>
+                <button class="cam-ctrl-btn cam-compass-btn" id="hud-cam-compass" onclick="resetCameraAngleAndZoom()" title="Reset Camera Angle & Zoom (Key: 0 / T)">
+                    <span id="hud-compass-icon" style="display:inline-block; transition:transform 0.1s ease-out;">🧭</span>
+                </button>
+                <button class="cam-ctrl-btn" onclick="rotateCamera(Math.PI / 8)" title="Rotate Camera Right (Key: C / ] / Right Arrow)">↻</button>
+                <button class="cam-ctrl-btn" onclick="adjustCameraZoom(0.15)" title="Zoom In (+ / Wheel Up)">➕</button>
+                <button class="cam-ctrl-btn" onclick="adjustCameraZoom(-0.15)" title="Zoom Out (- / Wheel Down)">➖</button>
+            </div>
+            <!-- Quick Language Switcher -->
+            <button class="action-btn" onclick="cycleGameLanguage()" id="btn-hud-lang" title="Switch Language (EN / SK / HU)" style="background: rgba(15,23,42,0.85); border-color: #38bdf8;">
+                🌐 <span class="btn-text" id="hud-lang-label">EN</span>
             </button>
             <button class="action-btn" onclick="toggleAudio()" id="audio-toggle-btn" title="Mute/Unmute Audio">
                 🔊

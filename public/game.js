@@ -447,12 +447,997 @@ function loadSave() {
     if (typeof SAVE.talentPoints !== 'number' || isNaN(SAVE.talentPoints)) {
         SAVE.talentPoints = 3;
     }
+    if (!SAVE.playerClass || typeof SAVE.playerClass !== 'string') {
+        const legacyClass = localStorage.getItem('rpg_player_class');
+        SAVE.playerClass = (legacyClass === 'Warrior' || legacyClass === 'Mage' || legacyClass === 'Archer') ? legacyClass : 'Warrior';
+    }
 }
 
 function writeSave() {
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) { /* ignore */ }
 }
 loadSave();
+
+// ==========================================
+// --- I18N LOCALIZATION ENGINE (EN / SK / HU) ---
+// ==========================================
+const I18N = {
+    en: {
+        lang_name: 'English',
+        // Start screen & branding
+        start_title: '⚔️ 3D RPG HORDE, DUNGEON & TITAN RAID',
+        start_subtitle: 'Master 3 hero archetypes, raid dungeons with party AI, battle colossi in Titan\'s Gauntlet, and climb the Global Hall of Legends!',
+        player_label: '👤 Player:',
+        btn_change_name: '✏️ Change Name',
+        essence_label: '✨ Essence:',
+        quests_btn: '📜 Daily Quests',
+        talents_btn: '🌟 Class Talents (N)',
+        hall_btn: '🏆 Hall of Legends (L)',
+        sanctuary_btn: '🛒 Meta Sanctuary',
+        equipment_btn: '🎒 Equipment (I)',
+        mode_horde: '🌊 Horde Survival',
+        mode_dungeon: '🏰 3-Hero Dungeon',
+        mode_titan: '⚔️ Titan\'s Gauntlet',
+        horde_info: '🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!',
+        dungeon_info: '🗡️ <strong>Crypt of Overlord Malakor (Hardcore Isometric Mode)</strong> &bull; Traverse 5 perilous chambers featuring floor spike traps, flame fissures, elite shielded guards, and a 3-phase final boss!',
+        titan_info: '⚡ <strong>Titan\'s Gauntlet (Boss Rush Colosseum)</strong> &bull; Face 5 gargantuan ancient Titans back-to-back! Draft divine boons after each kill and race against the clock for the ultimate score!',
+        mp_title: '👥 Multiplayer Online Co-Op Lobby',
+        mp_subtitle: 'Assemble party before starting',
+        mp_name_placeholder: 'Your Hero Name (e.g. Roland)',
+        mp_create_btn: '✨ Create Lobby',
+        mp_join_code_placeholder: 'CODE',
+        mp_join_btn: '🚀 Join Party Lobby',
+        launch_solo: '🎮 PLAY SOLO + 2 AI COMPANIONS',
+        launch_horde: '⚔️ START HORDE SURVIVAL',
+        launch_dungeon: '🏰 ENTER DUNGEON RAID',
+        launch_titan: '⚡ ENTER TITAN\'S GAUNTLET',
+        // Hero selection
+        active_hero_badge: '✓ ACTIVE HERO',
+        hero_warrior: '⚔️ Warrior',
+        hero_warrior_role: '🛡️ TANK & MELEE CLEAVE',
+        hero_warrior_desc: 'Wields Heavy Greatswords & Plate Armor',
+        hero_warrior_ult: '⚡ Ult: Earthquake Slam (Radial shockwave dealing massive damage & 3.5s stun)',
+        hero_mage: '🔮 Mage',
+        hero_mage_role: '✨ RANGED SORCERY & AOE',
+        hero_mage_desc: 'Wields Magic Staves & Arcane Robes',
+        hero_mage_ult: '⚡ Ult: Frost Nova & Blizzard (Freezes all nearby foes solid with massive AoE burst)',
+        hero_archer: '🏹 Archer',
+        hero_archer_role: '🎯 RAPID DPS & MOBILITY',
+        hero_archer_desc: 'Wields Rapid Longbows & Leather',
+        hero_archer_ult: '⚡ Ult: Arrow Barrage & Dash (Invulnerable evasion dash + 360° piercing arrow storm)',
+        // Controls cheat sheet
+        ctrl_move: '[WASD / Sticks] Move',
+        ctrl_aim: '[Mouse] Aim & Attack',
+        ctrl_zoom: '[Wheel / +/-] Zoom',
+        ctrl_ult: '[Space / Q] Ultimate',
+        ctrl_gear: '[I] Gear',
+        ctrl_shop: '[B] Shop',
+        ctrl_quests: '[L] Quests',
+        ctrl_loot: '[E] Quick Loot',
+        ctrl_pause: '[Esc] Pause',
+        // Name modal
+        name_modal_title: 'ENTER YOUR HERO NAME',
+        name_modal_desc: 'Enter your hero name. It will be displayed on the <strong style="color:#fde047;">Global Hall of Legends</strong> and in co-op multiplayer!',
+        name_modal_label: 'Hero Name / Nickname:',
+        name_modal_placeholder: 'Enter your name (e.g. Roland, Shadow...)',
+        name_modal_err: 'Please enter a valid name (at least 2 characters).',
+        name_modal_cancel: 'Cancel',
+        name_modal_confirm: '⚔️ Confirm & Enter Menu',
+        // Pause screen
+        pause_title: 'GAME PAUSED',
+        pause_subtitle: 'Take a breath, adjust zoom or tweak your setup',
+        pause_talents: '🌟 Class Talents (N)',
+        pause_hall: '🏆 Hall of Legends (L)',
+        pause_quests: '📜 Daily Quests',
+        pause_shop: '🛒 Open In-Game Shop',
+        pause_resume: '▶️ Resume Game',
+        pause_quit: '🚪 Quit to Menu',
+        // Zoom
+        zoom_indicator: '🔍 Zoom: {pct}',
+        zoom_in: '➕ Zoom In',
+        zoom_reset: '100% Reset',
+        zoom_out: '➖ Zoom Out',
+        // Leaderboard
+        lb_title: '🏆 HALL OF LEGENDS',
+        lb_subtitle: 'Top High Scores across all Hero Archetypes and Game Modes!',
+        lb_mode: 'MODE:',
+        lb_class: 'CLASS:',
+        lb_all: 'All',
+        lb_all_modes: 'All Modes',
+        lb_rank: 'Rank',
+        lb_hero_arch: 'Hero & Archetype',
+        lb_mode_prog: 'Mode & Progress',
+        lb_kills_time: 'Kills & Time',
+        lb_score: 'Score',
+        lb_empty_title: 'No leaderboard entries for this filter',
+        lb_empty_desc: 'Play Horde, Dungeon or Titan mode to be the first legend on the leaderboard!',
+        lb_you_tag: 'YOU',
+        lb_close: 'Close (L)',
+        // HUD
+        hud_gear: 'Gear (I)',
+        hud_talents: 'Talents (N)',
+        hud_hall: 'Hall (L)',
+        hud_shop: 'Shop (B)',
+        hud_quests: 'Quests',
+        hud_passives: '⚡ Passives',
+        hud_score: 'Score:',
+        hud_gold: '🪙 Gold:',
+        hud_kills: '💀 Kills:',
+        hud_combo: '⚡ COMBO',
+        hud_teammates: '🤝 Teammates',
+        hud_wave_cleared: '🎉 WAVE CLEARED!',
+        hud_downed: '💀 YOU ARE DOWNED!',
+        hud_downed_sub: 'Teammates can stand near you to revive, or wait for wave completion!',
+        // Game Over
+        go_died: '💀 YOU DIED',
+        go_survived: 'You survived to Wave {wave} (Level {level})',
+        go_score: 'Total Score: {score} &bull; Kills: {kills}',
+        go_essence: 'Gold banked as Essence: +{banked} (Total Essence: {essence})',
+        go_play_again: 'Play Again'
+    },
+    sk: {
+        lang_name: 'Slovenčina',
+        // Start screen & branding
+        start_title: '⚔️ 3D RPG HORDE, DUNGEON & SKÚŠKA TITÁNOV',
+        start_subtitle: 'Ovládni 3 hrdinské archetypy, preskúmavaj dungeony s AI družinou, bojuj s kolosmi v Skúške Titánov a staň sa legendou v Globálnom rebríčku!',
+        player_label: '👤 Hráč:',
+        btn_change_name: '✏️ Zmeniť meno',
+        essence_label: '✨ Esencia:',
+        quests_btn: '📜 Denné úlohy',
+        talents_btn: '🌟 Talenty triedy (N)',
+        hall_btn: '🏆 Sieň legiend (L)',
+        sanctuary_btn: '🛒 Svätyňa vylepšení',
+        equipment_btn: '🎒 Výbava a Stash (I)',
+        mode_horde: '🌊 Prežitie Hordy',
+        mode_dungeon: '🏰 3-Hrdinovia Dungeon',
+        mode_titan: '⚔️ Skúška Titánov',
+        horde_info: '🌊 <strong>Prežitie Hordy</strong> &bull; Preži stupňujúce sa vlny nepriateľov, aktivuj svätyne, rozbíjaj truhlice a bojuj s bossmi každých 5 vĺn!',
+        dungeon_info: '🗡️ <strong>Krypta vládcu Malakora (Hardcore Izometrický Mód)</strong> &bull; Prejdi 5 nebezpečnými komorami plnými pascí, plameňov, elitných stráží a poraz finálneho 3-fázového bossa!',
+        titan_info: '⚡ <strong>Skúška Titánov (Boss Rush Koloseum)</strong> &bull; Postav sa 5 gigantickým Titánom za sebou! Vyberaj si božské dary po každom skolenom kolose a bojuj o najvyššie skóre!',
+        mp_title: '👥 Multiplayer Online Kooperatívne Lobby',
+        mp_subtitle: 'Zostavte družinu pred štartom',
+        mp_name_placeholder: 'Tvoje meno hrdinu (napr. Roland)',
+        mp_create_btn: '✨ Vytvoriť Lobby',
+        mp_join_code_placeholder: 'KÓD',
+        mp_join_btn: '🚀 Pripojiť sa k Lobby',
+        launch_solo: '🎮 HRAŤ SÓLO + 2 AI SPOLOČNÍCI',
+        launch_horde: '⚔️ SPUSTIŤ PREŽITIE HORDY',
+        launch_dungeon: '🏰 VSTÚPIŤ DO DUNGEONU',
+        launch_titan: '⚡ VSTÚPIŤ DO SKÚŠKY TITÁNOV',
+        // Hero selection
+        active_hero_badge: '✓ AKTÍVNY HRDINA',
+        hero_warrior: '⚔️ Bojovník',
+        hero_warrior_role: '🛡️ TANK & ÚTOK ZBLÍZKA',
+        hero_warrior_desc: 'Ovláda obojručné meče a ťažkú plátovú zbroj',
+        hero_warrior_ult: '⚡ Ult: Zemetrasenie (Rázová vlna s masívnym poškodením a 3.5s omráčením)',
+        hero_mage: '🔮 Mág',
+        hero_mage_role: '✨ MÁGIA NA DIAĽKU & AOE',
+        hero_mage_desc: 'Ovláda magické palice a arkánne rúcha',
+        hero_mage_ult: '⚡ Ult: Mrazivá Nova & Blizzard (Zmrazí všetkých nepriateľov v okolí masívnym plošným výbuchom)',
+        hero_archer: '🏹 Lukostrelec',
+        hero_archer_role: '🎯 RÝCHLE DPS & POHYBLIVOSŤ',
+        hero_archer_desc: 'Ovláda rýchle dlhé luky a koženú zbroj',
+        hero_archer_ult: '⚡ Ult: Búrka Šípov & Úskok (Nezraniteľný úskok + 360° prierazná búrka šípov)',
+        // Controls cheat sheet
+        ctrl_move: '[WASD / Páčky] Pohyb',
+        ctrl_aim: '[Myš] Mierenie & Útok',
+        ctrl_zoom: '[Koliesko / +/-] Zoom',
+        ctrl_ult: '[Medzerník / Q] Ultimátka',
+        ctrl_gear: '[I] Výbava',
+        ctrl_shop: '[B] Obchod',
+        ctrl_quests: '[L] Úlohy',
+        ctrl_loot: '[E] Rýchly zber',
+        ctrl_pause: '[Esc] Pauza',
+        // Name modal
+        name_modal_title: 'ZADAJ SVOJE MENO HRDINU',
+        name_modal_desc: 'Zadaj svoje meno hrdinu. Bude sa zobrazovať v <strong style="color:#fde047;">Globálnom rebríčku legiend (Leaderboard)</strong> a v multiplayeri!',
+        name_modal_label: 'Meno Hrdinu / Nickname:',
+        name_modal_placeholder: 'Zadaj svoje meno (napr. Roland, Shadow...)',
+        name_modal_err: 'Zadaj prosím platné meno (aspoň 2 znaky).',
+        name_modal_cancel: 'Zrušiť',
+        name_modal_confirm: '⚔️ Potvrdiť a Vstúpiť do Menu',
+        // Pause screen
+        pause_title: 'HRA POZASTAVENÁ',
+        pause_subtitle: 'Oddýchni si, uprav priblíženie kamery alebo výbavu',
+        pause_talents: '🌟 Talenty triedy (N)',
+        pause_hall: '🏆 Sieň legiend (L)',
+        pause_quests: '📜 Denné úlohy',
+        pause_shop: '🛒 Otvoriť obchod',
+        pause_resume: '▶️ Pokračovať v hre',
+        pause_quit: '🚪 Odísť do menu',
+        // Zoom
+        zoom_indicator: '🔍 Priblíženie: {pct}',
+        zoom_in: '➕ Priblížiť',
+        zoom_reset: '100% Reset',
+        zoom_out: '➖ Oddialiť',
+        // Leaderboard
+        lb_title: '🏆 SIEŇ LEGIEND',
+        lb_subtitle: 'Najvyššie dosiahnuté skóre všetkých hrdinov a herných módov!',
+        lb_mode: 'MÓD:',
+        lb_class: 'TRIEDA:',
+        lb_all: 'Všetko',
+        lb_all_modes: 'Všetky módy',
+        lb_rank: 'Poradie',
+        lb_hero_arch: 'Hrdina & Archetyp',
+        lb_mode_prog: 'Mód & Postup',
+        lb_kills_time: 'Zabití & Čas',
+        lb_score: 'Skóre',
+        lb_empty_title: 'Žiadne záznamy v rebríčku pre tento filter',
+        lb_empty_desc: 'Zahraj si Horde, Dungeon alebo Titan mód a zapíš svoje skóre a meno ako prvý!',
+        lb_you_tag: 'TY',
+        lb_close: 'Zavrieť (L)',
+        // HUD
+        hud_gear: 'Výbava (I)',
+        hud_talents: 'Talenty (N)',
+        hud_hall: 'Sieň (L)',
+        hud_shop: 'Obchod (B)',
+        hud_quests: 'Úlohy',
+        hud_passives: '⚡ Pasívne',
+        hud_score: 'Skóre:',
+        hud_gold: '🪙 Zlato:',
+        hud_kills: '💀 Zabití:',
+        hud_combo: '⚡ KOMBO',
+        hud_teammates: '🤝 Spoluhráči',
+        hud_wave_cleared: '🎉 VLNA DOKONČENÁ!',
+        hud_downed: '💀 PADOL SI NA ZEM!',
+        hud_downed_sub: 'Spoluhráči ťa môžu oživiť postavením sa k tebe, alebo počkaj na koniec vlny!',
+        // Game Over
+        go_died: '💀 ZOMREL SI',
+        go_survived: 'Prežil si do Vlny {wave} (Úroveň {level})',
+        go_score: 'Celkové Skóre: {score} &bull; Zabití: {kills}',
+        go_essence: 'Zlato uložené ako Esencia: +{banked} (Celková Esencia: {essence})',
+        go_play_again: 'Hrať Znova'
+    },
+    hu: {
+        lang_name: 'Magyar',
+        // Start screen & branding
+        start_title: '⚔️ 3D RPG HORDA, KAZAMATA & TITÁN PORTYA',
+        start_subtitle: 'Urald a 3 hős archetípust, portyázz kazamatákban AI társakkal, küzdj meg kolosszusokkal a Titánok Próbáján és vezess a Globális Dicsőségcsarnokban!',
+        player_label: '👤 Játékos:',
+        btn_change_name: '✏️ Névváltás',
+        essence_label: '✨ Esszencia:',
+        quests_btn: '📜 Napi Küldetések',
+        talents_btn: '🌟 Osztály Talentumok (N)',
+        hall_btn: '🏆 Dicsőségcsarnok (L)',
+        sanctuary_btn: '🛒 Meta Szentély',
+        equipment_btn: '🎒 Felszerelés & Tároló (I)',
+        mode_horde: '🌊 Horda Túlélés',
+        mode_dungeon: '🏰 3-Hős Kazamata',
+        mode_titan: '⚔️ Titánok Próbája',
+        horde_info: '🌊 <strong>Horda Túlélés</strong> &bull; Éld túl az egyre erősödő ellenséges hullámokat, aktiválj égi szentélyeket, törj fel kincsesládákat és harcolj főellenségekkel minden 5. hullámban!',
+        dungeon_info: '🗡️ <strong>Malakor Főúr Kriptája (Hardcore Izometrikus Mód)</strong> &bull; Küzdd át magad 5 veszedelmes termen, csapdákon, tűzhasadékokon, elit pajzsos őrökön és győzd le a 3-fázisú végső boss-t!',
+        titan_info: '⚡ <strong>Titánok Próbája (Boss Rush Kolosszeum)</strong> &bull; Nézz szembe 5 hatalmas ősi Titánnal egymás után! Válassz isteni áldásokat minden győzelem után a legnagyobb pontszámért!',
+        mp_title: '👥 Online Kooperatív Előtér (Lobby)',
+        mp_subtitle: 'Állítsd össze a csapatot indulás előtt',
+        mp_name_placeholder: 'Hősöd neve (pl. Roland)',
+        mp_create_btn: '✨ Előtér Létrehozása',
+        mp_join_code_placeholder: 'KÓD',
+        mp_join_btn: '🚀 Csatlakozás az Előtérhez',
+        launch_solo: '🎮 EGYÉNI JÁTÉK + 2 AI TÁRS',
+        launch_horde: '⚔️ HORDA TÚLÉLÉS INDÍTÁSA',
+        launch_dungeon: '🏰 BELÉPÉS A KAZAMATÁBA',
+        launch_titan: '⚡ BELÉPÉS A TITÁNOK PRÓBÁJÁRA',
+        // Hero selection
+        active_hero_badge: '✓ AKTÍV HŐS',
+        hero_warrior: '⚔️ Harcos',
+        hero_warrior_role: '🛡️ TANK & KÖZELHARC',
+        hero_warrior_desc: 'Nehéz kétkezes kardokat és lemezpáncélt forgat',
+        hero_warrior_ult: '⚡ Ult: Földrengés (Körkörös lökéshullám masszív sebzéssel és 3.5 mp kábítással)',
+        hero_mage: '🔮 Mágus',
+        hero_mage_role: '✨ TÁVOLSÁGI MÁGIA & AOE',
+        hero_mage_desc: 'Varázsbotokat és arkán köpenyeket visel',
+        hero_mage_ult: '⚡ Ult: Fagy Nova & Hóvihar (Megfagyaszt minden közeli ellenfelet hatalmas területi robbanással)',
+        hero_archer: '🏹 Íjász',
+        hero_archer_role: '🎯 GYORS DPS & MOZGÉKONYSÁG',
+        hero_archer_desc: 'Gyors hosszúíjakat és bőrpáncélt használ',
+        hero_archer_ult: '⚡ Ult: Nyílzápor & Kitérés (Sebzhetetlen kitérő gurulás + 360° átütő nyílvihar)',
+        // Controls cheat sheet
+        ctrl_move: '[WASD / Karok] Mozgás',
+        ctrl_aim: '[Egér] Célzás & Támadás',
+        ctrl_zoom: '[Görgő / +/-] Zoom',
+        ctrl_ult: '[Szóköz / Q] Végső képesség',
+        ctrl_gear: '[I] Felszerelés',
+        ctrl_shop: '[B] Bolt',
+        ctrl_quests: '[L] Küldetések',
+        ctrl_loot: '[E] Gyors zsákmány',
+        ctrl_pause: '[Esc] Szünet',
+        // Name modal
+        name_modal_title: 'ADD MEG A HŐSÖD NEVÉT',
+        name_modal_desc: 'Add meg a hősöd nevét. Megjelenik a <strong style="color:#fde047;">Globális Dicsőségcsarnokban</strong> és a kooperatív többjátékos módban!',
+        name_modal_label: 'Hős Neve / Becenév:',
+        name_modal_placeholder: 'Add meg a neved (pl. Roland, Shadow...)',
+        name_modal_err: 'Kérlek adj meg egy érvényes nevet (legalább 2 karakter).',
+        name_modal_cancel: 'Mégse',
+        name_modal_confirm: '⚔️ Megerősítés & Belépés a Menübe',
+        // Pause screen
+        pause_title: 'JÁTÉK SZÜNETELTETVE',
+        pause_subtitle: 'Fújj egyet, állíts a kamera távolságán vagy a felszerelésen',
+        pause_talents: '🌟 Osztály Talentumok (N)',
+        pause_hall: '🏆 Dicsőségcsarnok (L)',
+        pause_quests: '📜 Napi Küldetések',
+        pause_shop: '🛒 Játékbeli Bolt Megnyitása',
+        pause_resume: '▶️ Játék Folytatása',
+        pause_quit: '🚪 Kilépés a Menübe',
+        // Zoom
+        zoom_indicator: '🔍 Közelítés: {pct}',
+        zoom_in: '➕ Közelítés',
+        zoom_reset: '100% Visszaállítás',
+        zoom_out: '➖ Távolítás',
+        // Leaderboard
+        lb_title: '🏆 DICSŐSÉGCSARNOK',
+        lb_subtitle: 'A legmagasabb pontszámok az összes hős és játékmód között!',
+        lb_mode: 'MÓD:',
+        lb_class: 'OSZTÁLY:',
+        lb_all: 'Mind',
+        lb_all_modes: 'Összes Mód',
+        lb_rank: 'Helyezés',
+        lb_hero_arch: 'Hős & Archetípus',
+        lb_mode_prog: 'Mód & Előrehaladás',
+        lb_kills_time: 'Ölések & Idő',
+        lb_score: 'Pontszám',
+        lb_empty_title: 'Nincsenek bejegyzések ehhez a szűrőhöz',
+        lb_empty_desc: 'Játssz Horda, Kazamata vagy Titán módban, és írd be a neved elsőként a ranglistára!',
+        lb_you_tag: 'TE',
+        lb_close: 'Bezárás (L)',
+        // HUD
+        hud_gear: 'Felszerelés (I)',
+        hud_talents: 'Talentumok (N)',
+        hud_hall: 'Dicsőség (L)',
+        hud_shop: 'Bolt (B)',
+        hud_quests: 'Küldetések',
+        hud_passives: '⚡ Passzívok',
+        hud_score: 'Pontszám:',
+        hud_gold: '🪙 Arany:',
+        hud_kills: '💀 Ölések:',
+        hud_combo: '⚡ KOMBÓ',
+        hud_teammates: '🤝 Csapattársak',
+        hud_wave_cleared: '🎉 HULLÁM TELJESÍTVE!',
+        hud_downed: '💀 FÖLDRE KERÜLTÉL!',
+        hud_downed_sub: 'A csapattársaid feléleszthetnek ha melléd állnak, vagy várd meg a hullám végét!',
+        // Game Over
+        go_died: '💀 MEGHALTÁL',
+        go_survived: 'Túlélted a(z) {wave}. Hullámig (Szint: {level})',
+        go_score: 'Összes Pontszám: {score} &bull; Ölések: {kills}',
+        go_essence: 'Esszenciává alakított Arany: +{banked} (Összes Esszencia: {essence})',
+        go_play_again: 'Újra Játszom'
+    }
+};
+
+function getGameLanguage() {
+    if (SAVE && SAVE.language && I18N[SAVE.language]) {
+        return SAVE.language;
+    }
+    return 'en';
+}
+
+function t(key, fallback = '') {
+    const lang = getGameLanguage();
+    if (I18N[lang] && I18N[lang][key] !== undefined) {
+        return I18N[lang][key];
+    }
+    if (I18N.en && I18N.en[key] !== undefined) {
+        return I18N.en[key];
+    }
+    return fallback || key;
+}
+
+window.setGameLanguage = function(lang) {
+    if (!I18N[lang]) lang = 'en';
+    SAVE.language = lang;
+    writeSave();
+
+    // Update active class on all language buttons in DOM
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.langBtn === lang);
+    });
+
+    // Update HUD quick language indicator
+    const hudLangLabel = document.getElementById('hud-lang-label');
+    if (hudLangLabel) hudLangLabel.innerText = lang.toUpperCase();
+
+    // Update DOM texts
+    applyTranslationsToDOM();
+
+    // Refresh dynamic modals if open
+    updateStartLaunchButton();
+    updatePlayerNameUI();
+    if (document.getElementById('leaderboard-screen') && document.getElementById('leaderboard-screen').style.display === 'flex') {
+        renderLeaderboardModal();
+    }
+    if (document.getElementById('quests-screen') && document.getElementById('quests-screen').style.display === 'flex') {
+        renderQuests();
+    }
+    if (document.getElementById('talents-screen') && document.getElementById('talents-screen').style.display === 'flex') {
+        renderTalentsModal();
+    }
+    if (document.getElementById('gear-screen') && document.getElementById('gear-screen').style.display === 'flex') {
+        renderGearModal();
+    }
+};
+
+window.cycleGameLanguage = function() {
+    const langs = ['en', 'sk', 'hu'];
+    const cur = getGameLanguage();
+    const nextIdx = (langs.indexOf(cur) + 1) % langs.length;
+    window.setGameLanguage(langs[nextIdx]);
+};
+
+function applyTranslationsToDOM() {
+    const setElemText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    };
+    const setElemHtml = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    };
+
+    // Start Screen
+    setElemText('start-title', t('start_title'));
+    setElemText('start-subtitle', t('start_subtitle'));
+    setElemText('start-player-label', t('player_label'));
+    setElemText('btn-start-change-name', t('btn_change_name'));
+    setElemText('start-essence-label', t('essence_label'));
+    setElemText('mode-btn-horde', t('mode_horde'));
+    setElemText('mode-btn-dungeon', t('mode_dungeon'));
+    setElemText('mode-btn-titan', t('mode_titan'));
+    setElemHtml('horde-info-banner', t('horde_info'));
+    setElemHtml('dungeon-info-banner', t('dungeon_info'));
+    setElemHtml('titan-info-banner', t('titan_info'));
+    setElemText('mp-hub-title-text', t('mp_title'));
+    setElemText('mp-hub-subtitle-text', t('mp_subtitle'));
+    setElemText('btn-mp-create', t('mp_create_btn'));
+    setElemText('btn-mp-join', t('mp_join_btn'));
+    const mpInput = document.getElementById('mp-hero-name');
+    if (mpInput) mpInput.placeholder = t('mp_name_placeholder');
+    const mpCode = document.getElementById('mp-join-code');
+    if (mpCode) mpCode.placeholder = t('mp_join_code_placeholder');
+
+    // Hero Cards
+    ['warrior', 'mage', 'archer'].forEach(cls => {
+        const badge = document.getElementById(`badge-${cls}-selected`);
+        if (badge) badge.innerText = t('active_hero_badge');
+    });
+
+    // Name Modal
+    setElemText('name-modal-title', t('name_modal_title'));
+    setElemHtml('name-modal-desc', t('name_modal_desc'));
+    setElemText('name-modal-label', t('name_modal_label'));
+    setElemText('btn-cancel-name', t('name_modal_cancel'));
+    setElemText('btn-confirm-name', t('name_modal_confirm'));
+    const nameInput = document.getElementById('player-name-input');
+    if (nameInput) nameInput.placeholder = t('name_modal_placeholder');
+
+    // Pause Screen
+    setElemText('pause-title', t('pause_title'));
+    setElemText('pause-subtitle', t('pause_subtitle'));
+    setElemText('btn-pause-talents', t('pause_talents'));
+    setElemText('btn-pause-leaderboard', t('pause_hall'));
+    setElemText('btn-pause-quests', t('pause_quests'));
+    setElemText('btn-pause-shop', t('pause_shop'));
+    setElemText('btn-pause-resume', t('pause_resume'));
+    setElemText('btn-pause-quit', t('pause_quit'));
+
+    // Top HUD Action Bar
+    setElemText('hud-btn-gear', t('hud_gear'));
+    setElemText('hud-btn-talents', t('hud_talents'));
+    setElemText('hud-btn-hall', t('hud_hall'));
+    setElemText('hud-btn-shop', t('hud_shop'));
+    setElemText('hud-btn-quests', t('hud_quests'));
+
+    // Controls Cheat Sheet
+    const cheatEl = document.getElementById('controls-cheat-sheet');
+    if (cheatEl) {
+        cheatEl.innerHTML = `
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_move')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_aim')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_zoom')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_ult')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_gear')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_shop')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_quests')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_loot')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_pause')}</span>
+        `;
+    }
+}
+
+// ==========================================
+// --- THREE.JS CAMERA ORBIT & ZOOM ENGINE ---
+// ==========================================
+let cameraZoomFactor = 1.0; // 1.0 = default distance, < 1.0 = zoomed in (closer), > 1.0 = zoomed out (further)
+let cameraAngleY = 0; // Horizontal orbit angle around player in radians
+let targetCameraAngleY = 0; // Target horizontal angle for smooth lerp
+let cameraPitch = 1.0; // Elevation pitch multiplier (0.35 to 1.5)
+let isDraggingCamera = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+let zoomIndicatorTimeout = null;
+
+function updateCompassHUD() {
+    const compassIcon = document.getElementById('hud-compass-icon');
+    if (compassIcon) {
+        // Needle points toward True North (angle 0)
+        const deg = Math.round((-targetCameraAngleY * (180 / Math.PI)) % 360);
+        compassIcon.style.transform = `rotate(${deg}deg)`;
+    }
+}
+
+function showCameraIndicator() {
+    const el = document.getElementById('hud-zoom-indicator');
+    if (!el) return;
+    const pct = Math.round((1 / cameraZoomFactor) * 100);
+    const deg = Math.round((((targetCameraAngleY * (180 / Math.PI)) % 360) + 360) % 360);
+    el.innerText = `🔍 Zoom: ${pct}% &bull; 🧭 ${deg}°`;
+    el.classList.add('visible');
+    if (zoomIndicatorTimeout) clearTimeout(zoomIndicatorTimeout);
+    zoomIndicatorTimeout = setTimeout(() => {
+        el.classList.remove('visible');
+    }, 1500);
+    updateCompassHUD();
+}
+
+function showZoomIndicator() {
+    showCameraIndicator();
+}
+
+window.adjustCameraZoom = function(delta) {
+    // delta > 0 zooms in (decreases distance factor)
+    // delta < 0 zooms out (increases distance factor)
+    cameraZoomFactor = Math.max(0.4, Math.min(2.4, cameraZoomFactor - delta));
+    showCameraIndicator();
+};
+
+window.rotateCamera = function(deltaRad) {
+    targetCameraAngleY += deltaRad;
+    showCameraIndicator();
+};
+
+window.resetCameraAngle = function() {
+    targetCameraAngleY = 0;
+    cameraAngleY = 0;
+    showCameraIndicator();
+};
+
+window.resetCameraZoom = function() {
+    cameraZoomFactor = 1.0;
+    cameraPitch = 1.0;
+    showCameraIndicator();
+};
+
+window.resetCameraAngleAndZoom = function() {
+    targetCameraAngleY = 0;
+    cameraZoomFactor = 1.0;
+    cameraPitch = 1.0;
+    showCameraIndicator();
+};
+
+// Mouse wheel listener for smooth camera zooming
+window.addEventListener('wheel', (e) => {
+    // Do not zoom camera if user is scrolling inside modal containers
+    const target = e.target;
+    if (target && target.closest('.talents-container, .quest-grid, .shop-grid, .lb-table-wrap, .inventory-grid, .name-entry-card, .boon-grid, .overlay')) {
+        return;
+    }
+    
+    // deltaY < 0 is scroll up (zoom in), deltaY > 0 is scroll down (zoom out)
+    const zoomStep = e.deltaY < 0 ? 0.14 : -0.14;
+    window.adjustCameraZoom(zoomStep);
+}, { passive: true });
+
+// --- PLAYER HERO IDENTITY & NAME MANAGEMENT ---
+let creationSelectedClass = 'Warrior';
+
+function getPlayerName() {
+    if (SAVE && SAVE.playerName && typeof SAVE.playerName === 'string' && SAVE.playerName.trim()) {
+        return SAVE.playerName.trim();
+    }
+    const legacy = localStorage.getItem('rpg_player_name');
+    if (legacy && typeof legacy === 'string' && legacy.trim() && !legacy.trim().startsWith('Hero ')) {
+        SAVE.playerName = legacy.trim();
+        writeSave();
+        return legacy.trim();
+    }
+    return '';
+}
+
+function updatePlayerNameUI() {
+    const name = getPlayerName() || (getGameLanguage() === 'sk' ? 'Hrdina' : (getGameLanguage() === 'hu' ? 'Hős' : 'Hero'));
+    const displayEl = document.getElementById('start-player-name-display');
+    if (displayEl) displayEl.innerText = name;
+    
+    const mpInput = document.getElementById('mp-hero-name');
+    if (mpInput) {
+        mpInput.value = name;
+    }
+}
+
+window.selectCreationClass = function(className) {
+    initAudio();
+    creationSelectedClass = className;
+    ['warrior', 'mage', 'archer'].forEach(c => {
+        const opt = document.getElementById(`char-opt-${c}`);
+        if (opt) {
+            opt.classList.toggle('selected', c.toLowerCase() === className.toLowerCase());
+        }
+    });
+};
+
+window.openNameModal = function(isInitial = false) {
+    initAudio();
+    const modal = document.getElementById('player-name-screen');
+    const input = document.getElementById('player-name-input');
+    const cancelBtn = document.getElementById('btn-cancel-name');
+    const errEl = document.getElementById('player-name-error');
+    if (errEl) errEl.style.display = 'none';
+
+    const currentName = getPlayerName();
+    if (input) {
+        input.value = currentName;
+    }
+
+    creationSelectedClass = SAVE.playerClass || selectedStartHero || 'Warrior';
+    window.selectCreationClass(creationSelectedClass);
+
+    if (cancelBtn) {
+        cancelBtn.style.display = (!isInitial && currentName) ? 'inline-block' : 'none';
+    }
+
+    if (modal) modal.style.display = 'flex';
+    if (isInitial) {
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) startScreen.style.display = 'none';
+    }
+
+    setTimeout(() => {
+        if (input) {
+            input.focus();
+            input.select();
+        }
+    }, 60);
+};
+
+window.closeNameModal = function() {
+    const modal = document.getElementById('player-name-screen');
+    if (modal) modal.style.display = 'none';
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen && GAME.state === 'START') startScreen.style.display = 'flex';
+};
+
+window.confirmPlayerName = function() {
+    initAudio();
+    const input = document.getElementById('player-name-input');
+    const errEl = document.getElementById('player-name-error');
+    const rawVal = input ? input.value.trim() : '';
+
+    if (rawVal.length < 2) {
+        if (errEl) {
+            errEl.innerText = t('name_modal_err');
+            errEl.style.display = 'block';
+        }
+        if (input) input.focus();
+        return;
+    }
+
+    const cleanName = rawVal.slice(0, 16);
+    SAVE.playerName = cleanName;
+    SAVE.playerClass = creationSelectedClass || 'Warrior';
+    selectedStartHero = SAVE.playerClass;
+    window.selectedStartHero = SAVE.playerClass;
+    currentGearHero = SAVE.playerClass;
+    activeTalentClass = SAVE.playerClass;
+
+    localStorage.setItem('rpg_player_name', cleanName);
+    localStorage.setItem('rpg_player_class', SAVE.playerClass);
+    writeSave();
+
+    updatePlayerNameUI();
+    updateStartHeroDossier();
+    updateStartLaunchButton();
+
+    const modal = document.getElementById('player-name-screen');
+    if (modal) modal.style.display = 'none';
+
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen && GAME.state === 'START') {
+        startScreen.style.display = 'flex';
+    }
+};
+
+function calculateHeroPowerScore(heroClass = (SAVE.playerClass || selectedStartHero || 'Warrior')) {
+    const baseStats = {
+        Warrior: { hp: 160, dmg: 24, armor: 4, spd: 12, crit: 5, vamp: 0, shield: 0 },
+        Mage: { hp: 90, dmg: 32, armor: 0, spd: 14, crit: 8, vamp: 0, shield: 0 },
+        Archer: { hp: 115, dmg: 20, armor: 2, spd: 16, crit: 15, vamp: 0, shield: 0 }
+    }[heroClass] || { hp: 150, dmg: 20, armor: 0, spd: 12, crit: 5, vamp: 0, shield: 0 };
+
+    let bonusStats = { maxHp: 0, damage: 0, armor: 0, speed: 0, crit: 0, lifesteal: 0, startingShield: 0 };
+
+    // 1. Gear Score
+    let gearScore = 0;
+    const eq = (SAVE.equipped && SAVE.equipped[heroClass]) || {};
+    const rarityWeights = { common: 35, rare: 85, epic: 165, legendary: 320 };
+
+    Object.values(eq).forEach(itemId => {
+        if (!itemId) return;
+        const item = ITEM_DATABASE[itemId];
+        if (!item) return;
+
+        gearScore += rarityWeights[item.rarity] || 30;
+
+        if (item.stats) {
+            if (item.stats.damage) { gearScore += Math.round(item.stats.damage * 3.4); bonusStats.damage += item.stats.damage; }
+            if (item.stats.maxHp) { gearScore += Math.round(item.stats.maxHp * 1.3); bonusStats.maxHp += item.stats.maxHp; }
+            if (item.stats.armor) { gearScore += Math.round(item.stats.armor * 5.2); bonusStats.armor += item.stats.armor; }
+            if (item.stats.crit) { gearScore += Math.round(item.stats.crit * 4.2); bonusStats.crit += item.stats.crit; }
+            if (item.stats.speed) { gearScore += Math.round(item.stats.speed * 2.2); bonusStats.speed += item.stats.speed; }
+            if (item.stats.lifesteal) { gearScore += Math.round(item.stats.lifesteal * 6.5); bonusStats.lifesteal += item.stats.lifesteal; }
+            if (item.stats.startingShield) { gearScore += Math.round(item.stats.startingShield * 1.1); bonusStats.startingShield += item.stats.startingShield; }
+        }
+    });
+
+    if (Array.isArray(SAVE.inventory)) {
+        gearScore += Math.min(220, SAVE.inventory.length * 8);
+    }
+
+    // 2. Talents Score
+    let talentScore = 0;
+    const heroTalents = (SAVE.talents && SAVE.talents[heroClass]) || {};
+    Object.values(heroTalents).forEach(ranks => {
+        if (Array.isArray(ranks)) {
+            ranks.forEach((r, idx) => {
+                talentScore += (r || 0) * 60;
+                if (idx === 2 && r > 0) talentScore += 130;
+            });
+        }
+    });
+    if (typeof SAVE.talentPoints === 'number' && SAVE.talentPoints > 0) {
+        talentScore += SAVE.talentPoints * 18;
+    }
+
+    // 3. Meta Sanctuary Upgrades Score
+    let sanctuaryScore = 0;
+    const upgrades = SAVE.upgrades || {};
+    Object.keys(upgrades).forEach(uKey => {
+        const level = upgrades[uKey] || 0;
+        sanctuaryScore += level * 38;
+    });
+    if (SAVE.essence) {
+        sanctuaryScore += Math.min(160, Math.floor(Math.sqrt(SAVE.essence) * 2.2));
+    }
+
+    const total = Math.max(12, gearScore + talentScore + sanctuaryScore);
+
+    // Tiers
+    let tier = { title: 'Novice Adventurer', badgeColor: '#94a3b8', bg: 'rgba(148,163,184,0.18)', border: '#94a3b8', id: 'novice', min: 0, max: 399 };
+    if (total >= 3200) {
+        tier = { title: '👑 Grandmaster Colossus', badgeColor: '#fde047', bg: 'rgba(253,224,71,0.22)', border: '#fde047', id: 'grandmaster', min: 3200, max: 99999 };
+    } else if (total >= 2300) {
+        tier = { title: '⚡ Mythic Titan Slayer', badgeColor: '#ef4444', bg: 'rgba(239,68,68,0.22)', border: '#ef4444', id: 'titan_slayer', min: 2300, max: 3199 };
+    } else if (total >= 1500) {
+        tier = { title: '⚔️ Dungeon Warlord', badgeColor: '#f59e0b', bg: 'rgba(245,158,11,0.22)', border: '#f59e0b', id: 'warlord', min: 1500, max: 2299 };
+    } else if (total >= 900) {
+        tier = { title: '🛡️ Elite Champion', badgeColor: '#c084fc', bg: 'rgba(192,132,252,0.22)', border: '#c084fc', id: 'champion', min: 900, max: 1499 };
+    } else if (total >= 400) {
+        tier = { title: '🗡️ Adept Raider', badgeColor: '#38bdf8', bg: 'rgba(56,189,248,0.22)', border: '#38bdf8', id: 'adept', min: 400, max: 899 };
+    }
+
+    let nextTierText = 'Maximum Power Tier Achieved!';
+    if (tier.max < 99999) {
+        const needed = tier.max + 1 - total;
+        nextTierText = `${total} / ${tier.max + 1} Power (${needed} to next tier)`;
+    }
+
+    const finalStats = {
+        hp: baseStats.hp + (bonusStats.maxHp || 0) + ((upgrades.vitality || 0) * 15),
+        damage: baseStats.dmg + (bonusStats.damage || 0) + ((upgrades.power || 0) * 3),
+        armor: baseStats.armor + (bonusStats.armor || 0) + ((upgrades.ironSkin || 0) * 2),
+        speed: baseStats.spd + Math.round((bonusStats.speed || 0) * 0.1),
+        crit: baseStats.crit + (bonusStats.crit || 0) + Math.round((upgrades.criticalStrike || 0) * 4),
+        vamp: (bonusStats.lifesteal || 0) + ((upgrades.vampirism || 0) * 1.5),
+        shield: (bonusStats.startingShield || 0) + ((upgrades.bulwark || 0) * 30)
+    };
+
+    return {
+        total,
+        gearScore,
+        talentScore,
+        sanctuaryScore,
+        tier,
+        nextTierText,
+        finalStats,
+        heroClass
+    };
+}
+
+function updateStartHeroDossier() {
+    const heroClass = SAVE.playerClass || selectedStartHero || 'Warrior';
+    const dossierData = calculateHeroPowerScore(heroClass);
+    const heroName = getPlayerName() || (getGameLanguage() === 'sk' ? 'Hrdina' : (getGameLanguage() === 'hu' ? 'Hős' : 'Hero'));
+
+    const avatarEl = document.getElementById('dossier-avatar');
+    const nameEl = document.getElementById('dossier-hero-name-text');
+    const boundTag = document.getElementById('dossier-bound-tag');
+    const roleBadge = document.getElementById('dossier-class-role-badge');
+    const powerScoreEl = document.getElementById('dossier-power-score');
+    const tierBadgeEl = document.getElementById('dossier-tier-badge');
+
+    const gearScoreEl = document.getElementById('dossier-gear-score');
+    const talentsScoreEl = document.getElementById('dossier-talents-score');
+    const sanctuaryScoreEl = document.getElementById('dossier-sanctuary-score');
+
+    if (avatarEl) {
+        if (heroClass === 'Warrior') {
+            avatarEl.innerText = '⚔️';
+            avatarEl.style.background = 'radial-gradient(circle, rgba(239,68,68,0.25) 0%, rgba(15,23,42,0.8) 100%)';
+            avatarEl.style.borderColor = '#ef4444';
+        } else if (heroClass === 'Mage') {
+            avatarEl.innerText = '🔮';
+            avatarEl.style.background = 'radial-gradient(circle, rgba(56,189,248,0.25) 0%, rgba(15,23,42,0.8) 100%)';
+            avatarEl.style.borderColor = '#38bdf8';
+        } else {
+            avatarEl.innerText = '🏹';
+            avatarEl.style.background = 'radial-gradient(circle, rgba(52,211,153,0.25) 0%, rgba(15,23,42,0.8) 100%)';
+            avatarEl.style.borderColor = '#34d399';
+        }
+    }
+
+    if (nameEl) nameEl.innerText = heroName;
+
+    if (boundTag) {
+        boundTag.innerText = `ACCOUNT BOUND HERO • ${heroClass.toUpperCase()}`;
+    }
+
+    if (roleBadge) {
+        if (heroClass === 'Warrior') {
+            roleBadge.innerText = '🛡️ TANK & MELEE CLEAVE';
+            roleBadge.style.color = '#f87171';
+            roleBadge.style.borderColor = 'rgba(248,113,113,0.3)';
+        } else if (heroClass === 'Mage') {
+            roleBadge.innerText = '✨ RANGED SORCERY & AOE';
+            roleBadge.style.color = '#38bdf8';
+            roleBadge.style.borderColor = 'rgba(56,189,248,0.3)';
+        } else {
+            roleBadge.innerText = '🎯 RAPID DPS & MOBILITY';
+            roleBadge.style.color = '#34d399';
+            roleBadge.style.borderColor = 'rgba(52,211,153,0.3)';
+        }
+    }
+
+    if (powerScoreEl) {
+        powerScoreEl.innerText = dossierData.total.toLocaleString();
+    }
+
+    if (tierBadgeEl) {
+        tierBadgeEl.innerText = dossierData.tier.title;
+        tierBadgeEl.style.color = dossierData.tier.badgeColor;
+        tierBadgeEl.style.background = dossierData.tier.bg;
+        tierBadgeEl.style.borderColor = dossierData.tier.border;
+    }
+
+    if (gearScoreEl) gearScoreEl.innerText = `+${dossierData.gearScore.toLocaleString()}`;
+    if (talentsScoreEl) talentsScoreEl.innerText = `+${dossierData.talentScore.toLocaleString()}`;
+    if (sanctuaryScoreEl) sanctuaryScoreEl.innerText = `+${dossierData.sanctuaryScore.toLocaleString()}`;
+
+    // Stats grid
+    const hpEl = document.getElementById('dossier-stat-hp');
+    const dmgEl = document.getElementById('dossier-stat-dmg');
+    const armEl = document.getElementById('dossier-stat-armor');
+    const spdEl = document.getElementById('dossier-stat-spd');
+    const critEl = document.getElementById('dossier-stat-crit');
+    const vampEl = document.getElementById('dossier-stat-vamp');
+    const shieldEl = document.getElementById('dossier-stat-shield');
+
+    if (hpEl) hpEl.innerText = dossierData.finalStats.hp;
+    if (dmgEl) dmgEl.innerText = dossierData.finalStats.damage;
+    if (armEl) armEl.innerText = `${dossierData.finalStats.armor} (${Math.min(75, Math.round(dossierData.finalStats.armor * 2.5))}% DR)`;
+    if (spdEl) spdEl.innerText = `+${Math.max(0, Math.round((dossierData.finalStats.speed - 12) * 8))}%`;
+    if (critEl) critEl.innerText = `${dossierData.finalStats.crit}%`;
+    if (vampEl) vampEl.innerText = `${dossierData.finalStats.vamp.toFixed(1)}%`;
+    if (shieldEl) shieldEl.innerText = dossierData.finalStats.shield > 0 ? `+${dossierData.finalStats.shield}` : '0';
+
+    // Hero cards highlight
+    ['Warrior', 'Mage', 'Archer'].forEach(h => {
+        const card = document.getElementById(`hero-card-${h.toLowerCase()}`);
+        const badge = document.getElementById(`badge-${h.toLowerCase()}-selected`);
+        const isSel = (h.toLowerCase() === heroClass.toLowerCase());
+        if (card) card.classList.toggle('selected', isSel);
+        if (badge) badge.style.display = isSel ? 'inline-block' : 'none';
+    });
+}
+
+window.openPowerBreakdownModal = function() {
+    initAudio();
+    const heroClass = SAVE.playerClass || selectedStartHero || 'Warrior';
+    const data = calculateHeroPowerScore(heroClass);
+
+    const modal = document.getElementById('power-breakdown-screen');
+    if (!modal) return;
+
+    const totalEl = document.getElementById('pb-total-power');
+    const tierBadge = document.getElementById('pb-tier-badge');
+    const progressText = document.getElementById('pb-tier-progress-text');
+    const gearVal = document.getElementById('pb-gear-val');
+    const talentVal = document.getElementById('pb-talent-val');
+    const sanctuaryVal = document.getElementById('pb-sanctuary-val');
+
+    if (totalEl) totalEl.innerText = data.total.toLocaleString();
+    if (tierBadge) {
+        tierBadge.innerText = data.tier.title;
+        tierBadge.style.color = data.tier.badgeColor;
+        tierBadge.style.background = data.tier.bg;
+        tierBadge.style.borderColor = data.tier.border;
+    }
+    if (progressText) progressText.innerText = data.nextTierText;
+    if (gearVal) gearVal.innerText = `+${data.gearScore.toLocaleString()} Power`;
+    if (talentVal) talentVal.innerText = `+${data.talentScore.toLocaleString()} Power`;
+    if (sanctuaryVal) sanctuaryVal.innerText = `+${data.sanctuaryScore.toLocaleString()} Power`;
+
+    const tierRows = ['novice', 'adept', 'champion', 'warlord', 'titan_slayer', 'grandmaster'];
+    tierRows.forEach(tId => {
+        const row = document.getElementById(`tier-row-${tId}`);
+        if (row) {
+            const isCurrent = (tId === data.tier.id);
+            row.classList.toggle('current-tier', isCurrent);
+            if (isCurrent) {
+                row.style.background = 'rgba(56, 189, 248, 0.12)';
+                row.style.borderColor = '#38bdf8';
+            } else {
+                row.style.background = 'rgba(15, 23, 42, 0.4)';
+                row.style.borderColor = '#334155';
+            }
+        }
+    });
+
+    modal.style.display = 'flex';
+};
+
+window.closePowerBreakdownModal = function() {
+    initAudio();
+    const modal = document.getElementById('power-breakdown-screen');
+    if (modal) modal.style.display = 'none';
+};
+
+function initHeroNameOnLoad() {
+    const nameInput = document.getElementById('player-name-input');
+    const mpInput = document.getElementById('mp-hero-name');
+
+    if (nameInput) {
+        nameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                window.confirmPlayerName();
+            }
+        });
+    }
+
+    if (mpInput) {
+        mpInput.addEventListener('input', (e) => {
+            const val = e.target.value.trim();
+            if (val) {
+                SAVE.playerName = val;
+                localStorage.setItem('rpg_player_name', val);
+                writeSave();
+                const displayEl = document.getElementById('start-player-name-display');
+                if (displayEl) displayEl.innerText = val;
+                updateStartHeroDossier();
+            }
+        });
+    }
+
+    const savedName = getPlayerName();
+    if (!savedName || savedName.trim() === '') {
+        // First time entering: show name and character creation modal BEFORE start screen!
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen) startScreen.style.display = 'none';
+        window.openNameModal(true);
+    } else {
+        updatePlayerNameUI();
+        updateStartHeroDossier();
+        const startScreen = document.getElementById('start-screen');
+        if (startScreen && GAME.state === 'START') startScreen.style.display = 'flex';
+    }
+}
 
 // --- GEAR & INVENTORY MODAL STATE & METHODS ---
 let selectedStartHero = 'Warrior';
@@ -492,24 +1477,27 @@ window.selectStartHero = function(heroName) {
     selectedStartHero = heroName;
     window.selectedStartHero = heroName;
     currentGearHero = heroName;
+    SAVE.playerClass = heroName;
+    localStorage.setItem('rpg_player_class', heroName);
+    writeSave();
 
-    ['Warrior', 'Mage', 'Archer'].forEach(h => {
-        const card = document.getElementById(`hero-card-${h.toLowerCase()}`);
-        const badge = document.getElementById(`badge-${h.toLowerCase()}-selected`);
-        const isSel = (h.toLowerCase() === heroName.toLowerCase());
-        if (card) card.classList.toggle('selected', isSel);
-        if (badge) badge.style.display = isSel ? 'inline-block' : 'none';
-    });
+    updateStartHeroDossier();
     updateStartLaunchButton();
 };
 
 function updateStartLaunchButton() {
     const btn = document.getElementById('btn-start-launch');
     if (!btn) return;
-    let modeText = '⚔️ START HORDE SURVIVAL';
-    if (GAME.mode === 'dungeon') modeText = '🏰 ENTER DUNGEON RAID';
-    else if (GAME.mode === 'titan') modeText = "⚡ ENTER TITAN'S GAUNTLET";
-    btn.innerText = `${modeText} (${(selectedStartHero || 'WARRIOR').toUpperCase()})`;
+    let modeText = t('launch_horde', '⚔️ START HORDE SURVIVAL');
+    if (GAME.mode === 'dungeon') modeText = t('launch_dungeon', '🏰 ENTER DUNGEON RAID');
+    else if (GAME.mode === 'titan') modeText = t('launch_titan', "⚡ ENTER TITAN'S GAUNTLET");
+    
+    let heroNameDisplay = (selectedStartHero || 'WARRIOR').toUpperCase();
+    if (selectedStartHero === 'Warrior') heroNameDisplay = t('hero_warrior', 'Warrior').toUpperCase();
+    else if (selectedStartHero === 'Mage') heroNameDisplay = t('hero_mage', 'Mage').toUpperCase();
+    else if (selectedStartHero === 'Archer') heroNameDisplay = t('hero_archer', 'Archer').toUpperCase();
+
+    btn.innerText = `${modeText} (${heroNameDisplay})`;
 }
 
 window.selectGameMode = function(mode) {
@@ -818,6 +1806,7 @@ window.equipSelectedItem = function() {
     applyEquipmentStats(currentGearHero);
     updateGUI();
     renderGearModal();
+    updateStartHeroDossier();
 };
 
 window.scrapSelectedItem = function() {
@@ -844,6 +1833,7 @@ window.scrapSelectedItem = function() {
     selectedInvItemId = null;
     updateGUI();
     renderGearModal();
+    updateStartHeroDossier();
 };
 
 window.autoEquipBestGear = function() {
@@ -898,6 +1888,7 @@ window.autoEquipBestGear = function() {
         applyEquipmentStats(currentGearHero);
         updateGUI();
         renderGearModal();
+        updateStartHeroDossier();
     } else {
         logMessage(`Already wearing best available gear for ${currentGearHero}!`, '#94a3b8');
     }
@@ -1622,6 +2613,7 @@ window.buySanctuaryUpgrade = function(id) {
     updateEffects();
     updateGUI();
     renderSanctuary();
+    updateStartHeroDossier();
 };
 
 window.buySanctuaryUpgradeMax = function(id) {
@@ -1640,6 +2632,7 @@ window.buySanctuaryUpgradeMax = function(id) {
         updateEffects();
         updateGUI();
         renderSanctuary();
+        updateStartHeroDossier();
         logMessage(`Upgraded ${UPGRADES[id].name} +${upgraded} Ranks!`, UPGRADES[id].color);
     }
 };
@@ -1982,6 +2975,7 @@ window.investTalentPoint = function(specId, nodeIdx) {
     applyTalentPassives();
     updateGUI();
     renderTalentsModal();
+    updateStartHeroDossier();
 };
 
 window.resetClassTalents = function() {
@@ -2001,6 +2995,7 @@ window.resetClassTalents = function() {
     applyTalentPassives();
     updateGUI();
     renderTalentsModal();
+    updateStartHeroDossier();
 };
 
 function renderTalentsModal() {
@@ -2110,14 +3105,17 @@ function applyTalentPassives() {
 // ==========================================
 const LEADERBOARD_STORAGE_KEY = 'rpg_hall_of_legends_v2';
 
-const DEFAULT_CHAMPIONS = [
-    { rank: 1, name: 'Aric the Sunforged', heroClass: 'Warrior', mode: 'titan', progress: 'Colossus V Cleared', kills: 480, time: 285, score: 185000, date: '2026-08-10' },
-    { rank: 2, name: 'Valeria Voidweaver', heroClass: 'Mage', mode: 'dungeon', progress: 'Chamber V Boss Slayed', kills: 360, time: 310, score: 142000, date: '2026-08-11' },
-    { rank: 3, name: 'Sylas Swiftgale', heroClass: 'Archer', mode: 'horde', progress: 'Wave 28 Survived', kills: 1120, time: 740, score: 129000, date: '2026-08-12' },
-    { rank: 4, name: 'Kaelen Shadowstride', heroClass: 'Archer', mode: 'titan', progress: 'Titan IV Slain', kills: 390, time: 240, score: 98000, date: '2026-08-13' },
-    { rank: 5, name: 'Thorgar Ironbane', heroClass: 'Warrior', mode: 'dungeon', progress: 'Chamber V Boss Slayed', kills: 295, time: 380, score: 91500, date: '2026-08-14' },
-    { rank: 6, name: 'Lyra Starlight', heroClass: 'Mage', mode: 'horde', progress: 'Wave 21 Survived', kills: 780, time: 510, score: 84000, date: '2026-08-15' }
-];
+// Set of fictitious champions from older versions to purge
+const MOCK_LEGACY_NAMES = new Set([
+    'Aric the Sunforged',
+    'Valeria Voidweaver',
+    'Sylas Swiftgale',
+    'Kaelen Shadowstride',
+    'Thorgar Ironbane',
+    'Lyra Starlight',
+    'Grand Titan Slayer',
+    'Chamber V Conquered'
+]);
 
 let lbCurrentModeFilter = 'all';
 let lbCurrentClassFilter = 'all';
@@ -2128,15 +3126,27 @@ function getLeaderboardEntries() {
         const raw = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
         if (raw) entries = JSON.parse(raw);
     } catch (e) { /* ignore */ }
-    if (!Array.isArray(entries) || entries.length === 0) {
-        entries = [...DEFAULT_CHAMPIONS];
-        try { localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries)); } catch (e) {}
+
+    if (!Array.isArray(entries)) {
+        entries = [];
     }
+
+    // Filter out fictitious / mock champion entries
+    const initialLen = entries.length;
+    entries = entries.filter(e => e && e.name && !MOCK_LEGACY_NAMES.has(e.name) && typeof e.score === 'number' && !isNaN(e.score));
+
+    // Save cleaned list if mock data was filtered out
+    if (entries.length !== initialLen) {
+        try {
+            localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(entries));
+        } catch (e) {}
+    }
+
     return entries;
 }
 
 function saveScoreToLeaderboard(details = {}) {
-    const entries = getLeaderboardEntries();
+    let entries = getLeaderboardEntries();
     let progressStr = '';
     if (GAME.mode === 'horde') {
         progressStr = `Wave ${GAME.wave} Survived`;
@@ -2146,14 +3156,16 @@ function saveScoreToLeaderboard(details = {}) {
         progressStr = GAME.titanDefeated ? 'Titan V Slain (Pantheon Master) ⚡' : `Titan ${GAME.titanStage + 1} / 5`;
     }
 
+    const currentHeroName = details.name || getPlayerName() || `Hrdina ${PLAYER.class}`;
+
     const newEntry = {
-        name: details.name || `Hero ${PLAYER.class}`,
-        heroClass: PLAYER.class,
-        mode: GAME.mode,
+        name: currentHeroName,
+        heroClass: PLAYER.class || selectedStartHero || 'Warrior',
+        mode: GAME.mode || 'horde',
         progress: progressStr,
-        kills: GAME.kills,
-        time: Math.round(GAME.time),
-        score: Math.max(10, GAME.score),
+        kills: GAME.kills || 0,
+        time: Math.round(GAME.time || 0),
+        score: Math.max(10, GAME.score || 0),
         date: new Date().toISOString().split('T')[0]
     };
 
@@ -2213,53 +3225,73 @@ function renderLeaderboardModal() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
+    const currentPlayerName = getPlayerName();
     const entries = getLeaderboardEntries();
     const filtered = entries.filter(e => {
         const matchMode = lbCurrentModeFilter === 'all' || e.mode === lbCurrentModeFilter;
-        const matchClass = lbCurrentClassFilter === 'all' || e.heroClass.toLowerCase() === lbCurrentClassFilter.toLowerCase();
+        const matchClass = lbCurrentClassFilter === 'all' || (e.heroClass && e.heroClass.toLowerCase() === lbCurrentClassFilter.toLowerCase());
         return matchMode && matchClass;
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#94a3b8; padding:24px;">No legendary heroes recorded for this filter yet! Play a run to claim the crown!</td></tr>`;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center; color:#94a3b8; padding:36px 16px;">
+                    <div style="font-size: 2.2rem; margin-bottom: 8px;">🏆</div>
+                    <div style="font-weight: bold; color: #f8fafc; font-size: 1.05rem; margin-bottom: 4px;">${t('lb_empty_title', 'No leaderboard entries for this filter')}</div>
+                    <div style="font-size: 0.84rem; color: #94a3b8;">${t('lb_empty_desc', 'Play Horde, Dungeon or Titan mode to be the first legend on the leaderboard!')}</div>
+                </td>
+            </tr>
+        `;
         return;
     }
 
     filtered.forEach((entry, idx) => {
         const tr = document.createElement('tr');
-        if (idx === 0) tr.className = 'rank-1';
-        else if (idx === 1) tr.className = 'rank-2';
-        else if (idx === 2) tr.className = 'rank-3';
+        const isSelf = currentPlayerName && entry.name === currentPlayerName;
+        if (isSelf) tr.classList.add('lb-self');
+
+        if (idx === 0) tr.classList.add('rank-1');
+        else if (idx === 1) tr.classList.add('rank-2');
+        else if (idx === 2) tr.classList.add('rank-3');
 
         let rankBadge = `${idx + 1}`;
-        if (idx === 0) rankBadge = '🥇';
-        else if (idx === 1) rankBadge = '🥈';
-        else if (idx === 2) rankBadge = '🥉';
+        if (idx === 0) rankBadge = '🥇 1';
+        else if (idx === 1) rankBadge = '🥈 2';
+        else if (idx === 2) rankBadge = '🥉 3';
 
         const classColor = entry.heroClass === 'Warrior' ? '#f87171' : (entry.heroClass === 'Mage' ? '#38bdf8' : '#34d399');
         const classIcon = entry.heroClass === 'Warrior' ? '⚔️' : (entry.heroClass === 'Mage' ? '🔮' : '🏹');
-        const modeBadge = entry.mode === 'titan' ? '⚡ Titan Gauntlet' : (entry.mode === 'dungeon' ? '🏰 Dungeon Raid' : '🌊 Horde Survival');
+        let classDisplayName = entry.heroClass || 'Hero';
+        if (entry.heroClass === 'Warrior') classDisplayName = t('hero_warrior', 'Warrior');
+        else if (entry.heroClass === 'Mage') classDisplayName = t('hero_mage', 'Mage');
+        else if (entry.heroClass === 'Archer') classDisplayName = t('hero_archer', 'Archer');
+
+        const modeBadge = entry.mode === 'titan' ? t('mode_titan', '⚡ Titan\'s Gauntlet') : (entry.mode === 'dungeon' ? t('mode_dungeon', '🏰 3-Hero Dungeon') : t('mode_horde', '🌊 Horde Survival'));
         const modeColor = entry.mode === 'titan' ? '#ef4444' : (entry.mode === 'dungeon' ? '#a855f7' : '#0284c7');
 
-        const mins = Math.floor(entry.time / 60);
-        const secs = (entry.time % 60).toString().padStart(2, '0');
+        const mins = Math.floor((entry.time || 0) / 60);
+        const secs = ((entry.time || 0) % 60).toString().padStart(2, '0');
 
         tr.innerHTML = `
-            <td style="text-align: center; font-weight: bold; font-size: 1.1rem;">${rankBadge}</td>
+            <td style="text-align: center; font-weight: bold; font-size: 1.05rem;">${rankBadge}</td>
             <td>
-                <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem;">${entry.name}</div>
-                <div style="font-size: 0.78rem; color: ${classColor};">${classIcon} ${entry.heroClass}</div>
+                <div style="font-weight: bold; color: #f8fafc; font-size: 0.95rem; display: flex; align-items: center; gap: 6px;">
+                    <span>${entry.name}</span>
+                    ${isSelf ? `<span style="font-size:0.68rem; background:#f59e0b; color:#000; padding:1px 5px; border-radius:4px; font-weight:800;">${t('lb_you_tag', 'YOU')}</span>` : ''}
+                </div>
+                <div style="font-size: 0.78rem; color: ${classColor};">${classIcon} ${classDisplayName}</div>
             </td>
             <td>
                 <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: ${modeColor}33; color: ${modeColor}; font-weight: bold; border: 1px solid ${modeColor}66;">${modeBadge}</span>
                 <div style="font-size: 0.78rem; color: #cbd5e1; margin-top: 2px;">${entry.progress}</div>
             </td>
             <td>
-                <div style="color: #cbd5e1; font-size: 0.82rem;">💀 ${entry.kills} kills</div>
-                <div style="font-size: 0.75rem; color: #94a3b8;">⏱️ ${mins}:${secs} &bull; ${entry.date}</div>
+                <div style="color: #cbd5e1; font-size: 0.82rem;">💀 ${entry.kills || 0} kills</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">⏱️ ${mins}:${secs} &bull; ${entry.date || ''}</div>
             </td>
             <td style="text-align: right; font-weight: bold; font-size: 1.15rem; color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,0.3);">
-                ${entry.score.toLocaleString()}
+                ${(entry.score || 0).toLocaleString()}
             </td>
         `;
         tbody.appendChild(tr);
@@ -2712,7 +3744,7 @@ function triggerTitanVictory() {
     GAME.titanDefeated = true;
     SFX.lootLegendary();
 
-    saveScoreToLeaderboard({ name: 'Grand Titan Slayer' });
+    saveScoreToLeaderboard();
 
     const goldBonus = 2500;
     const essenceBonus = 1000;
@@ -2917,17 +3949,20 @@ window.togglePause = function() {
 };
 
 window.addEventListener('keydown', (e) => {
+    // 1. Guard text inputs from triggering spell or menu bindings
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) {
+        return;
+    }
+
     initAudio();
+
+    // 2. Dedicated Spell & Skill Hotkeys (Guaranteed 100% Uninterfered)
     if (e.code === 'Digit1') {
         usePrimaryAttack();
         return;
     }
     if (e.code === 'Digit2' || e.code === 'KeyE') {
-        if (activeLootDrop) {
-            handleQuickEquipLoot();
-        } else {
-            useTacticalSkill();
-        }
+        useTacticalSkill();
         return;
     }
     if (e.code === 'Digit3' || e.code === 'KeyR') {
@@ -2942,6 +3977,22 @@ window.addEventListener('keydown', (e) => {
         useUltimate();
         return;
     }
+
+    // 3. Dedicated Ground Loot Interaction Hotkeys (G = Equip, X = Stash)
+    if (e.code === 'KeyG') {
+        if (activeLootDrop) {
+            handleQuickEquipLoot();
+            return;
+        }
+    }
+    if (e.code === 'KeyX') {
+        if (activeLootDrop) {
+            handleQuickBagLoot();
+            return;
+        }
+    }
+
+    // 4. Modal & Menu Toggles
     if (e.code === 'KeyI') {
         toggleGearModal();
         return;
@@ -2960,6 +4011,40 @@ window.addEventListener('keydown', (e) => {
     }
     if (e.code === 'KeyJ') {
         toggleQuestsModal();
+        return;
+    }
+
+    // 5. Camera Orbit & Zoom Keybinds
+    if (e.code === 'KeyZ' || e.code === 'BracketLeft' || e.code === 'ArrowLeft') {
+        rotateCamera(-Math.PI / 12);
+        return;
+    }
+    if (e.code === 'KeyC' || e.code === 'BracketRight' || e.code === 'ArrowRight') {
+        rotateCamera(Math.PI / 12);
+        return;
+    }
+    if (e.code === 'ArrowUp' || e.code === 'PageUp') {
+        adjustCameraZoom(0.15);
+        return;
+    }
+    if (e.code === 'ArrowDown' || e.code === 'PageDown') {
+        adjustCameraZoom(-0.15);
+        return;
+    }
+    if (e.code === 'KeyT' || e.code === 'Home') {
+        resetCameraAngleAndZoom();
+        return;
+    }
+    if (e.code === 'Equal' || e.code === 'NumpadAdd') {
+        adjustCameraZoom(0.15);
+        return;
+    }
+    if (e.code === 'Minus' || e.code === 'NumpadSubtract') {
+        adjustCameraZoom(-0.15);
+        return;
+    }
+    if (e.code === 'Digit0' || e.code === 'Numpad0') {
+        resetCameraAngleAndZoom();
         return;
     }
     if (e.code === 'Escape') {
@@ -2998,12 +4083,49 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
+window.addEventListener('contextmenu', (e) => {
+    if (GAME.state === 'PLAYING' || isDraggingCamera) {
+        e.preventDefault();
+    }
+});
+
 window.addEventListener('mousedown', (e) => { 
     initAudio();
-    if (e.button === 0) keys.click = true; 
+    if (e.button === 0) {
+        keys.click = true;
+    }
+    if (e.button === 2 || e.button === 1) {
+        isDraggingCamera = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    }
 });
-window.addEventListener('mouseup', (e) => { if (e.button === 0) keys.click = false; });
-window.addEventListener('mouseleave', () => { keys.click = false; });
+
+window.addEventListener('mousemove', (e) => {
+    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+    if (isDraggingCamera) {
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        
+        targetCameraAngleY -= dx * 0.0075;
+        cameraPitch = Math.max(0.35, Math.min(1.6, cameraPitch + dy * 0.0035));
+        
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        showCameraIndicator();
+    }
+});
+
+window.addEventListener('mouseup', (e) => { 
+    if (e.button === 0) keys.click = false; 
+    if (e.button === 2 || e.button === 1) isDraggingCamera = false;
+});
+window.addEventListener('mouseleave', () => { 
+    keys.click = false; 
+    isDraggingCamera = false;
+});
 
 // --- NETWORK MANAGER (CO-OP MULTIPLAYER) ---
 let IS_MULTIPLAYER = false;
@@ -5229,7 +6351,7 @@ function triggerDungeonVictory() {
     GAME.state = 'DUNGEON_VICTORY';
     SFX.lootLegendary();
 
-    saveScoreToLeaderboard({ name: 'Chamber V Conquered' });
+    saveScoreToLeaderboard();
 
     const goldBonus = 1200 + (SAVE.upgrades.greed || 0) * 120;
     const essenceBonus = 600;
@@ -5327,6 +6449,10 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
         if (titanHUD) titanHUD.style.display = 'none';
         clearTitanArena();
         initDungeonMode();
+        cameraAngleY = 0;
+        targetCameraAngleY = 0;
+        cameraPitch = 1.0;
+        updateCompassHUD();
         camera.position.set(playerMesh.position.x, 38, playerMesh.position.z + 24);
     } else if (GAME.mode === 'titan') {
         if (waveHUD) waveHUD.style.display = 'none';
@@ -5335,6 +6461,10 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
         if (titanHUD) titanHUD.style.display = 'flex';
         clearDungeonState();
         initTitanGauntlet();
+        cameraAngleY = 0;
+        targetCameraAngleY = 0;
+        cameraPitch = 1.0;
+        updateCompassHUD();
         camera.position.set(playerMesh.position.x, 46, playerMesh.position.z + 30);
     } else {
         clearDungeonState();
@@ -5357,6 +6487,10 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
         if (titanHUD) titanHUD.style.display = 'none';
         updateWaveHUD();
         playerMesh.position.set(0, 1, 0);
+        cameraAngleY = 0;
+        targetCameraAngleY = 0;
+        cameraPitch = 1.0;
+        updateCompassHUD();
         camera.position.set(playerMesh.position.x, 60, playerMesh.position.z + 35);
     }
 
@@ -7318,7 +8452,7 @@ function gameOver() {
     SAVE.essence += banked;
     writeSave();
 
-    saveScoreToLeaderboard({ name: `Hero ${PLAYER.class}` });
+    saveScoreToLeaderboard();
 
     document.getElementById('game-over').style.display = 'flex';
     document.getElementById('go-wave').innerText = (GAME.mode === 'dungeon' ? `Chamber ${GAME.dungeonRoom + 1}` : (GAME.mode === 'titan' ? `Titan ${GAME.titanStage + 1} / 5` : GAME.wave));
@@ -7506,9 +8640,20 @@ function animate() {
 
         // Aiming
         if (joystickShoot.active) {
+            const camForward = new THREE.Vector3();
+            camera.getWorldDirection(camForward);
+            camForward.y = 0;
+            if (camForward.lengthSq() > 0.0001) camForward.normalize();
+            else camForward.set(0, 0, -1);
+
+            const camRight = new THREE.Vector3();
+            camRight.crossVectors(camForward, new THREE.Vector3(0, 1, 0)).normalize();
+
+            const aimX = camRight.x * joystickShoot.x + camForward.x * (-joystickShoot.y);
+            const aimZ = camRight.z * joystickShoot.x + camForward.z * (-joystickShoot.y);
             const target = playerMesh.position.clone();
-            target.x += joystickShoot.x;
-            target.z += joystickShoot.y;
+            target.x += aimX;
+            target.z += aimZ;
             playerMesh.lookAt(target);
         } else {
             raycaster.setFromCamera(mouse, camera);
@@ -7532,20 +8677,49 @@ function animate() {
             updateGUI();
         }
 
-        // Movement Physics
+        // Movement Physics (Camera-Relative WASD & Joystick)
         velocity.x -= velocity.x * 10.0 * dt;
         velocity.z -= velocity.z * 10.0 * dt;
 
         const currentSpeed = (GAME.isDowned ? 5 : PLAYER.speed) * EFFECTS.moveSpeedMult * (keys.shift ? 1.4 : 1.0);
         
+        let inputX = 0;
+        let inputZ = 0;
+
         if (joystickMove.active) {
-            velocity.x += joystickMove.x * 100.0 * dt;
-            velocity.z += joystickMove.y * 100.0 * dt;
+            inputX = joystickMove.x;
+            inputZ = joystickMove.y;
         } else {
-            if (keys.w) velocity.z -= 100.0 * dt;
-            if (keys.s) velocity.z += 100.0 * dt;
-            if (keys.a) velocity.x -= 100.0 * dt;
-            if (keys.d) velocity.x += 100.0 * dt;
+            if (keys.w) inputZ -= 1.0;
+            if (keys.s) inputZ += 1.0;
+            if (keys.a) inputX -= 1.0;
+            if (keys.d) inputX += 1.0;
+        }
+
+        const inputLen = Math.hypot(inputX, inputZ);
+        if (inputLen > 0.001) {
+            const normX = inputLen > 1 ? (inputX / inputLen) : inputX;
+            const normZ = inputLen > 1 ? (inputZ / inputLen) : inputZ;
+
+            // Derive forward and right vectors directly from camera on the horizontal XZ plane
+            const camForward = new THREE.Vector3();
+            camera.getWorldDirection(camForward);
+            camForward.y = 0;
+            if (camForward.lengthSq() > 0.0001) {
+                camForward.normalize();
+            } else {
+                camForward.set(0, 0, -1);
+            }
+
+            const camRight = new THREE.Vector3();
+            camRight.crossVectors(camForward, new THREE.Vector3(0, 1, 0)).normalize();
+
+            // Screen-relative movement: W/-normZ pushes along camera forward, D/normX pushes along camera right
+            const moveX = camRight.x * normX + camForward.x * (-normZ);
+            const moveZ = camRight.z * normX + camForward.z * (-normZ);
+
+            velocity.x += moveX * 100.0 * dt;
+            velocity.z += moveZ * 100.0 * dt;
         }
 
         playerMesh.position.x += velocity.x * dt * (currentSpeed / 10);
@@ -7555,33 +8729,52 @@ function animate() {
         pos.x = Math.max(-490, Math.min(490, pos.x));
         pos.z = Math.max(-490, Math.min(490, pos.z));
 
-        // Dynamic Camera Setup by Game Mode
+        // Smooth camera rotation angle interpolation
+        cameraAngleY = THREE.MathUtils.lerp(cameraAngleY, targetCameraAngleY, 0.15);
+
+        // Dynamic Camera Setup by Game Mode with smooth player-controlled orbit, pitch & zoom
+        const zFactor = (typeof cameraZoomFactor === 'number' && !isNaN(cameraZoomFactor)) ? cameraZoomFactor : 1.0;
+        const pitchFactor = (typeof cameraPitch === 'number' && !isNaN(cameraPitch)) ? cameraPitch : 1.0;
+
         let cameraTargetX = playerMesh.position.x;
-        let cameraTargetZ = playerMesh.position.z + 35; 
-        let targetCamY = 60;
+        let cameraTargetZ = playerMesh.position.z;
+        let targetCamY = 60 * zFactor * pitchFactor;
         let targetLookX = playerMesh.position.x;
         let targetLookY = 0;
         let targetLookZ = playerMesh.position.z;
 
         if (GAME.mode === 'dungeon') {
-            // Isometric side-angle camera with lookahead forward into the dungeon corridor
-            cameraTargetX = playerMesh.position.x - 22; // Side-offset so the entire chamber and corridor paths are visible from the side
-            cameraTargetZ = playerMesh.position.z + 14; // Slightly back
-            targetCamY = 28; // Elevated side vantage angle
-            targetLookX = playerMesh.position.x + 3;
+            // Isometric Dungeon Vantage with 360-degree Orbit & Pitch
+            const baseDist = 26 * zFactor;
+            cameraTargetX = playerMesh.position.x + Math.sin(cameraAngleY) * baseDist;
+            cameraTargetZ = playerMesh.position.z + Math.cos(cameraAngleY) * baseDist;
+            targetCamY = 28 * zFactor * pitchFactor;
+            targetLookX = playerMesh.position.x;
             targetLookY = 1.2;
-            targetLookZ = playerMesh.position.z + 18; // Lookahead forward down the hall toward the exit gate!
+            targetLookZ = playerMesh.position.z;
         } else if (GAME.mode === 'titan') {
-            // Colosseum Boss Arena cinematic camera
-            cameraTargetZ = playerMesh.position.z + 30;
-            targetCamY = 46;
+            // Colosseum Boss Arena Cinematic Orbit Camera
+            const radius = 30 * zFactor;
+            cameraTargetX = playerMesh.position.x + Math.sin(cameraAngleY) * radius;
+            cameraTargetZ = playerMesh.position.z + Math.cos(cameraAngleY) * radius;
+            targetCamY = 46 * zFactor * pitchFactor;
+            targetLookX = playerMesh.position.x;
             targetLookY = 1.5;
-            targetLookZ = playerMesh.position.z + 2.0;
+            targetLookZ = playerMesh.position.z;
+        } else {
+            // Standard Horde Survival Orbit Camera
+            const radius = 35 * zFactor;
+            cameraTargetX = playerMesh.position.x + Math.sin(cameraAngleY) * radius;
+            cameraTargetZ = playerMesh.position.z + Math.cos(cameraAngleY) * radius;
+            targetCamY = 60 * zFactor * pitchFactor;
+            targetLookX = playerMesh.position.x;
+            targetLookY = 0;
+            targetLookZ = playerMesh.position.z;
         }
         
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraTargetX, 0.12);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, cameraTargetZ, 0.12);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, 0.1);
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, cameraTargetX, 0.14);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, cameraTargetZ, 0.14);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, 0.12);
 
         // Camera Shake effect
         if (cameraShakeTimer > 0) {
@@ -7785,16 +8978,10 @@ window.addEventListener('resize', () => {
 });
 
 // --- LOBBY URL PARAMETER & STORAGE BOOTSTRAP ---
-window.addEventListener('DOMContentLoaded', () => {
+function bootstrapApp() {
+    window.setGameLanguage(getGameLanguage());
     initMinimap();
-    const savedName = localStorage.getItem('rpg_player_name');
-    const nameInput = document.getElementById('mp-hero-name');
-    if (nameInput) {
-        nameInput.value = savedName || ('Hero ' + Math.floor(10 + Math.random() * 90));
-        nameInput.addEventListener('input', (e) => {
-            localStorage.setItem('rpg_player_name', e.target.value.trim());
-        });
-    }
+    initHeroNameOnLoad();
 
     const urlParams = new URLSearchParams(window.location.search);
     const roomParam = urlParams.get('room');
@@ -7802,6 +8989,12 @@ window.addEventListener('DOMContentLoaded', () => {
         const joinInput = document.getElementById('mp-join-code');
         if (joinInput) joinInput.value = roomParam.toUpperCase();
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    window.addEventListener('DOMContentLoaded', bootstrapApp);
+} else {
+    bootstrapApp();
+}
 
 animate();
