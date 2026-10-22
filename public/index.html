@@ -20,6 +20,8 @@
         .health-bar { height: 100%; background: linear-gradient(90deg, #e74c3c, #ff6b6b); width: 100%; transition: width 0.2s; }
         .mana-bar { height: 100%; background: linear-gradient(90deg, #2980b9, #3498db); width: 100%; transition: width 0.2s; }
         .exp-bar { height: 100%; background: linear-gradient(90deg, #8e44ad, #9b59b6); width: 0%; transition: width 0.2s; }
+        .stamina-bar { height: 100%; background: linear-gradient(90deg, #059669, #34d399); width: 100%; transform: scaleX(1); transform-origin: left center; transition: transform 0.16s ease-out; }
+        .stamina-bar.stamina-low { background: linear-gradient(90deg, #dc2626, #fb7185); }
         .wave-bar { height: 100%; background: linear-gradient(90deg, #00b894, #00cec9); width: 0%; transition: width 0.3s; }
         .boss-bar { height: 100%; background: linear-gradient(90deg, #c0392b, #e74c3c); width: 100%; transition: width 0.2s; }
         
@@ -162,6 +164,29 @@
         .joystick-knob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255,255,255,0.5); border-radius: 50%; pointer-events: none; transition: transform 0.05s; }
         #joystick-left { left: 16px; }
         #joystick-right { right: 16px; }
+        #btn-sprint-mobile {
+            position: absolute;
+            right: 165px;
+            bottom: 170px;
+            width: 54px;
+            height: 54px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #34d399;
+            border-radius: 50%;
+            background: rgba(6, 78, 59, 0.92);
+            color: #ecfdf5;
+            font-size: 0.72rem;
+            font-weight: 800;
+            cursor: pointer;
+            pointer-events: auto;
+            touch-action: none;
+            user-select: none;
+            z-index: 25;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+        }
+        #btn-sprint-mobile.active { border-color: #a7f3d0; background: #047857; }
 
         /* Top Action Bar (Dedicated Utility Bar - Clean, non-overlapping) */
         .top-action-bar {
@@ -268,6 +293,7 @@
 
         @media (max-width: 1024px) {
             #mobile-controls { display: block; }
+            #btn-sprint-mobile { display: flex; }
             #hud-top-left { transform: scale(0.88); transform-origin: top left; }
             #hud-bottom-right { bottom: 85px; right: 10px; font-size: 0.78rem; padding: 6px 8px; max-width: 140px; }
             #hud-bottom-left { display: none; }
@@ -473,6 +499,246 @@
         #minimap-container { position: absolute; top: 10px; right: 10px; width: 145px; height: 145px; background: rgba(15,23,42,0.75); border: 2px solid #475569; border-radius: 50%; overflow: hidden; pointer-events: none; z-index: 5; box-shadow: 0 4px 10px rgba(0,0,0,0.6); }
         #minimap-canvas { width: 100%; height: 100%; }
 
+        #start-screen {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(320px, 1.06fr);
+            align-content: start;
+            justify-items: stretch;
+            gap: 12px 18px;
+            padding: clamp(16px, 2.5vh, 30px) clamp(16px, 4vw, 64px) 28px;
+            background:
+                radial-gradient(ellipse at 12% 8%, rgba(155, 88, 45, 0.2), transparent 42%),
+                radial-gradient(ellipse at 82% 24%, rgba(48, 90, 126, 0.18), transparent 38%),
+                linear-gradient(135deg, rgba(7, 11, 17, 0.94), rgba(12, 18, 25, 0.9) 55%, rgba(7, 11, 17, 0.96));
+            backdrop-filter: blur(2px);
+            cursor: default;
+        }
+        #start-screen > div:first-child {
+            grid-column: 1 / -1;
+            width: 100%;
+            max-width: 1280px;
+            margin: 0 auto 2px !important;
+            gap: 12px;
+        }
+        #start-title {
+            grid-column: 1 / -1;
+            margin: 0 !important;
+            color: #f0e6d3 !important;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(1.75rem, 3vw, 2.65rem) !important;
+            font-weight: 700;
+            letter-spacing: 0.02em !important;
+            text-shadow: 0 3px 18px rgba(0, 0, 0, 0.58) !important;
+        }
+        #start-subtitle {
+            grid-column: 1 / -1;
+            max-width: 68ch !important;
+            margin: -6px auto 0 !important;
+            color: #d2d8dd !important;
+            line-height: 1.55;
+        }
+        #start-screen > .currency-display {
+            grid-column: 1 / -1;
+            width: 100%;
+            max-width: 1280px;
+            box-sizing: border-box;
+            justify-content: flex-end !important;
+            border-bottom: 1px solid rgba(196, 164, 120, 0.24);
+            padding: 0 0 10px;
+            margin: 0 auto 2px;
+        }
+        #start-screen .mode-toggle-group {
+            grid-column: 1;
+            grid-row: 5;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+            width: 100%;
+            max-width: none;
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            border: 0;
+        }
+        #start-screen .mode-btn {
+            min-width: 0;
+            min-height: 70px;
+            display: grid;
+            grid-template-columns: 38px minmax(0, 1fr) 14px;
+            align-items: center;
+            gap: 9px;
+            padding: 10px 12px;
+            margin: 0;
+            border: 1px solid rgba(173, 184, 193, 0.2) !important;
+            border-radius: 10px;
+            background: rgba(16, 23, 31, 0.88);
+            color: #d3dbe0;
+            text-align: left;
+            box-shadow: 0 5px 14px rgba(0, 0, 0, 0.22);
+            transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+        }
+        #start-screen .mode-btn:hover {
+            border-color: rgba(227, 190, 134, 0.65) !important;
+            background: #1b252e;
+            transform: translateY(-2px);
+        }
+        #start-screen .mode-btn.active {
+            border-color: #e1b46c !important;
+            background: linear-gradient(120deg, rgba(95, 63, 34, 0.82), rgba(29, 34, 37, 0.96));
+            color: #fff4df;
+            box-shadow: 0 7px 18px rgba(0, 0, 0, 0.34), 0 0 0 1px rgba(225, 180, 108, 0.16);
+        }
+        .mode-card-icon { font-size: 1.45rem; text-align: center; }
+        .mode-card-copy { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+        .mode-card-copy strong { overflow: hidden; color: inherit; font-size: 0.88rem; text-overflow: ellipsis; white-space: nowrap; }
+        .mode-card-copy small { color: #aeb9bf; font-size: 0.7rem; line-height: 1.25; }
+        .mode-card-indicator { width: 8px; height: 8px; border: 1px solid #72808a; border-radius: 50%; }
+        #start-screen .mode-btn.active .mode-card-indicator { border-color: #f0c883; background: #f0c883; box-shadow: 0 0 8px rgba(240, 200, 131, 0.55); }
+        #start-screen #horde-info-banner,
+        #start-screen #dungeon-info-banner,
+        #start-screen #titan-info-banner,
+        #start-screen #rift-info-banner,
+        #start-screen #rush-info-banner {
+            grid-column: 1;
+            grid-row: 6;
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+            align-self: stretch;
+            padding: 12px 14px;
+            margin: 0 !important;
+            border-color: rgba(225, 180, 108, 0.32) !important;
+            border-radius: 9px;
+            background: rgba(22, 27, 31, 0.88) !important;
+            color: #d8d2c7 !important;
+            font-size: 0.82rem;
+            line-height: 1.5;
+            text-align: left;
+            box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
+        }
+        #start-screen #dungeon-info-banner { border-color: rgba(190, 150, 220, 0.4) !important; }
+        #start-screen #titan-info-banner { border-color: rgba(235, 120, 105, 0.42) !important; }
+        #start-screen #rift-info-banner { border-color: rgba(192, 132, 252, 0.42) !important; }
+        #start-screen #rush-info-banner { border-color: rgba(245, 158, 11, 0.42) !important; }
+        .start-hero-selection {
+            grid-column: 1;
+            grid-row: 7;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            max-width: none;
+        }
+        .start-menu-section-title {
+            color: #e8dfd1;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .start-hero-choice-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .start-hero-choice {
+            min-width: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 10px;
+            margin: 0;
+            border: 1px solid rgba(173, 184, 193, 0.2);
+            border-radius: 9px;
+            background: rgba(16, 23, 31, 0.86);
+            color: #d3dbe0;
+            text-align: left;
+            box-shadow: none;
+        }
+        .start-hero-choice:hover { background: #1b252e; border-color: rgba(227, 190, 134, 0.6); }
+        .start-hero-choice.active { border-color: #e1b46c; background: rgba(95, 63, 34, 0.62); color: #fff4df; }
+        .start-hero-choice-icon { flex: 0 0 auto; font-size: 1.25rem; }
+        .start-hero-choice span:last-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+        .start-hero-choice strong { font-size: 0.78rem; }
+        .start-hero-choice small { overflow: hidden; color: #aeb9bf; font-size: 0.62rem; text-overflow: ellipsis; white-space: nowrap; }
+        #start-hero-dossier {
+            grid-column: 2;
+            grid-row: 5 / span 3;
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            box-sizing: border-box;
+            margin: 0;
+            border: 1px solid rgba(225, 180, 108, 0.38);
+            border-radius: 12px;
+            background: linear-gradient(145deg, rgba(26, 31, 34, 0.96), rgba(12, 17, 23, 0.97));
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+        }
+        #start-screen #btn-start-launch {
+            grid-column: 1;
+            grid-row: 8;
+            width: 100%;
+            max-width: none;
+            min-height: 56px;
+            margin: 0;
+            border: 1px solid #e2bc7a;
+            border-radius: 9px;
+            background: linear-gradient(135deg, #a76b32, #d29a4b);
+            color: #fff9ef;
+            font-size: 1rem !important;
+            letter-spacing: 0.015em;
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.38);
+        }
+        #start-screen #btn-start-launch:hover { background: linear-gradient(135deg, #bd7d3c, #e0ad60); }
+        #start-screen .mp-hub-card {
+            grid-column: 1 / -1;
+            grid-row: 9;
+            width: 100%;
+            max-width: 1280px;
+            box-sizing: border-box;
+            margin: 0 auto;
+            border-color: rgba(128, 158, 178, 0.28);
+            background: rgba(13, 19, 25, 0.85);
+        }
+        #start-screen #controls-cheat-sheet {
+            grid-column: 1 / -1;
+            grid-row: 10;
+            max-width: 1280px;
+            margin: 0 auto !important;
+        }
+        #start-screen button:focus-visible {
+            outline: 2px solid #f2ce8f;
+            outline-offset: 3px;
+        }
+        @media (max-width: 840px) {
+            #start-screen {
+                grid-template-columns: minmax(0, 1fr);
+                gap: 12px;
+                padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+            }
+            #start-screen > * {
+                grid-column: 1 / -1 !important;
+                grid-row: auto !important;
+            }
+            #start-screen .mode-toggle-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            #start-hero-dossier { height: auto; }
+            #start-screen .currency-display { justify-content: center !important; }
+        }
+        @media (max-width: 520px) {
+            #start-screen { gap: 10px; padding-right: 12px; padding-left: 12px; }
+            #start-screen > div:first-child { align-items: flex-start !important; flex-direction: column; }
+            #start-screen .mode-btn { min-height: 66px; padding: 8px; grid-template-columns: 28px minmax(0, 1fr) 10px; gap: 6px; }
+            .mode-card-copy strong { font-size: 0.76rem; }
+            .mode-card-copy small { font-size: 0.62rem; }
+            .start-hero-choice-list { gap: 5px; }
+            .start-hero-choice { flex-direction: column; align-items: flex-start; gap: 4px; padding: 8px; }
+            .start-hero-choice small { white-space: normal; }
+            #start-screen .dossier-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #start-screen *, #start-screen *::before, #start-screen *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
         /* Boss Health HUD */
         #boss-hud { margin-top: 6px; width: 100%; display: none; }
         #boss-name { font-size: 0.85rem; font-weight: bold; color: #f87171; text-shadow: 0 0 6px rgba(248,113,113,0.6); }
@@ -576,6 +842,41 @@
 
         /* Dungeon Victory Screen */
         #dungeon-victory-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(20,24,40,0.95) 0%, rgba(5,6,12,0.98) 100%); display: none; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; color: white; z-index: 35; }
+        #challenge-victory-screen {
+            position: fixed;
+            inset: 0;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 24px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            color: #f4eee2;
+            text-align: center;
+            background: radial-gradient(ellipse at 50% 42%, rgba(53, 42, 31, 0.97), rgba(9, 13, 16, 0.99) 72%);
+            z-index: 45;
+        }
+        .challenge-victory-content { width: min(100%, 560px); }
+        .challenge-victory-stats {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px 18px;
+            margin: 18px 0;
+            padding: 16px 0;
+            border-top: 1px solid rgba(225, 180, 108, 0.35);
+            border-bottom: 1px solid rgba(225, 180, 108, 0.35);
+            text-align: left;
+        }
+        .challenge-victory-stats div { display: flex; justify-content: space-between; gap: 8px; color: #c6c9c7; }
+        .challenge-victory-stats strong { color: #f0c883; }
+        #challenge-victory-screen button { min-height: 46px; padding: 10px 24px; border: 1px solid #e1b46c; border-radius: 8px; background: #805329; color: #fff4df; font-weight: 800; cursor: pointer; }
+        #challenge-victory-screen button:hover { background: #9a6738; }
+        #challenge-victory-screen button:focus-visible { outline: 2px solid #f2ce8f; outline-offset: 3px; }
+        @media (max-width: 520px) {
+            .challenge-victory-stats { gap: 8px 12px; font-size: 0.88rem; }
+        }
 
         /* Lobby System Styles */
         #lobby-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at center, #1e1b4b 0%, #090d16 100%); display: none; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 30; overflow-y: auto; padding: 20px; box-sizing: border-box; }
@@ -897,6 +1198,18 @@
                     <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 SK</button>
                     <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 HU</button>
                 </div>
+                <button
+                    id="btn-sprint-mobile"
+                    type="button"
+                    aria-label="Hold to sprint"
+                    aria-pressed="false"
+                    onpointerdown="event.preventDefault(); setSprint(true); this.setPointerCapture(event.pointerId)"
+                    onpointerup="setSprint(false)"
+                    onpointercancel="setSprint(false)"
+                    onlostpointercapture="setSprint(false)"
+                    onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();setSprint(true)}"
+                    onkeyup="if(event.key===' '||event.key==='Enter'){event.preventDefault();setSprint(false)}"
+                >SPRINT</button>
             </div>
 
             <div style="font-size: 2.6rem; margin-bottom: 2px; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">👑</div>
@@ -1066,7 +1379,7 @@
     </div>
 
     <!-- Start Screen -->
-    <div id="start-screen" class="overlay" style="display: flex;">
+    <div id="start-screen" class="overlay" style="display: grid;">
         
         <!-- Header Language Bar & Identity Badge -->
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 900px; margin-bottom: 4px;">
@@ -1110,10 +1423,32 @@
         </div>
 
         <!-- Mode Switcher -->
-        <div class="mode-toggle-group">
-            <button id="mode-btn-horde" class="mode-btn active" onclick="selectGameMode('horde')">🌊 Horde Survival</button>
-            <button id="mode-btn-dungeon" class="mode-btn dungeon" onclick="selectGameMode('dungeon')">🏰 3-Hero Dungeon</button>
-            <button id="mode-btn-titan" class="mode-btn" style="border:1px solid #ef4444;" onclick="selectGameMode('titan')">⚔️ Titan's Gauntlet</button>
+        <div class="mode-toggle-group" role="group" aria-label="Choose a game mode">
+            <button type="button" id="mode-btn-horde" class="mode-btn active" aria-pressed="true" onclick="selectGameMode('horde')">
+                <span class="mode-card-icon" aria-hidden="true">🌊</span>
+                <span class="mode-card-copy"><strong id="mode-label-horde">Horde Survival</strong><small id="mode-desc-horde">Endless waves · Co-op ready</small></span>
+                <span class="mode-card-indicator" aria-hidden="true"></span>
+            </button>
+            <button type="button" id="mode-btn-dungeon" class="mode-btn" aria-pressed="false" onclick="selectGameMode('dungeon')">
+                <span class="mode-card-icon" aria-hidden="true">🏰</span>
+                <span class="mode-card-copy"><strong id="mode-label-dungeon">3-Hero Dungeon</strong><small id="mode-desc-dungeon">Five rooms · Party AI</small></span>
+                <span class="mode-card-indicator" aria-hidden="true"></span>
+            </button>
+            <button type="button" id="mode-btn-titan" class="mode-btn" aria-pressed="false" onclick="selectGameMode('titan')">
+                <span class="mode-card-icon" aria-hidden="true">⚔️</span>
+                <span class="mode-card-copy"><strong id="mode-label-titan">Titan's Gauntlet</strong><small id="mode-desc-titan">Five bosses · Boon drafts</small></span>
+                <span class="mode-card-indicator" aria-hidden="true"></span>
+            </button>
+            <button type="button" id="mode-btn-rift" class="mode-btn" aria-pressed="false" onclick="selectGameMode('rift')">
+                <span class="mode-card-icon" aria-hidden="true">🌀</span>
+                <span class="mode-card-copy"><strong id="mode-label-rift">Rift Trial</strong><small id="mode-desc-rift">Five waves · Seal the rift</small></span>
+                <span class="mode-card-indicator" aria-hidden="true"></span>
+            </button>
+            <button type="button" id="mode-btn-rush" class="mode-btn" aria-pressed="false" onclick="selectGameMode('rush')">
+                <span class="mode-card-icon" aria-hidden="true">⏱️</span>
+                <span class="mode-card-copy"><strong id="mode-label-rush">Rift Rush</strong><small id="mode-desc-rush">Three minutes · Chase your best</small></span>
+                <span class="mode-card-indicator" aria-hidden="true"></span>
+            </button>
         </div>
 
         <div id="dungeon-info-banner" style="display: none; background: rgba(147, 51, 234, 0.18); border: 1px solid #a855f7; border-radius: 8px; padding: 8px 16px; margin-bottom: 6px; max-width: 780px; text-align: center; font-size: 0.82rem; color: #e9d5ff; box-shadow: 0 4px 12px rgba(147,51,234,0.3);">
@@ -1126,6 +1461,30 @@
 
         <div id="horde-info-banner" style="display: block; background: rgba(2, 132, 199, 0.15); border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 16px; margin-bottom: 6px; max-width: 780px; text-align: center; font-size: 0.82rem; color: #bae6fd;">
             🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!
+        </div>
+        <div id="rift-info-banner" style="display: none;">
+            🌀 <strong>Rift Trial</strong> &bull; Fight through five escalating waves and seal the breach by defeating the wave-five boss. A focused solo challenge with a guaranteed victory reward.
+        </div>
+        <div id="rush-info-banner" style="display: none;">
+            ⏱️ <strong>Rift Rush</strong> &bull; Survive a three-minute assault. Waves return faster, the pressure keeps climbing, and every kill adds to your leaderboard score.
+        </div>
+
+        <div class="start-hero-selection" role="group" aria-label="Choose your hero">
+            <div class="start-menu-section-title" id="start-hero-selection-label">Choose your hero</div>
+            <div class="start-hero-choice-list">
+                <button type="button" id="start-hero-choice-warrior" class="start-hero-choice active" aria-pressed="true" onclick="selectStartHero('Warrior')">
+                    <span class="start-hero-choice-icon" aria-hidden="true">⚔️</span>
+                    <span><strong id="start-hero-name-warrior">Warrior</strong><small id="start-hero-role-warrior">Tank · melee cleave</small></span>
+                </button>
+                <button type="button" id="start-hero-choice-mage" class="start-hero-choice" aria-pressed="false" onclick="selectStartHero('Mage')">
+                    <span class="start-hero-choice-icon" aria-hidden="true">🔮</span>
+                    <span><strong id="start-hero-name-mage">Mage</strong><small id="start-hero-role-mage">Ranged sorcery · area damage</small></span>
+                </button>
+                <button type="button" id="start-hero-choice-archer" class="start-hero-choice" aria-pressed="false" onclick="selectStartHero('Archer')">
+                    <span class="start-hero-choice-icon" aria-hidden="true">🏹</span>
+                    <span><strong id="start-hero-name-archer">Archer</strong><small id="start-hero-role-archer">Rapid damage · mobility</small></span>
+                </button>
+            </div>
         </div>
 
         <!-- Static Account-Bound Hero Dossier Card with Power Score -->
@@ -1518,6 +1877,22 @@
         <button onclick="location.reload()" class="btn-gold" style="padding: 12px 32px; font-size: 1.1rem; border-radius: 10px;">Back to Sanctuary 🏰</button>
     </div>
 
+    <section id="challenge-victory-screen" role="dialog" aria-modal="true" aria-labelledby="challenge-victory-title" aria-describedby="challenge-victory-subtitle" tabindex="-1">
+        <div class="challenge-victory-content">
+            <div style="font-size:2.6rem; margin-bottom:4px;" aria-hidden="true">✦</div>
+            <h1 id="challenge-victory-title" style="margin:0 0 8px; color:#f0c883; font-size:clamp(1.8rem, 6vw, 2.8rem);">🌀 RIFT SEALED!</h1>
+            <p id="challenge-victory-subtitle" style="margin:0 auto; max-width:48ch; color:#c6c9c7; line-height:1.55;">The realm is safe—for now. Your run rewards are ready.</p>
+            <div id="challenge-victory-mode" style="margin-top:18px; color:#f0c883; font-weight:800; letter-spacing:0.08em;">Rift Trial</div>
+            <div class="challenge-victory-stats">
+                <div><span id="challenge-victory-gold-label">Gold banked</span><strong id="challenge-victory-gold">+0</strong></div>
+                <div><span id="challenge-victory-essence-label">Essence earned</span><strong id="challenge-victory-essence">+0</strong></div>
+                <div><span id="challenge-victory-score-label">Final score</span><strong id="challenge-victory-score">0</strong></div>
+                <div><span id="challenge-victory-kills-label">Enemies defeated</span><strong id="challenge-victory-kills">0</strong></div>
+            </div>
+            <button id="challenge-victory-return" onclick="location.reload()">Return to Sanctuary</button>
+        </div>
+    </section>
+
     <!-- Unified In-Game / Meta Shop Screen (Accessible while alive!) -->
     <div id="shop-screen" class="overlay">
         <h1 style="color:#38bdf8; margin-bottom: 4px;">🛒 RUN & META SHOP</h1>
@@ -1633,6 +2008,8 @@
                     <button class="lb-tab-btn" id="lb-mode-horde" onclick="filterLeaderboardMode('horde')">🌊 Horde</button>
                     <button class="lb-tab-btn" id="lb-mode-dungeon" onclick="filterLeaderboardMode('dungeon')">🏰 Dungeon</button>
                     <button class="lb-tab-btn" id="lb-mode-titan" onclick="filterLeaderboardMode('titan')">⚔️ Titan Gauntlet</button>
+                    <button class="lb-tab-btn" id="lb-mode-rift" onclick="filterLeaderboardMode('rift')">🌀 Rift Trial</button>
+                    <button class="lb-tab-btn" id="lb-mode-rush" onclick="filterLeaderboardMode('rush')">⏱️ Rift Rush</button>
                 </div>
                 <div class="lb-filters">
                     <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold; align-self: center;">CLASS:</span>
@@ -1821,6 +2198,14 @@
             <div id="mana-box" style="margin-top: 3px;">
                 <div style="display:flex; justify-content:space-between; font-size:0.75rem;"><span>Mana:</span><span><span id="ui-mana">50</span>/<span id="ui-maxmana">50</span></span></div>
                 <div class="bar-container" style="height:5px;" id="mana-bar-container"><div id="mana-bar" class="mana-bar"></div></div>
+            </div>
+
+            <div id="stamina-box" style="margin-top: 3px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.75rem;">
+                <span id="stamina-label">Stamina:</span>
+                <span><span id="ui-stamina">100</span>/<span id="ui-max-stamina">100</span></span>
+                </div>
+                <div class="bar-container" style="height:5px;"><div id="stamina-bar" class="stamina-bar"></div></div>
             </div>
 
             <div style="margin-top: 3px; display:flex; justify-content:space-between; font-size:0.75rem;"><span>EXP:</span><span><span id="ui-exp">0</span>/<span id="ui-exp-needed">100</span></span></div>

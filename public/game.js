@@ -225,8 +225,8 @@ window.toggleAudio = function() {
 
 // --- GAME STATE ---
 const GAME = {
-    state: 'START', // START, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, DUNGEON_VICTORY, TITAN_VICTORY, BOON_DRAFT
-    mode: 'horde', // 'horde', 'dungeon', 'titan'
+    state: 'START', // START, PLAYING, PAUSED, LEVEL_UP, GAME_OVER, CHALLENGE_VICTORY, DUNGEON_VICTORY, TITAN_VICTORY, BOON_DRAFT
+    mode: 'horde', // 'horde', 'dungeon', 'titan', 'rift', 'rush'
     score: 0,
     gold: 0,
     kills: 0,
@@ -258,6 +258,9 @@ const GAME = {
     titanTotalStages: 5,
     titanTimer: 0,
     titanDefeated: false,
+    challengeCompletePending: false,
+    rushTimer: 180,
+    riftTotalWaves: 5,
     titanBoons: []
 };
 
@@ -278,6 +281,7 @@ const PLAYER = {
     class: 'Warrior',
     hp: 100, maxHp: 100,
     mana: 50, maxMana: 50,
+    stamina: 100, maxStamina: 100,
     level: 1, exp: 0, expNeeded: 100,
     speed: 18,
     damage: 25,
@@ -465,8 +469,8 @@ const I18N = {
     en: {
         lang_name: 'English',
         // Start screen & branding
-        start_title: '⚔️ 3D RPG HORDE, DUNGEON & TITAN RAID',
-        start_subtitle: 'Master 3 hero archetypes, raid dungeons with party AI, battle colossi in Titan\'s Gauntlet, and climb the Global Hall of Legends!',
+        start_title: '⚔️ 3D RPG: HORDE, DUNGEON & RIFT CHALLENGES',
+        start_subtitle: 'Choose a hero to survive waves, raid with party AI, battle Titans, or take on the Rift.',
         player_label: '👤 Player:',
         btn_change_name: '✏️ Change Name',
         essence_label: '✨ Essence:',
@@ -475,12 +479,21 @@ const I18N = {
         hall_btn: '🏆 Hall of Legends (L)',
         sanctuary_btn: '🛒 Meta Sanctuary',
         equipment_btn: '🎒 Equipment (I)',
-        mode_horde: '🌊 Horde Survival',
-        mode_dungeon: '🏰 3-Hero Dungeon',
-        mode_titan: '⚔️ Titan\'s Gauntlet',
+        mode_horde: 'Horde Survival',
+        mode_dungeon: '3-Hero Dungeon',
+        mode_titan: 'Titan\'s Gauntlet',
+        mode_rift: 'Rift Trial',
+        mode_rush: 'Rift Rush',
+        mode_desc_horde: 'Endless waves · Co-op ready',
+        mode_desc_dungeon: 'Five rooms · Party AI',
+        mode_desc_titan: 'Five bosses · Boon drafts',
+        mode_desc_rift: 'Solo · Five waves · Seal the rift',
+        mode_desc_rush: 'Solo · Three minutes · Beat your best',
         horde_info: '🌊 <strong>Wave Horde Survival</strong> &bull; Survive escalating enemy waves, trigger celestial shrines, smash treasure chests, and battle colossi every 5 waves!',
         dungeon_info: '🗡️ <strong>Crypt of Overlord Malakor (Hardcore Isometric Mode)</strong> &bull; Traverse 5 perilous chambers featuring floor spike traps, flame fissures, elite shielded guards, and a 3-phase final boss!',
         titan_info: '⚡ <strong>Titan\'s Gauntlet (Boss Rush Colosseum)</strong> &bull; Face 5 gargantuan ancient Titans back-to-back! Draft divine boons after each kill and race against the clock for the ultimate score!',
+        rift_info: '🌀 <strong>Rift Trial</strong> &bull; Fight through five escalating waves and seal the breach by defeating the wave-five boss. A focused solo challenge with a guaranteed victory reward.',
+        rush_info: '⏱️ <strong>Rift Rush</strong> &bull; Survive a three-minute solo assault. Waves return faster, the pressure keeps climbing, and every kill adds to your leaderboard score.',
         mp_title: '👥 Multiplayer Online Co-Op Lobby',
         mp_subtitle: 'Assemble party before starting',
         mp_name_placeholder: 'Your Hero Name (e.g. Roland)',
@@ -491,7 +504,20 @@ const I18N = {
         launch_horde: '⚔️ START HORDE SURVIVAL',
         launch_dungeon: '🏰 ENTER DUNGEON RAID',
         launch_titan: '⚡ ENTER TITAN\'S GAUNTLET',
+        launch_rift: '🌀 BEGIN RIFT TRIAL',
+        launch_rush: '⏱️ START RIFT RUSH',
         // Hero selection
+        hero_select_title: 'Choose your hero',
+        mode_select_title: 'Choose a game mode',
+        start_role_warrior: 'Tank · melee',
+        start_role_mage: 'Arcane ranged',
+        start_role_archer: 'Swift ranged',
+        hero_name_warrior: 'Warrior',
+        hero_name_mage: 'Mage',
+        hero_name_archer: 'Archer',
+        stamina_label: 'Stamina:',
+        sprint_hold: 'Hold to sprint',
+        sprint_button: 'SPRINT',
         active_hero_badge: '✓ ACTIVE HERO',
         hero_warrior: '⚔️ Warrior',
         hero_warrior_role: '🛡️ TANK & MELEE CLEAVE',
@@ -515,6 +541,7 @@ const I18N = {
         ctrl_quests: '[L] Quests',
         ctrl_loot: '[E] Quick Loot',
         ctrl_pause: '[Esc] Pause',
+        ctrl_sprint: '[Shift] Sprint · stamina',
         // Name modal
         name_modal_title: 'ENTER YOUR HERO NAME',
         name_modal_desc: 'Enter your hero name. It will be displayed on the <strong style="color:#fde047;">Global Hall of Legends</strong> and in co-op multiplayer!',
@@ -550,7 +577,9 @@ const I18N = {
         lb_kills_time: 'Kills & Time',
         lb_score: 'Score',
         lb_empty_title: 'No leaderboard entries for this filter',
-        lb_empty_desc: 'Play Horde, Dungeon or Titan mode to be the first legend on the leaderboard!',
+        lb_empty_desc: 'Play any mode to be the first legend on the leaderboard!',
+        lb_mode_rift: '🌀 Rift Trial',
+        lb_mode_rush: '⏱️ Rift Rush',
         lb_you_tag: 'YOU',
         lb_close: 'Close (L)',
         // HUD
@@ -573,13 +602,21 @@ const I18N = {
         go_survived: 'You survived to Wave {wave} (Level {level})',
         go_score: 'Total Score: {score} &bull; Kills: {kills}',
         go_essence: 'Gold banked as Essence: +{banked} (Total Essence: {essence})',
-        go_play_again: 'Play Again'
+        go_play_again: 'Play Again',
+        rift_victory_title: '🌀 RIFT SEALED!',
+        rush_victory_title: '⏱️ RUSH SURVIVED!',
+        challenge_victory_subtitle: 'The realm is safe—for now. Your run rewards are ready.',
+        challenge_victory_gold_label: 'Gold banked',
+        challenge_victory_essence_label: 'Essence earned',
+        challenge_victory_score_label: 'Final score',
+        challenge_victory_kills_label: 'Enemies defeated',
+        challenge_victory_return: 'Return to Sanctuary'
     },
     sk: {
         lang_name: 'Slovenčina',
         // Start screen & branding
-        start_title: '⚔️ 3D RPG HORDE, DUNGEON & SKÚŠKA TITÁNOV',
-        start_subtitle: 'Ovládni 3 hrdinské archetypy, preskúmavaj dungeony s AI družinou, bojuj s kolosmi v Skúške Titánov a staň sa legendou v Globálnom rebríčku!',
+        start_title: '⚔️ 3D RPG: HORDA, DUNGEON A VÝZVY TRHLINY',
+        start_subtitle: 'Vyber si hrdinu, preži vlny, vyraz do dungeonu s AI družinou alebo uzavri trhlinu.',
         player_label: '👤 Hráč:',
         btn_change_name: '✏️ Zmeniť meno',
         essence_label: '✨ Esencia:',
@@ -588,12 +625,21 @@ const I18N = {
         hall_btn: '🏆 Sieň legiend (L)',
         sanctuary_btn: '🛒 Svätyňa vylepšení',
         equipment_btn: '🎒 Výbava a Stash (I)',
-        mode_horde: '🌊 Prežitie Hordy',
-        mode_dungeon: '🏰 3-Hrdinovia Dungeon',
-        mode_titan: '⚔️ Skúška Titánov',
+        mode_horde: 'Prežitie Hordy',
+        mode_dungeon: '3-Hrdinovia Dungeon',
+        mode_titan: 'Skúška Titánov',
+        mode_rift: 'Skúška Trhliny',
+        mode_rush: 'Šprint Trhlinou',
+        mode_desc_horde: 'Nekonečné vlny · Kooperácia',
+        mode_desc_dungeon: 'Päť miestností · AI družina',
+        mode_desc_titan: 'Päť bossov · Božské dary',
+        mode_desc_rift: 'Sólo · Päť vĺn · Uzavri trhlinu',
+        mode_desc_rush: 'Sólo · Tri minúty · Prekonaj rekord',
         horde_info: '🌊 <strong>Prežitie Hordy</strong> &bull; Preži stupňujúce sa vlny nepriateľov, aktivuj svätyne, rozbíjaj truhlice a bojuj s bossmi každých 5 vĺn!',
         dungeon_info: '🗡️ <strong>Krypta vládcu Malakora (Hardcore Izometrický Mód)</strong> &bull; Prejdi 5 nebezpečnými komorami plnými pascí, plameňov, elitných stráží a poraz finálneho 3-fázového bossa!',
         titan_info: '⚡ <strong>Skúška Titánov (Boss Rush Koloseum)</strong> &bull; Postav sa 5 gigantickým Titánom za sebou! Vyberaj si božské dary po každom skolenom kolose a bojuj o najvyššie skóre!',
+        rift_info: '🌀 <strong>Skúška Trhliny</strong> &bull; Prebojuj sa piatimi vlnami a uzavri trhlinu porazením bossa v piatej vlne. Sólo výzva s garantovanou odmenou za víťazstvo.',
+        rush_info: '⏱️ <strong>Šprint Trhlinou</strong> &bull; Preži trojminútový sólo nápor. Vlny sa vracajú rýchlejšie, tlak rastie a každé zabitie zvyšuje skóre.',
         mp_title: '👥 Multiplayer Online Kooperatívne Lobby',
         mp_subtitle: 'Zostavte družinu pred štartom',
         mp_name_placeholder: 'Tvoje meno hrdinu (napr. Roland)',
@@ -604,7 +650,20 @@ const I18N = {
         launch_horde: '⚔️ SPUSTIŤ PREŽITIE HORDY',
         launch_dungeon: '🏰 VSTÚPIŤ DO DUNGEONU',
         launch_titan: '⚡ VSTÚPIŤ DO SKÚŠKY TITÁNOV',
+        launch_rift: '🌀 ZAČAŤ SKÚŠKU TRHLINY',
+        launch_rush: '⏱️ SPUSTIŤ ŠPRINT TRHLINOU',
         // Hero selection
+        hero_select_title: 'Vyber si hrdinu',
+        mode_select_title: 'Vyber herný režim',
+        start_role_warrior: 'Tank · boj zblízka',
+        start_role_mage: 'Mágia · na diaľku',
+        start_role_archer: 'Rýchly · na diaľku',
+        hero_name_warrior: 'Bojovník',
+        hero_name_mage: 'Mág',
+        hero_name_archer: 'Strelec',
+        stamina_label: 'Výdrž:',
+        sprint_hold: 'Podrž pre šprint',
+        sprint_button: 'ŠPRINT',
         active_hero_badge: '✓ AKTÍVNY HRDINA',
         hero_warrior: '⚔️ Bojovník',
         hero_warrior_role: '🛡️ TANK & ÚTOK ZBLÍZKA',
@@ -628,6 +687,7 @@ const I18N = {
         ctrl_quests: '[L] Úlohy',
         ctrl_loot: '[E] Rýchly zber',
         ctrl_pause: '[Esc] Pauza',
+        ctrl_sprint: '[Shift] Šprint · výdrž',
         // Name modal
         name_modal_title: 'ZADAJ SVOJE MENO HRDINU',
         name_modal_desc: 'Zadaj svoje meno hrdinu. Bude sa zobrazovať v <strong style="color:#fde047;">Globálnom rebríčku legiend (Leaderboard)</strong> a v multiplayeri!',
@@ -663,7 +723,9 @@ const I18N = {
         lb_kills_time: 'Zabití & Čas',
         lb_score: 'Skóre',
         lb_empty_title: 'Žiadne záznamy v rebríčku pre tento filter',
-        lb_empty_desc: 'Zahraj si Horde, Dungeon alebo Titan mód a zapíš svoje skóre a meno ako prvý!',
+        lb_empty_desc: 'Zahraj si ľubovoľný režim a zapíš svoje skóre ako prvý!',
+        lb_mode_rift: '🌀 Skúška Trhliny',
+        lb_mode_rush: '⏱️ Šprint Trhlinou',
         lb_you_tag: 'TY',
         lb_close: 'Zavrieť (L)',
         // HUD
@@ -686,13 +748,21 @@ const I18N = {
         go_survived: 'Prežil si do Vlny {wave} (Úroveň {level})',
         go_score: 'Celkové Skóre: {score} &bull; Zabití: {kills}',
         go_essence: 'Zlato uložené ako Esencia: +{banked} (Celková Esencia: {essence})',
-        go_play_again: 'Hrať Znova'
+        go_play_again: 'Hrať Znova',
+        rift_victory_title: '🌀 TRHLINA UZAVRETÁ!',
+        rush_victory_title: '⏱️ ŠPRINT PREŽITÝ!',
+        challenge_victory_subtitle: 'Krajina je zatiaľ v bezpečí. Odmeny za výpravu čakajú.',
+        challenge_victory_gold_label: 'Získané zlato',
+        challenge_victory_essence_label: 'Získaná esencia',
+        challenge_victory_score_label: 'Celkové skóre',
+        challenge_victory_kills_label: 'Porazení nepriatelia',
+        challenge_victory_return: 'Späť do Svätyne'
     },
     hu: {
         lang_name: 'Magyar',
         // Start screen & branding
-        start_title: '⚔️ 3D RPG HORDA, KAZAMATA & TITÁN PORTYA',
-        start_subtitle: 'Urald a 3 hős archetípust, portyázz kazamatákban AI társakkal, küzdj meg kolosszusokkal a Titánok Próbáján és vezess a Globális Dicsőségcsarnokban!',
+        start_title: '⚔️ 3D RPG: HORDA, KAZAMATA ÉS HASADÉK KIHÍVÁSOK',
+        start_subtitle: 'Válassz hőst, éld túl a hullámokat, portyázz AI társakkal, vagy zárd le a hasadékot.',
         player_label: '👤 Játékos:',
         btn_change_name: '✏️ Névváltás',
         essence_label: '✨ Esszencia:',
@@ -701,12 +771,21 @@ const I18N = {
         hall_btn: '🏆 Dicsőségcsarnok (L)',
         sanctuary_btn: '🛒 Meta Szentély',
         equipment_btn: '🎒 Felszerelés & Tároló (I)',
-        mode_horde: '🌊 Horda Túlélés',
-        mode_dungeon: '🏰 3-Hős Kazamata',
-        mode_titan: '⚔️ Titánok Próbája',
+        mode_horde: 'Horda Túlélés',
+        mode_dungeon: '3-Hős Kazamata',
+        mode_titan: 'Titánok Próbája',
+        mode_rift: 'Hasadék Próba',
+        mode_rush: 'Hasadék Roham',
+        mode_desc_horde: 'Végtelen hullámok · Kooperatív',
+        mode_desc_dungeon: 'Öt terem · MI társak',
+        mode_desc_titan: 'Öt főellenség · Áldások',
+        mode_desc_rift: 'Egyéni · Öt hullám · Zárd le a hasadékot',
+        mode_desc_rush: 'Egyéni · Három perc · Dönts rekordot',
         horde_info: '🌊 <strong>Horda Túlélés</strong> &bull; Éld túl az egyre erősödő ellenséges hullámokat, aktiválj égi szentélyeket, törj fel kincsesládákat és harcolj főellenségekkel minden 5. hullámban!',
         dungeon_info: '🗡️ <strong>Malakor Főúr Kriptája (Hardcore Izometrikus Mód)</strong> &bull; Küzdd át magad 5 veszedelmes termen, csapdákon, tűzhasadékokon, elit pajzsos őrökön és győzd le a 3-fázisú végső boss-t!',
         titan_info: '⚡ <strong>Titánok Próbája (Boss Rush Kolosszeum)</strong> &bull; Nézz szembe 5 hatalmas ősi Titánnal egymás után! Válassz isteni áldásokat minden győzelem után a legnagyobb pontszámért!',
+        rift_info: '🌀 <strong>Hasadék Próba</strong> &bull; Küzdd át magad öt egyre nehezebb hullámon, és zárd le a hasadékot az ötödik hullám főellenségének legyőzésével. Önálló kihívás garantált győzelmi jutalommal.',
+        rush_info: '⏱️ <strong>Hasadék Roham</strong> &bull; Élj túl egy háromperces egyéni támadást. A hullámok gyorsabban térnek vissza, a nyomás folyamatosan nő, minden gyilkosság pontot ad.',
         mp_title: '👥 Online Kooperatív Előtér (Lobby)',
         mp_subtitle: 'Állítsd össze a csapatot indulás előtt',
         mp_name_placeholder: 'Hősöd neve (pl. Roland)',
@@ -717,7 +796,20 @@ const I18N = {
         launch_horde: '⚔️ HORDA TÚLÉLÉS INDÍTÁSA',
         launch_dungeon: '🏰 BELÉPÉS A KAZAMATÁBA',
         launch_titan: '⚡ BELÉPÉS A TITÁNOK PRÓBÁJÁRA',
+        launch_rift: '🌀 HASADÉK PRÓBA INDÍTÁSA',
+        launch_rush: '⏱️ HASADÉK ROHAM INDÍTÁSA',
         // Hero selection
+        hero_select_title: 'Válassz hőst',
+        mode_select_title: 'Válassz játékmódot',
+        start_role_warrior: 'Tank · közelharc',
+        start_role_mage: 'Távolsági mágia',
+        start_role_archer: 'Gyors · távolsági',
+        hero_name_warrior: 'Harcos',
+        hero_name_mage: 'Mágus',
+        hero_name_archer: 'Íjász',
+        stamina_label: 'Állóképesség:',
+        sprint_hold: 'Tartsd lenyomva a sprinthez',
+        sprint_button: 'SPRINT',
         active_hero_badge: '✓ AKTÍV HŐS',
         hero_warrior: '⚔️ Harcos',
         hero_warrior_role: '🛡️ TANK & KÖZELHARC',
@@ -741,6 +833,7 @@ const I18N = {
         ctrl_quests: '[L] Küldetések',
         ctrl_loot: '[E] Gyors zsákmány',
         ctrl_pause: '[Esc] Szünet',
+        ctrl_sprint: '[Shift] Sprint · állóképesség',
         // Name modal
         name_modal_title: 'ADD MEG A HŐSÖD NEVÉT',
         name_modal_desc: 'Add meg a hősöd nevét. Megjelenik a <strong style="color:#fde047;">Globális Dicsőségcsarnokban</strong> és a kooperatív többjátékos módban!',
@@ -776,7 +869,9 @@ const I18N = {
         lb_kills_time: 'Ölések & Idő',
         lb_score: 'Pontszám',
         lb_empty_title: 'Nincsenek bejegyzések ehhez a szűrőhöz',
-        lb_empty_desc: 'Játssz Horda, Kazamata vagy Titán módban, és írd be a neved elsőként a ranglistára!',
+        lb_empty_desc: 'Játssz bármelyik módban, és légy te az első a ranglistán!',
+        lb_mode_rift: '🌀 Hasadék Próba',
+        lb_mode_rush: '⏱️ Hasadék Roham',
         lb_you_tag: 'TE',
         lb_close: 'Bezárás (L)',
         // HUD
@@ -799,7 +894,15 @@ const I18N = {
         go_survived: 'Túlélted a(z) {wave}. Hullámig (Szint: {level})',
         go_score: 'Összes Pontszám: {score} &bull; Ölések: {kills}',
         go_essence: 'Esszenciává alakított Arany: +{banked} (Összes Esszencia: {essence})',
-        go_play_again: 'Újra Játszom'
+        go_play_again: 'Újra Játszom',
+        rift_victory_title: '🌀 A HASADÉK LEZÁRVA!',
+        rush_victory_title: '⏱️ ROHAM TÚLÉLVE!',
+        challenge_victory_subtitle: 'A birodalom egyelőre biztonságban. A jutalmak rád várnak.',
+        challenge_victory_gold_label: 'Elrakott arany',
+        challenge_victory_essence_label: 'Szerzett esszencia',
+        challenge_victory_score_label: 'Végső pontszám',
+        challenge_victory_kills_label: 'Legyőzött ellenfelek',
+        challenge_victory_return: 'Vissza a Menedékbe'
     }
 };
 
@@ -878,12 +981,44 @@ function applyTranslationsToDOM() {
     setElemText('start-player-label', t('player_label'));
     setElemText('btn-start-change-name', t('btn_change_name'));
     setElemText('start-essence-label', t('essence_label'));
-    setElemText('mode-btn-horde', t('mode_horde'));
-    setElemText('mode-btn-dungeon', t('mode_dungeon'));
-    setElemText('mode-btn-titan', t('mode_titan'));
+    setElemText('mode-label-horde', t('mode_horde'));
+    setElemText('mode-label-dungeon', t('mode_dungeon'));
+    setElemText('mode-label-titan', t('mode_titan'));
+    setElemText('mode-label-rift', t('mode_rift'));
+    setElemText('mode-label-rush', t('mode_rush'));
+    setElemText('mode-desc-horde', t('mode_desc_horde'));
+    setElemText('mode-desc-dungeon', t('mode_desc_dungeon'));
+    setElemText('mode-desc-titan', t('mode_desc_titan'));
+    setElemText('mode-desc-rift', t('mode_desc_rift'));
+    setElemText('mode-desc-rush', t('mode_desc_rush'));
+    setElemText('start-hero-selection-label', t('hero_select_title'));
+    const modeGroup = document.querySelector('.mode-toggle-group');
+    if (modeGroup) modeGroup.setAttribute('aria-label', t('mode_select_title'));
+    const heroGroup = document.querySelector('.start-hero-selection');
+    if (heroGroup) heroGroup.setAttribute('aria-label', t('hero_select_title'));
+    setElemText('start-hero-name-warrior', t('hero_name_warrior'));
+    setElemText('start-hero-role-warrior', t('start_role_warrior'));
+    setElemText('start-hero-name-mage', t('hero_name_mage'));
+    setElemText('start-hero-role-mage', t('start_role_mage'));
+    setElemText('start-hero-name-archer', t('hero_name_archer'));
+    setElemText('start-hero-role-archer', t('start_role_archer'));
+    setElemText('stamina-label', t('stamina_label'));
+    setElemText('btn-sprint-mobile', t('sprint_button'));
+    const sprintButton = document.getElementById('btn-sprint-mobile');
+    if (sprintButton) sprintButton.setAttribute('aria-label', t('sprint_hold'));
     setElemHtml('horde-info-banner', t('horde_info'));
     setElemHtml('dungeon-info-banner', t('dungeon_info'));
     setElemHtml('titan-info-banner', t('titan_info'));
+    setElemHtml('rift-info-banner', t('rift_info'));
+    setElemHtml('rush-info-banner', t('rush_info'));
+    setElemText('lb-mode-rift', t('lb_mode_rift'));
+    setElemText('lb-mode-rush', t('lb_mode_rush'));
+    setElemText('challenge-victory-subtitle', t('challenge_victory_subtitle'));
+    setElemText('challenge-victory-gold-label', t('challenge_victory_gold_label'));
+    setElemText('challenge-victory-essence-label', t('challenge_victory_essence_label'));
+    setElemText('challenge-victory-score-label', t('challenge_victory_score_label'));
+    setElemText('challenge-victory-kills-label', t('challenge_victory_kills_label'));
+    setElemText('challenge-victory-return', t('challenge_victory_return'));
     setElemText('mp-hub-title-text', t('mp_title'));
     setElemText('mp-hub-subtitle-text', t('mp_subtitle'));
     setElemText('btn-mp-create', t('mp_create_btn'));
@@ -930,6 +1065,7 @@ function applyTranslationsToDOM() {
     if (cheatEl) {
         cheatEl.innerHTML = `
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_move')}</span>
+            <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_sprint')}</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_aim')}</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_zoom')}</span>
             <span style="background: rgba(15,23,42,0.8); border: 1px solid #334155; padding: 4px 8px; border-radius: 6px;">${t('ctrl_ult')}</span>
@@ -1101,7 +1237,7 @@ window.closeNameModal = function() {
     const modal = document.getElementById('player-name-screen');
     if (modal) modal.style.display = 'none';
     const startScreen = document.getElementById('start-screen');
-    if (startScreen && GAME.state === 'START') startScreen.style.display = 'flex';
+    if (startScreen && GAME.state === 'START') startScreen.style.display = 'grid';
 };
 
 window.confirmPlayerName = function() {
@@ -1140,7 +1276,7 @@ window.confirmPlayerName = function() {
 
     const startScreen = document.getElementById('start-screen');
     if (startScreen && GAME.state === 'START') {
-        startScreen.style.display = 'flex';
+        startScreen.style.display = 'grid';
     }
 };
 
@@ -1338,11 +1474,16 @@ function updateStartHeroDossier() {
 
     // Hero cards highlight
     ['Warrior', 'Mage', 'Archer'].forEach(h => {
+        const startChoice = document.getElementById(`start-hero-choice-${h.toLowerCase()}`);
+        const isSelected = h.toLowerCase() === heroClass.toLowerCase();
+        if (startChoice) {
+            startChoice.classList.toggle('active', isSelected);
+            startChoice.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        }
         const card = document.getElementById(`hero-card-${h.toLowerCase()}`);
         const badge = document.getElementById(`badge-${h.toLowerCase()}-selected`);
-        const isSel = (h.toLowerCase() === heroClass.toLowerCase());
-        if (card) card.classList.toggle('selected', isSel);
-        if (badge) badge.style.display = isSel ? 'inline-block' : 'none';
+        if (card) card.classList.toggle('selected', isSelected);
+        if (badge) badge.style.display = isSelected ? 'inline-block' : 'none';
     });
 }
 
@@ -1432,10 +1573,14 @@ function initHeroNameOnLoad() {
         if (startScreen) startScreen.style.display = 'none';
         window.openNameModal(true);
     } else {
+        const savedClass = ['Warrior', 'Mage', 'Archer'].includes(SAVE.playerClass) ? SAVE.playerClass : 'Warrior';
+        selectedStartHero = savedClass;
+        window.selectedStartHero = savedClass;
         updatePlayerNameUI();
         updateStartHeroDossier();
+        updateStartLaunchButton();
         const startScreen = document.getElementById('start-screen');
-        if (startScreen && GAME.state === 'START') startScreen.style.display = 'flex';
+        if (startScreen && GAME.state === 'START') startScreen.style.display = 'grid';
     }
 }
 
@@ -1491,31 +1636,29 @@ function updateStartLaunchButton() {
     let modeText = t('launch_horde', '⚔️ START HORDE SURVIVAL');
     if (GAME.mode === 'dungeon') modeText = t('launch_dungeon', '🏰 ENTER DUNGEON RAID');
     else if (GAME.mode === 'titan') modeText = t('launch_titan', "⚡ ENTER TITAN'S GAUNTLET");
+    else if (GAME.mode === 'rift') modeText = t('launch_rift', '🌀 BEGIN RIFT TRIAL');
+    else if (GAME.mode === 'rush') modeText = t('launch_rush', '⏱️ START RIFT RUSH');
     
-    let heroNameDisplay = (selectedStartHero || 'WARRIOR').toUpperCase();
-    if (selectedStartHero === 'Warrior') heroNameDisplay = t('hero_warrior', 'Warrior').toUpperCase();
-    else if (selectedStartHero === 'Mage') heroNameDisplay = t('hero_mage', 'Mage').toUpperCase();
-    else if (selectedStartHero === 'Archer') heroNameDisplay = t('hero_archer', 'Archer').toUpperCase();
+    let heroNameDisplay = t('hero_name_warrior', 'Warrior').toUpperCase();
+    if (selectedStartHero === 'Mage') heroNameDisplay = t('hero_name_mage', 'Mage').toUpperCase();
+    else if (selectedStartHero === 'Archer') heroNameDisplay = t('hero_name_archer', 'Archer').toUpperCase();
 
     btn.innerText = `${modeText} (${heroNameDisplay})`;
 }
 
 window.selectGameMode = function(mode) {
+    if (!['horde', 'dungeon', 'titan', 'rift', 'rush'].includes(mode)) return;
     initAudio();
     GAME.mode = mode;
-    const btnHorde = document.getElementById('mode-btn-horde');
-    const btnDungeon = document.getElementById('mode-btn-dungeon');
-    const btnTitan = document.getElementById('mode-btn-titan');
-    const infoDungeon = document.getElementById('dungeon-info-banner');
-    const infoHorde = document.getElementById('horde-info-banner');
-    const infoTitan = document.getElementById('titan-info-banner');
-
-    if (btnHorde) btnHorde.classList.toggle('active', mode === 'horde');
-    if (btnDungeon) btnDungeon.classList.toggle('active', mode === 'dungeon');
-    if (btnTitan) btnTitan.classList.toggle('active', mode === 'titan');
-    if (infoDungeon) infoDungeon.style.display = (mode === 'dungeon' ? 'block' : 'none');
-    if (infoHorde) infoHorde.style.display = (mode === 'horde' ? 'block' : 'none');
-    if (infoTitan) infoTitan.style.display = (mode === 'titan' ? 'block' : 'none');
+    ['horde', 'dungeon', 'titan', 'rift', 'rush'].forEach(option => {
+        const button = document.getElementById(`mode-btn-${option}`);
+        if (button) {
+            button.classList.toggle('active', mode === option);
+            button.setAttribute('aria-pressed', mode === option ? 'true' : 'false');
+        }
+        const info = document.getElementById(`${option}-info-banner`);
+        if (info) info.style.display = mode === option ? 'block' : 'none';
+    });
     updateStartLaunchButton();
 };
 
@@ -2259,7 +2402,7 @@ window.openShopModal = function(tab = 'merchant') {
 window.closeShopModal = function() {
     document.getElementById('shop-screen').style.display = 'none';
     if (GAME.state === 'START') {
-        document.getElementById('start-screen').style.display = 'flex';
+        document.getElementById('start-screen').style.display = 'grid';
         document.getElementById('start-essence').innerText = SAVE.essence;
     }
 };
@@ -3154,6 +3297,10 @@ function saveScoreToLeaderboard(details = {}) {
         progressStr = GAME.dungeonCleared ? 'Chamber V Conquered 🏆' : `Chamber ${GAME.dungeonRoom + 1}`;
     } else if (GAME.mode === 'titan') {
         progressStr = GAME.titanDefeated ? 'Titan V Slain (Pantheon Master) ⚡' : `Titan ${GAME.titanStage + 1} / 5`;
+    } else if (GAME.mode === 'rift') {
+        progressStr = `Rift Trial ${Math.min(GAME.wave, GAME.riftTotalWaves)} / ${GAME.riftTotalWaves}`;
+    } else if (GAME.mode === 'rush') {
+        progressStr = `Rift Rush · Wave ${GAME.wave} · ${GAME.kills} kills`;
     }
 
     const currentHeroName = details.name || getPlayerName() || `Hrdina ${PLAYER.class}`;
@@ -3203,7 +3350,7 @@ window.toggleLeaderboardModal = function() {
 window.filterLeaderboardMode = function(mode) {
     initAudio();
     lbCurrentModeFilter = mode;
-    ['all', 'horde', 'dungeon', 'titan'].forEach(m => {
+    ['all', 'horde', 'dungeon', 'titan', 'rift', 'rush'].forEach(m => {
         const btn = document.getElementById(`lb-mode-${m}`);
         if (btn) btn.classList.toggle('active', m === mode);
     });
@@ -3267,8 +3414,16 @@ function renderLeaderboardModal() {
         else if (entry.heroClass === 'Mage') classDisplayName = t('hero_mage', 'Mage');
         else if (entry.heroClass === 'Archer') classDisplayName = t('hero_archer', 'Archer');
 
-        const modeBadge = entry.mode === 'titan' ? t('mode_titan', '⚡ Titan\'s Gauntlet') : (entry.mode === 'dungeon' ? t('mode_dungeon', '🏰 3-Hero Dungeon') : t('mode_horde', '🌊 Horde Survival'));
-        const modeColor = entry.mode === 'titan' ? '#ef4444' : (entry.mode === 'dungeon' ? '#a855f7' : '#0284c7');
+        const modeLabels = {
+            horde: t('mode_horde', '🌊 Horde Survival'),
+            dungeon: t('mode_dungeon', '🏰 3-Hero Dungeon'),
+            titan: t('mode_titan', '⚡ Titan\'s Gauntlet'),
+            rift: t('mode_rift', '🌀 Rift Trial'),
+            rush: t('mode_rush', '⏱️ Rift Rush')
+        };
+        const modeColors = { horde: '#0284c7', dungeon: '#a855f7', titan: '#ef4444', rift: '#c084fc', rush: '#f59e0b' };
+        const modeBadge = modeLabels[entry.mode] || modeLabels.horde;
+        const modeColor = modeColors[entry.mode] || modeColors.horde;
 
         const mins = Math.floor((entry.time || 0) / 60);
         const secs = ((entry.time || 0) % 60).toString().padStart(2, '0');
@@ -3774,27 +3929,33 @@ const items = [];
 
 // --- THREE.JS SCENE SETUP ---
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0f172a);
-scene.fog = new THREE.FogExp2(0x0f172a, 0.007); 
+scene.background = new THREE.Color(0x0b111b);
+scene.fog = new THREE.FogExp2(0x0b111b, 0.0055);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: false });
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.08;
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.55);
+const ambientLight = new THREE.AmbientLight(0x9fb5d3, 0.42);
 scene.add(ambientLight);
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+const skyLight = new THREE.HemisphereLight(0xd7e7ff, 0x29241f, 0.72);
+scene.add(skyLight);
+const dirLight = new THREE.DirectionalLight(0xffdfb0, 1.05);
 dirLight.position.set(50, 100, 50);
 scene.add(dirLight);
 
 const groundGeo = new THREE.PlaneGeometry(1000, 1000);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 1 });
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x17212b, roughness: 0.92 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-const gridHelper = new THREE.GridHelper(1000, 100, 0x1e293b, 0x1e293b);
+const gridHelper = new THREE.GridHelper(1000, 80, 0x2d3c4b, 0x223141);
 gridHelper.position.y = 0.01;
 scene.add(gridHelper);
 
@@ -3812,13 +3973,13 @@ function createPlayerMesh(className) {
     let bGeo, bMat;
     if (className === 'Mage') {
         bGeo = new THREE.ConeGeometry(0.8, 2, 8);
-        bMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8 });
+        bMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x075985, emissiveIntensity: 0.28, roughness: 0.55, metalness: 0.12 });
     } else if (className === 'Archer') {
         bGeo = new THREE.CylinderGeometry(0.6, 0.6, 2, 8);
-        bMat = new THREE.MeshStandardMaterial({ color: 0x34d399 });
+        bMat = new THREE.MeshStandardMaterial({ color: 0x34d399, emissive: 0x065f46, emissiveIntensity: 0.24, roughness: 0.62, metalness: 0.08 });
     } else { 
         bGeo = new THREE.BoxGeometry(1.2, 2, 1.2);
-        bMat = new THREE.MeshStandardMaterial({ color: 0xf87171 });
+        bMat = new THREE.MeshStandardMaterial({ color: 0xf87171, emissive: 0x7f1d1d, emissiveIntensity: 0.22, roughness: 0.58, metalness: 0.18 });
     }
     const bMesh = new THREE.Mesh(bGeo, bMat);
     bMesh.position.y = 1;
@@ -3863,6 +4024,15 @@ function buildPlayerVisuals() {
     }
     weaponGroup.position.copy(newWeaponGrp.position);
     playerMesh.add(weaponGroup);
+
+    const auraColor = PLAYER.class === 'Mage' ? 0x38bdf8 : (PLAYER.class === 'Archer' ? 0x34d399 : 0xf87171);
+    const aura = new THREE.Mesh(
+        new THREE.RingGeometry(0.9, 1.2, 40),
+        new THREE.MeshBasicMaterial({ color: auraColor, transparent: true, opacity: 0.48, side: THREE.DoubleSide, depthWrite: false })
+    );
+    aura.rotation.x = -Math.PI / 2;
+    aura.position.y = 0.06;
+    playerMesh.add(aura);
 }
 
 const raycaster = new THREE.Raycaster();
@@ -3877,6 +4047,30 @@ window.addEventListener('mousemove', (event) => {
 const keys = { w: false, a: false, s: false, d: false, shift: false, click: false };
 const joystickMove = { active: false, x: 0, y: 0 };
 const joystickShoot = { active: false, x: 0, y: 0 };
+
+function updateStaminaHUD() {
+    const percent = Math.max(0, Math.min(100, (PLAYER.stamina / PLAYER.maxStamina) * 100));
+    const bar = document.getElementById('stamina-bar');
+    const value = document.getElementById('ui-stamina');
+    const maxValue = document.getElementById('ui-max-stamina');
+    const sprintButton = document.getElementById('btn-sprint-mobile');
+    if (bar) {
+        bar.style.transform = `scaleX(${percent / 100})`;
+        bar.classList.toggle('stamina-low', percent <= 25);
+    }
+    if (value) value.innerText = Math.ceil(PLAYER.stamina);
+    if (maxValue) maxValue.innerText = PLAYER.maxStamina;
+    if (sprintButton) {
+        const sprintReady = keys.shift && PLAYER.stamina > 0;
+        sprintButton.classList.toggle('active', sprintReady);
+        sprintButton.setAttribute('aria-pressed', sprintReady ? 'true' : 'false');
+    }
+}
+
+window.setSprint = function(active) {
+    keys.shift = Boolean(active);
+    updateStaminaHUD();
+};
 
 function setupJoystick(zoneId, knobId, data, isShoot) {
     const zone = document.getElementById(zoneId);
@@ -4069,7 +4263,8 @@ window.addEventListener('keydown', (e) => {
         case 'KeyA': keys.a = true; break;
         case 'KeyS': keys.s = true; break;
         case 'KeyD': keys.d = true; break;
-        case 'ShiftLeft': keys.shift = true; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': keys.shift = true; break;
     }
 });
 
@@ -4079,7 +4274,8 @@ window.addEventListener('keyup', (e) => {
         case 'KeyA': keys.a = false; break;
         case 'KeyS': keys.s = false; break;
         case 'KeyD': keys.d = false; break;
-        case 'ShiftLeft': keys.shift = false; break;
+        case 'ShiftLeft':
+        case 'ShiftRight': keys.shift = false; break;
     }
 });
 
@@ -4534,7 +4730,7 @@ window.leaveLobby = function() {
 
     const lobbyScreen = document.getElementById('lobby-screen');
     if (lobbyScreen) lobbyScreen.style.display = 'none';
-    document.getElementById('start-screen').style.display = 'flex';
+    document.getElementById('start-screen').style.display = 'grid';
 };
 
 window.startLobbyGame = function() {
@@ -4943,6 +5139,7 @@ class Shrine {
         } else if (this.type === 'vitality') {
             PLAYER.hp = PLAYER.maxHp;
             PLAYER.mana = PLAYER.maxMana;
+            PLAYER.stamina = PLAYER.maxStamina;
             GAME.shield += 100;
             logMessage('✨ SHRINE OF VITALITY ACTIVATED! (Full Heal + 100 Shield)', '#fbbf24');
             spawnFloatingText(playerMesh.position, '✨ FULL HEAL + 100 SHIELD!', '#fbbf24', 18, true, '⛩️');
@@ -5334,6 +5531,22 @@ function updateWaveHUD() {
     const skipBtn = document.getElementById('ui-skip-prep-btn');
 
     if (waveEl) waveEl.innerText = GAME.wave;
+
+    if (GAME.mode === 'rush') {
+        const seconds = Math.max(0, Math.ceil(GAME.rushTimer));
+        const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+        if (badgeEl) {
+            badgeEl.innerHTML = `⏱️ RIFT RUSH &bull; WAVE ${GAME.wave}`;
+            badgeEl.style.color = '#fbbf24';
+        }
+        if (subStatusEl) subStatusEl.innerText = `Survive ${clock} · ${GAME.kills} kills`;
+        if (barEl) {
+            barEl.style.width = `${Math.max(0, Math.min(100, (GAME.rushTimer / 180) * 100))}%`;
+            barEl.style.background = 'linear-gradient(90deg, #f59e0b, #f97316)';
+        }
+        if (actionArea) actionArea.style.display = 'none';
+        return;
+    }
 
     if (GAME.waveState === 'PREPARING') {
         const secs = Math.max(0, Math.ceil(GAME.waveTimer));
@@ -6398,6 +6611,8 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
 
     PLAYER.hp = PLAYER.maxHp;
     PLAYER.mana = PLAYER.maxMana;
+    PLAYER.stamina = PLAYER.maxStamina;
+    keys.shift = false;
     PLAYER.skills = [];
     PLAYER.activeSkillIds = [];
     PLAYER.level = 1; PLAYER.exp = 0; PLAYER.expNeeded = 100;
@@ -6406,7 +6621,7 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
     GAME.score = 0; GAME.kills = 0; GAME.time = 0;
     GAME.wave = 1;
     GAME.waveState = 'PREPARING';
-    GAME.waveTimer = 4;
+    GAME.waveTimer = GAME.mode === 'rush' ? 2 : 4;
     GAME.totalWaveEnemies = 20;
     GAME.enemiesSpawned = 0;
     GAME.enemiesKilled = 0;
@@ -6416,6 +6631,11 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
     GAME.comboCount = 0;
     GAME.comboMultiplier = 1.0;
     GAME.comboTimer = 0;
+    GAME.rushTimer = 180;
+    GAME.challengeCompletePending = false;
+
+    const challengeVictoryScreen = document.getElementById('challenge-victory-screen');
+    if (challengeVictoryScreen) challengeVictoryScreen.style.display = 'none';
 
     INRUN.damageMult = 1.0;
     INRUN.fireRateMult = 1.0;
@@ -6526,6 +6746,7 @@ window.resumeGame = function() {
     GAME.state = 'PLAYING';
     lastTime = performance.now();
     updateGUI();
+    if (GAME.challengeCompletePending) completeChallengeVictory();
 };
 
 function triggerLevelUp() {
@@ -8265,6 +8486,7 @@ function updateGUI() {
     document.getElementById('ui-exp').innerText = PLAYER.exp;
     document.getElementById('ui-exp-needed').innerText = PLAYER.expNeeded;
     document.getElementById('exp-bar').style.width = (PLAYER.exp / PLAYER.expNeeded * 100) + '%';
+    updateStaminaHUD();
     
     document.getElementById('ui-level').innerText = PLAYER.level;
     document.getElementById('ui-gold').innerText = GAME.gold;
@@ -8455,12 +8677,52 @@ function gameOver() {
     saveScoreToLeaderboard();
 
     document.getElementById('game-over').style.display = 'flex';
-    document.getElementById('go-wave').innerText = (GAME.mode === 'dungeon' ? `Chamber ${GAME.dungeonRoom + 1}` : (GAME.mode === 'titan' ? `Titan ${GAME.titanStage + 1} / 5` : GAME.wave));
+    let progress = GAME.wave;
+    if (GAME.mode === 'dungeon') progress = `Chamber ${GAME.dungeonRoom + 1}`;
+    else if (GAME.mode === 'titan') progress = `Titan ${GAME.titanStage + 1} / 5`;
+    else if (GAME.mode === 'rift') progress = `Rift Trial ${Math.min(GAME.wave, GAME.riftTotalWaves)} / ${GAME.riftTotalWaves}`;
+    else if (GAME.mode === 'rush') progress = `Wave ${GAME.wave} · ${Math.max(0, Math.floor(180 - GAME.rushTimer))}s`;
+    document.getElementById('go-wave').innerText = progress;
     document.getElementById('go-level').innerText = PLAYER.level;
     document.getElementById('go-score').innerText = GAME.score;
     document.getElementById('go-kills').innerText = GAME.kills;
     document.getElementById('go-gold-banked').innerText = banked;
     document.getElementById('go-essence').innerText = SAVE.essence;
+}
+
+function completeChallengeVictory() {
+    if (GAME.state === 'CHALLENGE_VICTORY' || GAME.state === 'GAME_OVER') return;
+
+    GAME.challengeCompletePending = false;
+    GAME.state = 'CHALLENGE_VICTORY';
+    const goldBanked = GAME.gold;
+    const bonusEssence = GAME.mode === 'rift' ? 500 : 200 + Math.floor(GAME.kills * 2);
+    GAME.score += bonusEssence;
+    SAVE.essence += goldBanked + bonusEssence;
+    writeSave();
+    saveScoreToLeaderboard();
+    SFX.lootLegendary();
+
+    const title = document.getElementById('challenge-victory-title');
+    const subtitle = document.getElementById('challenge-victory-subtitle');
+    const modeLabel = document.getElementById('challenge-victory-mode');
+    const goldEl = document.getElementById('challenge-victory-gold');
+    const essenceEl = document.getElementById('challenge-victory-essence');
+    const scoreEl = document.getElementById('challenge-victory-score');
+    const killsEl = document.getElementById('challenge-victory-kills');
+    const victoryScreen = document.getElementById('challenge-victory-screen');
+
+    if (title) title.innerText = GAME.mode === 'rift' ? t('rift_victory_title', '🌀 RIFT SEALED!') : t('rush_victory_title', '⏱️ RUSH SURVIVED!');
+    if (subtitle) subtitle.innerText = t('challenge_victory_subtitle', 'The realm is safe—for now. Your run rewards are ready.');
+    if (modeLabel) modeLabel.innerText = GAME.mode === 'rift' ? t('mode_rift', 'Rift Trial') : t('mode_rush', 'Rift Rush');
+    if (goldEl) goldEl.innerText = `+${goldBanked}`;
+    if (essenceEl) essenceEl.innerText = `+${bonusEssence}`;
+    if (scoreEl) scoreEl.innerText = GAME.score.toLocaleString();
+    if (killsEl) killsEl.innerText = GAME.kills.toLocaleString();
+    if (victoryScreen) {
+        victoryScreen.style.display = 'flex';
+        victoryScreen.focus();
+    }
 }
 
 // --- SOLO WAVE SPAWNER ---
@@ -8601,6 +8863,12 @@ function animate() {
 
     if (GAME.state === 'PLAYING') {
         GAME.time += dt;
+        if (GAME.mode === 'rush') {
+            const previousRushSecond = Math.ceil(GAME.rushTimer);
+            GAME.rushTimer = Math.max(0, GAME.rushTimer - dt);
+            if (Math.ceil(GAME.rushTimer) !== previousRushSecond) updateWaveHUD();
+            if (GAME.rushTimer <= 0) completeChallengeVictory();
+        }
 
         // Buffs & Ultimate Timers
         if (BUFFS.swiftness > 0) {
@@ -8681,8 +8949,6 @@ function animate() {
         velocity.x -= velocity.x * 10.0 * dt;
         velocity.z -= velocity.z * 10.0 * dt;
 
-        const currentSpeed = (GAME.isDowned ? 5 : PLAYER.speed) * EFFECTS.moveSpeedMult * (keys.shift ? 1.4 : 1.0);
-        
         let inputX = 0;
         let inputZ = 0;
 
@@ -8697,6 +8963,16 @@ function animate() {
         }
 
         const inputLen = Math.hypot(inputX, inputZ);
+        const previousStamina = Math.ceil(PLAYER.stamina);
+        const isSprinting = keys.shift && inputLen > 0.001 && !GAME.isDowned && PLAYER.stamina > 0;
+        if (isSprinting) {
+            PLAYER.stamina = Math.max(0, PLAYER.stamina - 32 * dt);
+        } else {
+            PLAYER.stamina = Math.min(PLAYER.maxStamina, PLAYER.stamina + 22 * dt);
+        }
+        if (Math.ceil(PLAYER.stamina) !== previousStamina) updateStaminaHUD();
+        const currentSpeed = (GAME.isDowned ? 5 : PLAYER.speed) * EFFECTS.moveSpeedMult * (isSprinting ? 1.5 : 1.0);
+
         if (inputLen > 0.001) {
             const normX = inputLen > 1 ? (inputX / inputLen) : inputX;
             const normZ = inputLen > 1 ? (inputZ / inputLen) : inputZ;
@@ -8900,7 +9176,7 @@ function animate() {
                 if (GAME.waveTimer <= 0) {
                     GAME.waveState = 'WAVE_ACTIVE';
                     GAME.isBossWave = (GAME.wave % 5 === 0);
-                    GAME.totalWaveEnemies = 15 + GAME.wave * 8;
+                    GAME.totalWaveEnemies = GAME.mode === 'rift' ? 20 + GAME.wave * 10 : (GAME.mode === 'rush' ? 18 + GAME.wave * 9 : 15 + GAME.wave * 8);
                     GAME.enemiesSpawned = 0;
                     GAME.enemiesKilled = 0;
                     GAME.bossSpawned = false;
@@ -8916,7 +9192,7 @@ function animate() {
                 if (GAME.waveTimer <= 0) {
                     GAME.wave++;
                     GAME.waveState = 'PREPARING';
-                    GAME.waveTimer = 4;
+                    GAME.waveTimer = GAME.mode === 'rush' ? 2 : 4;
                     updateWaveHUD();
                 }
             } else if (GAME.waveState === 'WAVE_ACTIVE') {
@@ -8927,14 +9203,15 @@ function animate() {
                 }
 
                 const maxActive = Math.min(80, 20 + GAME.wave * 5);
-                if (enemies.length < maxActive && GAME.enemiesSpawned < GAME.totalWaveEnemies && Math.random() < 0.35) {
+                const spawnChance = GAME.mode === 'rush' ? 0.62 : 0.35;
+                if (enemies.length < maxActive && GAME.enemiesSpawned < GAME.totalWaveEnemies && Math.random() < spawnChance) {
                     spawnSoloWaveEnemy();
                 }
 
                 // Check Wave Completion
                 if (GAME.enemiesSpawned >= GAME.totalWaveEnemies && enemies.length === 0) {
                     GAME.waveState = 'WAVE_CLEAR';
-                    GAME.waveTimer = 12;
+                    GAME.waveTimer = GAME.mode === 'rush' ? 2 : 12;
                     const bonusGold = 50 + GAME.wave * 25;
                     const bonusExp = 40 + GAME.wave * 20;
                     GAME.gold += bonusGold;
@@ -8952,6 +9229,10 @@ function animate() {
                     updateWaveHUD();
                     updateGUI();
                     spawnMapFeatures();
+                    if (GAME.mode === 'rift' && GAME.wave >= GAME.riftTotalWaves) {
+                        GAME.challengeCompletePending = true;
+                        if (GAME.state === 'PLAYING') completeChallengeVictory();
+                    }
                 }
 
                 const boss = enemies.find(e => e.isBoss && e.hp > 0);
