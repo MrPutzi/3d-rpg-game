@@ -3934,7 +3934,7 @@ scene.fog = new THREE.FogExp2(0x0b111b, 0.0055);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.15 : 1.5));
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
@@ -4414,7 +4414,14 @@ function initMultiplayer(roomCode, className) {
     };
 
     WS.onmessage = (e) => {
-        const data = JSON.parse(e.data);
+        let data;
+        try {
+            data = JSON.parse(e.data);
+        } catch (error) {
+            console.warn('Ignoring malformed multiplayer message.');
+            return;
+        }
+        if (!data || typeof data.type !== 'string') return;
         
         if (data.type === 'INIT_LOBBY') {
             MY_ID = data.id;
@@ -4557,6 +4564,17 @@ function updateLobbyModeUI(mode) {
     if (btnDungeon) btnDungeon.classList.toggle('active', mode === 'dungeon');
 }
 
+// Treat names and chat payloads received from other players as untrusted text.
+function escapeHTML(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+    })[char]);
+}
+
 function renderLobbyUI(lobbyData) {
     if (!lobbyData || !lobbyData.players) return;
 
@@ -4618,7 +4636,7 @@ function renderLobbyUI(lobbyData) {
             <div class="lobby-card-header">
                 <div class="lobby-player-name">
                     ${p.isHost ? '<span class="lobby-host-crown" title="Party Leader / Host">👑</span>' : ''}
-                    <span>${p.name || 'Hero'} ${isMe ? '(You)' : ''}</span>
+                    <span>${escapeHTML(p.name || 'Hero')} ${isMe ? '(You)' : ''}</span>
                 </div>
                 <span class="lobby-role-pill" style="background: rgba(255,255,255,0.08); color: ${roleInfo.color}; border: 1px solid ${roleInfo.color};">
                     ${roleInfo.role}
@@ -4628,7 +4646,7 @@ function renderLobbyUI(lobbyData) {
             <div class="lobby-avatar-box">
                 <div class="lobby-avatar-icon">${roleInfo.icon}</div>
                 <div>
-                    <div style="font-weight: bold; font-size: 0.85rem; color: ${roleInfo.color};">${pClass}</div>
+                    <div style="font-weight: bold; font-size: 0.85rem; color: ${roleInfo.color};">${escapeHTML(pClass)}</div>
                     <div class="lobby-avatar-desc">${roleInfo.desc}</div>
                 </div>
             </div>
@@ -4704,18 +4722,29 @@ window.sendLobbyQuickChat = function(text) {
 
 function appendLobbyChatMessage(msg) {
     const log = document.getElementById('lobby-chat-log');
-    if (!log) return;
+    if (!log || !msg) return;
 
     const div = document.createElement('div');
     div.className = 'lobby-chat-msg';
 
     const color = (msg.class === 'Warrior' ? '#f87171' : (msg.class === 'Mage' ? '#38bdf8' : '#34d399'));
-    div.innerHTML = `
-        <span class="lobby-chat-sender" style="color:${color};">${msg.isHost ? '👑 ' : ''}${msg.sender}:</span>
-        <span style="color:#f1f5f9;">${msg.text}</span>
-        <span class="lobby-chat-time">${msg.time || ''}</span>
-    `;
+    const sender = document.createElement('span');
+    sender.className = 'lobby-chat-sender';
+    sender.style.color = color;
+    sender.textContent = `${msg.isHost ? '👑 ' : ''}${String(msg.sender || 'Hero').slice(0, 24)}:`;
+
+    const message = document.createElement('span');
+    message.style.color = '#f1f5f9';
+    message.textContent = String(msg.text || '').slice(0, 300);
+
+    const time = document.createElement('span');
+    time.className = 'lobby-chat-time';
+    time.textContent = String(msg.time || '').slice(0, 24);
+
+    div.append(sender, document.createTextNode(' '), message, document.createTextNode(' '), time);
     log.appendChild(div);
+    // Keep the lobby responsive during long chats instead of growing forever.
+    while (log.children.length > 100) log.removeChild(log.firstElementChild);
     log.scrollTop = log.scrollHeight;
 }
 
@@ -8467,11 +8496,68 @@ function showDamageVignette() {
     setTimeout(() => { v.style.opacity = 0; }, 200);
 }
 
+// Short-lived impact flashes and sparks. Updated in the game loop so they
+// fade smoothly without creating a timer for every hit.
+const impactEffects = [];
+const impactSparkGeometry = new THREE.OctahedronGeometry(0.13, 0);
+const impactRingGeometry = new THREE.RingGeometry(0.28, 0.52, 24);
+
 function createImpact(pos, color) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshBasicMaterial({ color: color }));
-    p.position.copy(pos);
-    scene.add(p);
-    setTimeout(() => scene.remove(p), 150); 
+    if (!pos || !scene || impactEffects.length >= 96) return;
+
+    const tint = new THREE.Color(color);
+    const flash = new THREE.Group();
+    flash.position.copy(pos);
+
+    const ring = new THREE.Mesh(impactRingGeometry, new THREE.MeshBasicMaterial({
+        color: tint, transparent: true, opacity: 0.85,
+        side: THREE.DoubleSide, depthWrite: false
+    }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.12;
+    flash.add(ring);
+
+    const sparks = [];
+    const count = window.innerWidth < 768 ? 3 : 6;
+    for (let i = 0; i < count; i++) {
+        const spark = new THREE.Mesh(impactSparkGeometry, new THREE.MeshBasicMaterial({
+            color: tint, transparent: true, opacity: 1, depthWrite: false
+        }));
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 4;
+        const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            2 + Math.random() * 3,
+            Math.sin(angle) * speed
+        );
+        flash.add(spark);
+        sparks.push({ mesh: spark, velocity });
+    }
+    scene.add(flash);
+    impactEffects.push({ group: flash, ring, sparks, age: 0, duration: 0.32 });
+}
+
+function updateImpactEffects(dt) {
+    for (let i = impactEffects.length - 1; i >= 0; i--) {
+        const effect = impactEffects[i];
+        effect.age += dt;
+        const progress = Math.min(1, effect.age / effect.duration);
+        const opacity = (1 - progress) * (1 - progress);
+        effect.ring.material.opacity = opacity * 0.85;
+        effect.ring.scale.setScalar(1 + progress * 2.8);
+        for (const spark of effect.sparks) {
+            spark.mesh.position.addScaledVector(spark.velocity, dt);
+            spark.velocity.y -= dt * 11;
+            spark.mesh.scale.setScalar(Math.max(0.05, 1 - progress));
+            spark.mesh.material.opacity = opacity;
+        }
+        if (progress >= 1) {
+            scene.remove(effect.group);
+            effect.ring.material.dispose();
+            for (const spark of effect.sparks) spark.mesh.material.dispose();
+            impactEffects.splice(i, 1);
+        }
+    }
 }
 
 function updateGUI() {
@@ -9249,13 +9335,19 @@ function animate() {
         drawMinimap();
     }
 
+    // Visual effects keep animating while the game is paused, then clean up.
+    updateImpactEffects(dt);
     renderer.render(scene, camera);
 }
 
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const width = Math.max(1, window.innerWidth);
+    const height = Math.max(1, window.innerHeight);
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Lower the render resolution on phones to reduce GPU load and heat.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, width < 768 ? 1.15 : 1.5));
+    renderer.setSize(width, height);
 });
 
 // --- LOBBY URL PARAMETER & STORAGE BOOTSTRAP ---

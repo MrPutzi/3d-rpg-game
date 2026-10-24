@@ -1183,6 +1183,71 @@
             border-color: #fbbf24;
             font-weight: bold;
         }
+    
+        /* --- QUALITY PASS: responsive HUD, input accessibility, and reduced motion --- */
+        :root {
+            color-scheme: dark;
+            --ui-surface: rgba(8, 15, 28, 0.88);
+            --ui-border: rgba(148, 163, 184, 0.26);
+            --ui-focus: #fbbf24;
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+        button, input, select, textarea { font: inherit; }
+        button { touch-action: manipulation; }
+        button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible,
+        [role="button"]:focus-visible {
+            outline: 3px solid var(--ui-focus);
+            outline-offset: 3px;
+        }
+        .panel {
+            background: var(--ui-surface);
+            border-color: var(--ui-border);
+            box-shadow: 0 12px 34px rgba(0, 0, 0, .28), inset 0 1px 0 rgba(255,255,255,.035);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .bar-container { border-color: rgba(148,163,184,.3); box-shadow: inset 0 1px 3px rgba(0,0,0,.35); }
+        .health-bar, .mana-bar, .exp-bar, .stamina-bar, .wave-bar, .boss-bar { will-change: width, transform; }
+        button { min-height: 40px; }
+        button:active { transform: translateY(0) scale(.98); }
+        .overlay { padding-top: max(20px, env(safe-area-inset-top)); padding-bottom: max(28px, env(safe-area-inset-bottom)); }
+        #hud-top-left, #hud-top-center, #hud-bottom-left, #hud-bottom-right, #hud-teammates {
+            max-width: calc(100vw - 20px);
+        }
+        #hud-top-left { border-radius: 12px; }
+        #hud-top-center { border-radius: 12px; }
+        #damage-vignette { pointer-events: none; }
+        #mobile-controls { padding-bottom: env(safe-area-inset-bottom); }
+        @media (max-width: 700px) {
+            body { cursor: default; }
+            .panel { padding: 8px; border-width: 1px; border-radius: 10px; }
+            #hud-top-left { top: max(6px, env(safe-area-inset-top)); left: 6px; width: min(174px, 46vw); font-size: .76rem; }
+            #hud-top-center { top: max(6px, env(safe-area-inset-top)); min-width: 0; max-width: 42vw; padding: 7px 9px; font-size: .78rem; }
+            #hud-bottom-left { bottom: max(8px, env(safe-area-inset-bottom)); left: 6px; max-width: 42vw; font-size: .76rem; }
+            #hud-bottom-right { bottom: max(8px, env(safe-area-inset-bottom)); right: 6px; max-width: 42vw; font-size: .76rem; }
+            #hud-teammates { top: 100px; left: 6px; width: min(174px, 46vw); font-size: .72rem; }
+            .bar-container { height: 11px; }
+            .overlay h1 { font-size: clamp(1.45rem, 6vw, 2rem); }
+            .overlay > p { font-size: .88rem; }
+            .overlay button { max-width: 100%; }
+        }
+        @media (max-width: 380px) {
+            #hud-top-left { width: 42vw; }
+            #hud-top-center { max-width: 40vw; }
+            #hud-bottom-left, #hud-bottom-right { max-width: 39vw; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                scroll-behavior: auto !important;
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+            }
+        }
+        @supports not ((backdrop-filter: blur(1px))) {
+            .panel { background: rgba(8, 15, 28, .96); }
+        }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
