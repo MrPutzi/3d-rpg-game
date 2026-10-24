@@ -8496,11 +8496,68 @@ function showDamageVignette() {
     setTimeout(() => { v.style.opacity = 0; }, 200);
 }
 
+// Short-lived impact flashes and sparks. Updated in the game loop so they
+// fade smoothly without creating a timer for every hit.
+const impactEffects = [];
+const impactSparkGeometry = new THREE.OctahedronGeometry(0.13, 0);
+const impactRingGeometry = new THREE.RingGeometry(0.28, 0.52, 24);
+
 function createImpact(pos, color) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshBasicMaterial({ color: color }));
-    p.position.copy(pos);
-    scene.add(p);
-    setTimeout(() => scene.remove(p), 150); 
+    if (!pos || !scene || impactEffects.length >= 96) return;
+
+    const tint = new THREE.Color(color);
+    const flash = new THREE.Group();
+    flash.position.copy(pos);
+
+    const ring = new THREE.Mesh(impactRingGeometry, new THREE.MeshBasicMaterial({
+        color: tint, transparent: true, opacity: 0.85,
+        side: THREE.DoubleSide, depthWrite: false
+    }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.12;
+    flash.add(ring);
+
+    const sparks = [];
+    const count = window.innerWidth < 768 ? 3 : 6;
+    for (let i = 0; i < count; i++) {
+        const spark = new THREE.Mesh(impactSparkGeometry, new THREE.MeshBasicMaterial({
+            color: tint, transparent: true, opacity: 1, depthWrite: false
+        }));
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 3 + Math.random() * 4;
+        const velocity = new THREE.Vector3(
+            Math.cos(angle) * speed,
+            2 + Math.random() * 3,
+            Math.sin(angle) * speed
+        );
+        flash.add(spark);
+        sparks.push({ mesh: spark, velocity });
+    }
+    scene.add(flash);
+    impactEffects.push({ group: flash, ring, sparks, age: 0, duration: 0.32 });
+}
+
+function updateImpactEffects(dt) {
+    for (let i = impactEffects.length - 1; i >= 0; i--) {
+        const effect = impactEffects[i];
+        effect.age += dt;
+        const progress = Math.min(1, effect.age / effect.duration);
+        const opacity = (1 - progress) * (1 - progress);
+        effect.ring.material.opacity = opacity * 0.85;
+        effect.ring.scale.setScalar(1 + progress * 2.8);
+        for (const spark of effect.sparks) {
+            spark.mesh.position.addScaledVector(spark.velocity, dt);
+            spark.velocity.y -= dt * 11;
+            spark.mesh.scale.setScalar(Math.max(0.05, 1 - progress));
+            spark.mesh.material.opacity = opacity;
+        }
+        if (progress >= 1) {
+            scene.remove(effect.group);
+            effect.ring.material.dispose();
+            for (const spark of effect.sparks) spark.mesh.material.dispose();
+            impactEffects.splice(i, 1);
+        }
+    }
 }
 
 function updateGUI() {
@@ -9278,6 +9335,8 @@ function animate() {
         drawMinimap();
     }
 
+    // Visual effects keep animating while the game is paused, then clean up.
+    updateImpactEffects(dt);
     renderer.render(scene, camera);
 }
 
