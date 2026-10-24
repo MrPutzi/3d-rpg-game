@@ -3934,7 +3934,7 @@ scene.fog = new THREE.FogExp2(0x0b111b, 0.0055);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 768 ? 1.15 : 1.5));
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
@@ -9253,9 +9253,13 @@ function animate() {
 }
 
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const width = Math.max(1, window.innerWidth);
+    const height = Math.max(1, window.innerHeight);
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    // Lower the render resolution on phones to reduce GPU load and heat.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, width < 768 ? 1.15 : 1.5));
+    renderer.setSize(width, height);
 });
 
 // --- LOBBY URL PARAMETER & STORAGE BOOTSTRAP ---
