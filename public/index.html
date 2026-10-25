@@ -435,20 +435,36 @@
         .rank-3 { color: #d97706; }
         .lb-score-val { font-weight: 800; color: #34d399; font-size: 0.95rem; }
 
-        /* Talent Trees Styles */
-        .talents-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 960px; box-sizing: border-box; max-height: 56vh; overflow-y: auto; padding: 4px; }
-        .talent-spec-col { background: rgba(15, 23, 42, 0.85); border: 2px solid #334155; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
-        .talent-spec-header { text-align: center; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+        /* Talent Trees & Ability Loadout Styles */
+        .talents-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 1040px; box-sizing: border-box; max-height: 52vh; overflow-y: auto; padding: 4px; }
+        .talent-spec-col, .talent-tree-col { background: rgba(15, 23, 42, 0.9); border: 2px solid #334155; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .talent-spec-header, .talent-tree-header { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #334155; padding: 8px 10px; border-radius: 8px; }
+        .talent-tree-icon { font-size: 1.7rem; }
+        .talent-nodes-list { display: flex; flex-direction: column; gap: 8px; }
         .talent-spec-name { font-size: 0.95rem; font-weight: 800; color: #f8fafc; }
         .talent-spec-desc { font-size: 0.72rem; color: #94a3b8; }
-        .talent-node-card { background: #1e293b; border: 1.5px solid #475569; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; transition: all 0.15s; position: relative; }
-        .talent-node-card.unlocked { border-color: #38bdf8; background: linear-gradient(145deg, #1e293b, #0369a1); }
-        .talent-node-card.maxed { border-color: #fbbf24; background: linear-gradient(145deg, #1e293b, #78350f); box-shadow: 0 0 10px rgba(251,191,36,0.25); }
+        .talent-node-card { background: #1e293b; border: 1.5px solid #475569; border-radius: 9px; padding: 9px 11px; display: flex; flex-direction: column; gap: 6px; transition: all 0.15s; position: relative; text-align: left; }
+        .talent-node-card.unlocked { border-color: #38bdf8; background: linear-gradient(145deg, #1e293b, rgba(3, 105, 161, 0.35)); }
+        .talent-node-card.equipped-ability { border-color: #34d399 !important; box-shadow: 0 0 14px rgba(52, 211, 153, 0.35); background: linear-gradient(145deg, #1e293b, rgba(6, 95, 70, 0.45)); }
+        .talent-node-card.maxed { border-color: #fbbf24; background: linear-gradient(145deg, #1e293b, rgba(120, 53, 15, 0.45)); box-shadow: 0 0 10px rgba(251,191,36,0.25); }
         .talent-node-top { display: flex; justify-content: space-between; align-items: center; }
-        .talent-node-title { font-size: 0.82rem; font-weight: bold; color: #f8fafc; }
+        .talent-node-title { font-size: 0.85rem; font-weight: bold; color: #f8fafc; }
         .talent-node-rank { font-size: 0.7rem; font-weight: 800; color: #fde047; background: rgba(0,0,0,0.4); padding: 1px 6px; border-radius: 4px; }
-        .talent-node-desc { font-size: 0.7rem; color: #cbd5e1; line-height: 1.25; }
-        .talent-node-btn { padding: 4px 8px; font-size: 0.72rem; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; margin-top: 2px; }
+        .talent-node-desc { font-size: 0.72rem; color: #cbd5e1; line-height: 1.3; }
+        .talent-node-actions { display: flex; gap: 6px; margin-top: 2px; }
+        .talent-btn-equip, .talent-btn-invest, .talent-node-btn { padding: 5px 9px; min-height: 30px; font-size: 0.72rem; border-radius: 6px; border: 1px solid #475569; font-weight: 800; cursor: pointer; margin: 0; flex: 1; transition: 0.15s; }
+        .talent-btn-equip { background: #0f172a; color: #38bdf8; border-color: #0284c7; }
+        .talent-btn-equip:hover:not(:disabled) { background: #0284c7; color: #fff; }
+        .talent-btn-equip.active { background: #059669; color: #ecfdf5; border-color: #34d399; }
+        .talent-btn-invest { background: linear-gradient(135deg, #d97706, #f59e0b); color: #0f172a; border-color: #fbbf24; }
+        .talent-btn-invest.maxed { background: #334155 !important; color: #fde047 !important; border-color: #eab308 !important; }
+        .loadout-config-bar { width: 100%; max-width: 1040px; background: rgba(15, 23, 42, 0.92); border: 1.5px solid #334155; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; }
+        .loadout-slots-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+        .loadout-slot-pill { background: #0f172a; border: 1.5px solid #475569; border-radius: 8px; padding: 6px 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+        .loadout-slot-pill.listening { border-color: #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.6); animation: pulse 0.8s infinite alternate; }
+        .keybind-rebind-btn { min-height: 26px; padding: 2px 7px; margin: 0; font-size: 0.68rem; font-family: monospace; font-weight: 900; background: #1e293b; color: #fde047; border: 1px solid #64748b; border-radius: 5px; cursor: pointer; }
+        .keybind-rebind-btn:hover { border-color: #fde047; background: #334155; }
+        @media (max-width: 768px) { .loadout-slots-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
         /* Combo Streak HUD */
         #hud-combo { position: absolute; top: 120px; left: 50%; transform: translateX(-50%); display: none; align-items: center; gap: 6px; background: rgba(15,23,42,0.92); border: 2px solid #f59e0b; padding: 4px 14px; border-radius: 20px; color: #fbbf24; font-weight: 800; font-size: 0.88rem; box-shadow: 0 0 14px rgba(245,158,11,0.6); pointer-events: none; z-index: 15; animation: pulse 0.8s infinite alternate; }
@@ -2108,26 +2124,39 @@
         </div>
     </div>
 
-    <!-- Class Talent Trees Modal -->
+    <!-- Class Talent Trees & Ability Loadout Modal -->
     <div id="talents-screen" class="overlay">
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 960px; margin-bottom: 6px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1040px; margin-bottom: 6px; flex-wrap: wrap; gap: 8px;">
             <div>
-                <h1 style="color: #38bdf8; font-size: 1.5rem; margin: 0; text-align: left;">🌟 CLASS TALENT TREES</h1>
+                <h1 style="color: #38bdf8; font-size: 1.45rem; margin: 0; text-align: left;">🌟 ABILITY TALENT TREE &amp; SPELL BINDINGS</h1>
                 <p style="color: #cbd5e1; font-size: 0.8rem; margin: 2px 0 0 0; text-align: left;">
-                    Invest Talent Points earned from Leveling, Dungeons &amp; Titan Slayer runs into deep specializations!
+                    Choose your active abilities for each spell slot, upgrade ability ranks with Talent Points, and customize keybinds!
                 </p>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center; background: rgba(15,23,42,0.85); border: 1px solid #334155; padding: 6px 14px; border-radius: 8px;">
-                <span style="font-size: 0.85rem; color: #cbd5e1;">Points: <strong id="talent-points-available" style="color: #fbbf24; font-size: 1.1rem;">0</strong> 🌟</span>
-                <button onclick="resetClassTalents()" class="btn-emerald" style="padding: 4px 10px; font-size: 0.75rem; background: #dc2626; margin: 0;">Reset (Free)</button>
+            <div style="display: flex; gap: 8px; align-items: center; background: rgba(15,23,42,0.85); border: 1px solid #334155; padding: 6px 14px; border-radius: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.85rem; color: #cbd5e1;">Talent Points: <strong id="talent-points-available" style="color: #fbbf24; font-size: 1.1rem;">0</strong> 🌟</span>
+                <button onclick="resetClassTalents()" class="btn-emerald" style="padding: 4px 10px; min-height: 32px; font-size: 0.75rem; background: #dc2626; margin: 0;">Reset Points (Free)</button>
             </div>
         </div>
 
-        <!-- Class Selector Tabs in Talents -->
-        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-            <button id="talent-tab-warrior" class="shop-tab-btn active" onclick="switchTalentClass('Warrior')">⚔️ Warrior Specs</button>
-            <button id="talent-tab-mage" class="shop-tab-btn" onclick="switchTalentClass('Mage')">🔮 Mage Specs</button>
-            <button id="talent-tab-archer" class="shop-tab-btn" onclick="switchTalentClass('Archer')">🏹 Archer Specs</button>
+        <!-- Class Selector Tabs & Keybind Presets -->
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 1040px; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 6px;">
+                <button id="talent-tab-warrior" class="shop-tab-btn active" onclick="switchTalentClass('Warrior')">⚔️ Warrior Abilities</button>
+                <button id="talent-tab-mage" class="shop-tab-btn" onclick="switchTalentClass('Mage')">🔮 Mage Abilities</button>
+                <button id="talent-tab-archer" class="shop-tab-btn" onclick="switchTalentClass('Archer')">🏹 Archer Abilities</button>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <span style="font-size: 0.74rem; color: #94a3b8; font-weight: bold;">⌨️ Keybind Preset:</span>
+                <button class="shop-filter-btn" onclick="applyKeybindPreset('arpg')" title="Dash: Space, Spell 1: Q, Spell 2: E, Ult: R">ARPG (Space / Q / E / R)</button>
+                <button class="shop-filter-btn" onclick="applyKeybindPreset('classic')" title="Dash: Q, Spell 1: E, Spell 2: F, Ult: R">Classic (Q / E / F / R)</button>
+                <button class="shop-filter-btn" onclick="applyKeybindPreset('numbers')" title="Slots 1-5 on keys 1-5">Numbers (1 - 5)</button>
+            </div>
+        </div>
+
+        <!-- Active Loadout & Keybind Bar -->
+        <div class="loadout-config-bar" id="talent-loadout-bar">
+            <!-- Populated dynamically by renderTalentsModal() -->
         </div>
 
         <div class="talents-container" id="talents-trees-container">
@@ -2135,7 +2164,7 @@
         </div>
 
         <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
-            <button onclick="closeTalentsModal()" style="background:#475569; padding: 8px 24px; font-weight:bold; border-radius:8px;">Close (N)</button>
+            <button onclick="closeTalentsModal()" style="background:#3b82f6; padding: 8px 24px; font-weight:bold; border-radius:8px;">Save &amp; Return (N)</button>
         </div>
     </div>
 
@@ -2151,10 +2180,11 @@
 
     <!-- Level Up Screen -->
     <div id="skill-screen" class="overlay">
-        <h1 style="color: #fbbf24; text-shadow: 0 0 20px rgba(251,191,36,0.6);">⚡ LEVEL UP!</h1>
-        <p id="skill-screen-subtitle">Select a skill upgrade (Max 5 unique skills per run)</p>
+        <h1 style="color: #fbbf24; text-shadow: 0 0 20px rgba(251,191,36,0.6);">⚡ LEVEL UP! (+1 🌟 Talent Point)</h1>
+        <p id="skill-screen-subtitle">Select a run passive upgrade or open your Ability Talent Tree to customize &amp; rank up active spells</p>
         <div class="skill-grid" id="skill-options"></div>
         <div style="display: flex; gap: 10px; margin-top: 18px; align-items: center; flex-wrap: wrap; justify-content: center;">
+            <button onclick="openTalentsModal()" class="btn-emerald" style="padding: 8px 18px; font-size: 0.85rem; background: linear-gradient(135deg, #0ea5e9, #0284c7);">🌟 Ability Talent Tree &amp; Spells (N)</button>
             <button id="btn-reroll-skills" onclick="rerollSkills()" class="btn-gold" style="padding: 8px 18px; font-size: 0.85rem;">🎲 Reroll Choices (-40 Gold)</button>
             <button onclick="skipSkillForGold()" style="background: #334155; border: 1px solid #64748b; padding: 8px 18px; font-size: 0.85rem; color: #cbd5e1;">🪙 Skip (+150 Gold & +15 Essence)</button>
         </div>
@@ -2347,43 +2377,49 @@
         <div id="hud-action-bar">
             <!-- Slot 1: Primary Attack -->
             <button class="skill-square-btn" id="skill-slot-1" onclick="usePrimaryAttack()" title="Primary Attack (LMB / 1)">
-                <div class="skill-key-badge">1</div>
+                <div class="skill-key-badge" id="skill-key-1">LMB</div>
                 <div class="skill-square-icon" id="skill-icon-1">⚔️</div>
                 <div class="skill-square-name" id="skill-name-1">Slash</div>
                 <div class="skill-cd-overlay" id="skill-cd-1"></div>
                 <div class="skill-cd-text" id="skill-cd-text-1"></div>
             </button>
-            <!-- Slot 2: Tactical Skill -->
-            <button class="skill-square-btn" id="skill-slot-2" onclick="useTacticalSkill()" title="Tactical Skill (E / 2)">
-                <div class="skill-key-badge">E</div>
+            <!-- Slot 2: Tactical Mobility -->
+            <button class="skill-square-btn" id="skill-slot-2" onclick="useTacticalSkill()" title="Tactical Mobility (SPACE / 2)">
+                <div class="skill-key-badge" id="skill-key-2">SPC</div>
                 <div class="skill-square-icon" id="skill-icon-2">🛡️</div>
                 <div class="skill-square-name" id="skill-name-2">Charge</div>
                 <div class="skill-cd-overlay" id="skill-cd-2"></div>
                 <div class="skill-cd-text" id="skill-cd-text-2"></div>
             </button>
             <!-- Slot 3: Class Skill 1 -->
-            <button class="skill-square-btn" id="skill-slot-3" onclick="useClassSkill1()" title="Class Skill 1 (R / 3)">
-                <div class="skill-key-badge">R</div>
+            <button class="skill-square-btn" id="skill-slot-3" onclick="useClassSkill1()" title="Core Spell 1 (Q / 3)">
+                <div class="skill-key-badge" id="skill-key-3">Q</div>
                 <div class="skill-square-icon" id="skill-icon-3">🌀</div>
                 <div class="skill-square-name" id="skill-name-3">Whirlwind</div>
                 <div class="skill-cd-overlay" id="skill-cd-3"></div>
                 <div class="skill-cd-text" id="skill-cd-text-3"></div>
             </button>
             <!-- Slot 4: Class Skill 2 -->
-            <button class="skill-square-btn" id="skill-slot-4" onclick="useClassSkill2()" title="Class Skill 2 (F / 4)">
-                <div class="skill-key-badge">F</div>
+            <button class="skill-square-btn" id="skill-slot-4" onclick="useClassSkill2()" title="Mastery Spell 2 (E / 4)">
+                <div class="skill-key-badge" id="skill-key-4">E</div>
                 <div class="skill-square-icon" id="skill-icon-4">⚡</div>
                 <div class="skill-square-name" id="skill-name-4">Thunder</div>
                 <div class="skill-cd-overlay" id="skill-cd-4"></div>
                 <div class="skill-cd-text" id="skill-cd-text-4"></div>
             </button>
             <!-- Slot 5: Ultimate -->
-            <button class="skill-square-btn ult-slot" id="skill-slot-5" onclick="useUltimate()" title="Ultimate Ability (SPACE / 5)">
-                <div class="skill-key-badge">SPC</div>
+            <button class="skill-square-btn ult-slot" id="skill-slot-5" onclick="useUltimate()" title="Ultimate Ability (R / 5)">
+                <div class="skill-key-badge" id="skill-key-5">R</div>
                 <div class="skill-square-icon" id="skill-icon-5">🌟</div>
                 <div class="skill-square-name" id="skill-name-5">Colossus</div>
                 <div class="skill-cd-overlay" id="skill-cd-5"></div>
                 <div class="skill-cd-text" id="skill-cd-text-5">READY</div>
+            </button>
+            <!-- Quick Ability Tree & Keybind Config Button -->
+            <button class="skill-square-btn" id="skill-slot-config" onclick="toggleTalentsModal()" title="Customize Abilities & Spell Keybinds (N)" style="width: 42px; border-color: #38bdf8; background: rgba(15, 23, 42, 0.92);">
+                <div class="skill-key-badge">N</div>
+                <div class="skill-square-icon" style="font-size: 1.15rem;">🌟</div>
+                <div class="skill-square-name" style="font-size: 0.52rem;">Spells</div>
             </button>
         </div>
 

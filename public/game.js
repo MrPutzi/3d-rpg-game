@@ -449,7 +449,43 @@ function loadSave() {
         SAVE.talents = { Warrior: {}, Mage: {}, Archer: {} };
     }
     if (typeof SAVE.talentPoints !== 'number' || isNaN(SAVE.talentPoints)) {
-        SAVE.talentPoints = 3;
+        SAVE.talentPoints = 4;
+    }
+    // Initialize Customizable Active Ability Loadouts per Class
+    const defaultLoadouts = {
+        Warrior: { tactical: 'w_tac_shield', skill1: 'w_sk1_whirl', skill2: 'w_sk2_thunder', ultimate: 'w_ult_quake' },
+        Mage:    { tactical: 'm_tac_blink',  skill1: 'm_sk1_nova',  skill2: 'm_sk2_meteor',  ultimate: 'm_ult_blizzard' },
+        Archer:  { tactical: 'a_tac_smoke',  skill1: 'a_sk1_ballista', skill2: 'a_sk2_volley', ultimate: 'a_ult_storm' }
+    };
+    if (!SAVE.abilityLoadout || typeof SAVE.abilityLoadout !== 'object') {
+        SAVE.abilityLoadout = JSON.parse(JSON.stringify(defaultLoadouts));
+    } else {
+        ['Warrior', 'Mage', 'Archer'].forEach(cls => {
+            if (!SAVE.abilityLoadout[cls] || typeof SAVE.abilityLoadout[cls] !== 'object') {
+                SAVE.abilityLoadout[cls] = { ...defaultLoadouts[cls] };
+            } else {
+                Object.keys(defaultLoadouts[cls]).forEach(slotKey => {
+                    if (!SAVE.abilityLoadout[cls][slotKey]) {
+                        SAVE.abilityLoadout[cls][slotKey] = defaultLoadouts[cls][slotKey];
+                    }
+                });
+            }
+        });
+    }
+    // Initialize Customizable Spell Keybindings
+    const defaultKeybinds = {
+        slot1: 'Digit1',
+        slot2: 'Space',
+        slot3: 'KeyQ',
+        slot4: 'KeyE',
+        slot5: 'KeyR'
+    };
+    if (!SAVE.keybinds || typeof SAVE.keybinds !== 'object') {
+        SAVE.keybinds = { ...defaultKeybinds };
+    } else {
+        Object.keys(defaultKeybinds).forEach(k => {
+            if (!SAVE.keybinds[k]) SAVE.keybinds[k] = defaultKeybinds[k];
+        });
     }
     if (!SAVE.playerClass || typeof SAVE.playerClass !== 'string') {
         const legacyClass = localStorage.getItem('rpg_player_class');
@@ -533,13 +569,13 @@ const I18N = {
         hero_archer_ult: '⚡ Ult: Arrow Barrage & Dash (Invulnerable evasion dash + 360° piercing arrow storm)',
         // Controls cheat sheet
         ctrl_move: '[WASD / Sticks] Move',
-        ctrl_aim: '[Mouse] Aim & Attack',
-        ctrl_zoom: '[Wheel / +/-] Zoom',
-        ctrl_ult: '[Space / Q] Ultimate',
+        ctrl_aim: '[LMB / 1] Primary Attack',
+        ctrl_zoom: '[Space / Q / E / R] Dash & Spells',
+        ctrl_ult: '[N] Ability Talent Tree',
         ctrl_gear: '[I] Gear',
         ctrl_shop: '[B] Shop',
-        ctrl_quests: '[L] Quests',
-        ctrl_loot: '[E] Quick Loot',
+        ctrl_quests: '[J] Quests · [L] Hall',
+        ctrl_loot: '[G / X] Equip / Stash Loot',
         ctrl_pause: '[Esc] Pause',
         ctrl_sprint: '[Shift] Sprint · stamina',
         // Name modal
@@ -679,13 +715,13 @@ const I18N = {
         hero_archer_ult: '⚡ Ult: Búrka Šípov & Úskok (Nezraniteľný úskok + 360° prierazná búrka šípov)',
         // Controls cheat sheet
         ctrl_move: '[WASD / Páčky] Pohyb',
-        ctrl_aim: '[Myš] Mierenie & Útok',
-        ctrl_zoom: '[Koliesko / +/-] Zoom',
-        ctrl_ult: '[Medzerník / Q] Ultimátka',
+        ctrl_aim: '[LMB / 1] Základný útok',
+        ctrl_zoom: '[Space / Q / E / R] Úskok a Kúzla',
+        ctrl_ult: '[N] Strom schopností',
         ctrl_gear: '[I] Výbava',
         ctrl_shop: '[B] Obchod',
-        ctrl_quests: '[L] Úlohy',
-        ctrl_loot: '[E] Rýchly zber',
+        ctrl_quests: '[J] Úlohy · [L] Sieň',
+        ctrl_loot: '[G / X] Zber koristi',
         ctrl_pause: '[Esc] Pauza',
         ctrl_sprint: '[Shift] Šprint · výdrž',
         // Name modal
@@ -825,13 +861,13 @@ const I18N = {
         hero_archer_ult: '⚡ Ult: Nyílzápor & Kitérés (Sebzhetetlen kitérő gurulás + 360° átütő nyílvihar)',
         // Controls cheat sheet
         ctrl_move: '[WASD / Karok] Mozgás',
-        ctrl_aim: '[Egér] Célzás & Támadás',
-        ctrl_zoom: '[Görgő / +/-] Zoom',
-        ctrl_ult: '[Szóköz / Q] Végső képesség',
+        ctrl_aim: '[LMB / 1] Alaptámadás',
+        ctrl_zoom: '[Space / Q / E / R] Kitérés & Varázslatok',
+        ctrl_ult: '[N] Képességfa',
         ctrl_gear: '[I] Felszerelés',
         ctrl_shop: '[B] Bolt',
-        ctrl_quests: '[L] Küldetések',
-        ctrl_loot: '[E] Gyors zsákmány',
+        ctrl_quests: '[J] Küldetések · [L] Csarnok',
+        ctrl_loot: '[G / X] Gyors zsákmány',
         ctrl_pause: '[Esc] Szünet',
         ctrl_sprint: '[Shift] Sprint · állóképesség',
         // Name modal
@@ -2786,18 +2822,18 @@ function applyPermanentUpgrades() {
     PERM.damageMult = 1 + (u.power || 0) * 0.07 + (u.overwhelm || 0) * 0.05;
     PERM.speedMult = 1 + (u.swiftness || 0) * 0.035;
     PERM.fireRateMult = 1 + (u.swiftStrikes || 0) * 0.04;
-    PERM.dropBonus = (u.fortune || 0) * 0.04;
-    PERM.goldMult = 1 + (u.greed || 0) * 0.12;
+    PERM.dropBonus = (u.fortune || 0) * 0.05;
+    PERM.goldMult = 1 + (u.greed || 0) * 0.14;
     PERM.manaBonus = (u.arcaneReserve || 0) * 20;
     PERM.lifesteal = (u.vampirism || 0) * 1.5;
     PERM.critChance = (u.criticalStrike || 0) * 0.04;
     PERM.critMult = 2.0 + (u.criticalStrike || 0) * 0.15;
-    PERM.regenPerSec = (u.secondWind || 0) * 0.006;
-    PERM.pickupRadius = 4.0 * (1 + (u.magnetism || 0) * 0.45);
+    PERM.regenPerSec = (u.secondWind || 0) * 0.007;
+    PERM.pickupRadius = 6.0 * (1 + (u.magnetism || 0) * 0.40);
     PERM.reviveAvailable = (u.guardianAngel || 0) > 0;
     PERM.reviveMaxCount = u.guardianAngel || 0;
     PERM.reviveUsed = false;
-    PERM.damageReduction = (u.ironSkin || 0) * 2;
+    PERM.damageReduction = ((u.ironSkin || 0) * 2) + ((PLAYER.gearBonus && PLAYER.gearBonus.armor) || 0) + (PLAYER.talentBonusArmor || 0);
     PERM.manaRegenPerSec = (u.manaRegen || 0) * 4;
     PERM.spellDamageMult = 1 + (u.spellMastery || 0) * 0.08;
     PERM.startingShield = (u.bulwark || 0) * 30;
@@ -2806,10 +2842,13 @@ function applyPermanentUpgrades() {
 
 function rollDamage(targetEnemy = null) {
     let dmg = PLAYER.damage;
-    if (BUFFS.wrath > 0) dmg *= 2.2;
+    if (BUFFS.wrath > 0) dmg *= 2.1;
+    if (targetEnemy && targetEnemy.isBoss && PLAYER.talentBonusBossDmgPct) {
+        dmg *= (1 + PLAYER.talentBonusBossDmgPct / 100);
+    }
     let isCrit = false;
-    let critChance = PERM.critChance;
-    let critMult = PERM.critMult;
+    let critChance = PERM.critChance + ((PLAYER.talentBonusCrit || 0) * 0.01);
+    let critMult = PERM.critMult + (PLAYER.talentBonusCritMult || 0);
 
     if (PLAYER.class === 'Archer') {
         const a11 = (PLAYER.skills.find(s => s.id === 'a11') || {level: 0}).level;
@@ -2863,10 +2902,10 @@ function checkPlayerDeath() {
 // --- CLASSES & SKILLS ---
 const CLASSES = {
     Mage: {
-        baseHp: 80, baseMana: 100, baseSpeed: 16, baseDamage: 30, color: 0x38bdf8,
+        baseHp: 95, baseMana: 110, baseSpeed: 16.5, baseDamage: 32, color: 0x38bdf8,
         tacticalName: 'Arcane Blink',
         tacticalIcon: '✨',
-        tacticalDesc: 'Teleports forward 16m, freezing starting area and restoring 35 Mana.',
+        tacticalDesc: 'Teleports forward 16m, freezing starting area and restoring 40 Mana.',
         skills: [
             { id: 'm1', name: 'Explosive Magic', icon: '💥', rarity: 'common', desc: 'Projectiles blast +80% larger area & +6 dmg per rank', max: 5 },
             { id: 'm2', name: 'Split Spell', icon: '🔱', rarity: 'common', desc: 'Fires +1 additional arcane bolt in a spread per rank', max: 5 },
@@ -2885,10 +2924,10 @@ const CLASSES = {
         ]
     },
     Archer: {
-        baseHp: 100, baseMana: 0, baseSpeed: 20, baseDamage: 20, color: 0x34d399,
+        baseHp: 115, baseMana: 0, baseSpeed: 20, baseDamage: 24, color: 0x34d399,
         tacticalName: 'Smoke Roll',
         tacticalIcon: '💨',
-        tacticalDesc: 'Swift evasion roll dropping smoke screen and giving 100% Crit for 3s.',
+        tacticalDesc: 'Swift evasion roll dropping smoke screen and giving 100% Crit for 3.5s.',
         skills: [
             { id: 'a1', name: 'Multishot', icon: '🏹', rarity: 'common', desc: 'Fires a wide fan of +2 additional arrows per rank', max: 5 },
             { id: 'a2', name: 'Piercing Arrow', icon: '🎯', rarity: 'common', desc: 'Arrows pierce through +2 additional enemies', max: 5 },
@@ -2907,10 +2946,10 @@ const CLASSES = {
         ]
     },
     Warrior: {
-        baseHp: 150, baseMana: 0, baseSpeed: 18, baseDamage: 40, color: 0xf87171,
+        baseHp: 165, baseMana: 0, baseSpeed: 18, baseDamage: 40, color: 0xf87171,
         tacticalName: 'Shield Charge',
         tacticalIcon: '🛡️',
-        tacticalDesc: 'Charges forward with high velocity, crushing enemies and gaining +60 Shield.',
+        tacticalDesc: 'Charges forward with high velocity, crushing enemies and gaining +75 Shield.',
         skills: [
             { id: 'w1', name: 'Wide Cleave', icon: '⚔️', rarity: 'common', desc: 'Massively widens Greatsword slash hitbox and sweep angle', max: 5 },
             { id: 'w2', name: 'Whirlwind', icon: '🌪️', rarity: 'rare', desc: 'Continuous slicing blade hurricane around you (+20 dmg/s)', max: 5 },
@@ -2931,44 +2970,49 @@ const CLASSES = {
 };
 
 // ==========================================
-// --- CLASS TALENT TREES & SPECIALIZATION ---
+// --- ABILITY TALENT TREES & SPELL BINDINGS ---
 // ==========================================
+// Each class has 3 Specialization Branches x 4 Ability Tiers (Tactical, Spell 1, Spell 2, Ultimate).
+// Players can freely equip ANY ability from any branch into their 4 active ability slots and rank them up!
 const CLASS_TALENTS = {
     Warrior: [
         {
             id: 'colossus',
             name: 'Juggernaut Colossus',
             icon: '🛡️',
-            desc: 'Supreme survivability, impenetrable armor and damage reflection.',
+            desc: 'Impenetrable shields, fortified slams & seismic crowd control. (+35 HP & +3 Armor per point)',
             color: '#38bdf8',
             nodes: [
-                { id: 'w_c1', name: 'Adamantine Skin', icon: '🛡️', desc: '+50 Max HP and +6 Flat Armor damage reduction.', max: 3, stat: { maxHp: 50, armor: 6 } },
-                { id: 'w_c2', name: 'Spiked Retaliation', icon: '⚡', desc: 'Reflects 40% of incoming damage back to attackers and inflicts Daze.', max: 3, stat: { thorns: 40 } },
-                { id: 'w_c3', name: 'Immortal Bulwark', icon: '👑', desc: 'When HP drops below 30%, gain an impenetrable 200 HP shield for 8s (30s CD).', max: 1, stat: { bulwark: true } }
+                { id: 'w_tac_shield', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Shield Charge', shortName: 'Charge', icon: '🛡️', cd: 5.5, desc: 'Dash forward 15m, stunning foes in path for 2s and gaining +75 (+25/rank) Barrier Shield.', max: 3, stat: { maxHp: 35, armor: 3 } },
+                { id: 'w_sk1_bulwark', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Iron Bulwark Slam', shortName: 'Bulwark', icon: '🏰', cd: 4.4, desc: 'Smash shield into the earth (11m AoE), dealing heavy damage, slowing foes 45%, and gaining +60 Shield.', max: 3, stat: { maxHp: 35, armor: 3 } },
+                { id: 'w_sk2_aegis', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Aegis Judgment', shortName: 'Judgment', icon: '☀️', cd: 6.5, desc: 'Call down a holy solar pillar (12m AoE) that heals 28% Max HP and blasts/stuns surrounding foes.', max: 3, stat: { maxHp: 40, armor: 4 } },
+                { id: 'w_ult_quake', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Earthquake Cataclysm', shortName: 'Quake', icon: '💥', cd: 18.0, desc: 'Shatter the battlefield (24m AoE), stunning all enemies for 3.8s and granting +160 Barrier Shield.', max: 3, stat: { maxHp: 55, armor: 5 } }
             ]
         },
         {
             id: 'berserker',
             name: 'Bloodrage Berserker',
             icon: '🪓',
-            desc: 'Relentless offensive fury, slashing cleaves and execution frenzy.',
+            desc: 'Relentless cleaving fury, bleed lacerations & vampiric sustain. (+10% DMG & +2.5 Lifesteal per point)',
             color: '#ef4444',
             nodes: [
-                { id: 'w_b1', name: 'Bloodlust Edge', icon: '🩸', desc: '+20% Greatsword Damage and +15% Melee Attack Speed.', max: 3, stat: { damagePct: 20, fireRatePct: 15 } },
-                { id: 'w_b2', name: 'Savage Laceration', icon: '🗡️', desc: 'Melee slashes cause targets to bleed for 35 Physical DMG per second.', max: 3, stat: { bleedDmg: 35 } },
-                { id: 'w_b3', name: 'Decapitating Whirlwind', icon: '🌪️', desc: 'Whirlwind radius +60% and slaying an enemy extends Whirlwind duration.', max: 1, stat: { whirlwindMastery: true } }
+                { id: 'w_tac_leap', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Savage Leap', shortName: 'Leap', icon: '🩸', cd: 5.0, desc: 'Leap forward 16m and slam down, inflicting heavy Bleed for 4s and granting 5 Bloodlust stacks.', max: 3, stat: { damagePct: 10, lifesteal: 2.5 } },
+                { id: 'w_sk1_whirl', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Whirlwind Cleave', shortName: 'Whirlwind', icon: '🌀', cd: 4.0, desc: 'Spin in a 360° crimson blade cyclone (12m), slicing all nearby enemies and healing 25% of damage.', max: 3, stat: { damagePct: 10, fireRatePct: 8 } },
+                { id: 'w_sk2_rend', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Bloodthirst Execution', shortName: 'Execute', icon: '🪓', cd: 5.8, desc: 'Rend all nearby foes (13m) with twin crimson slashes; deals +75% damage to wounded targets & heals.', max: 3, stat: { damagePct: 12, lifesteal: 3 } },
+                { id: 'w_ult_ragnarok', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Avatar of Ragnarok', shortName: 'Ragnarok', icon: '🔥', cd: 18.0, desc: 'Erupt in hellfire (22m blast), igniting all foes and granting Wrath + Swiftness for 6s.', max: 3, stat: { damagePct: 15, critChance: 6 } }
             ]
         },
         {
             id: 'warlord',
             name: 'Titan Vanguard',
             icon: '⚔️',
-            desc: 'Empowers companions, crushes bosses and commands the battlefield.',
+            desc: 'Tectonic shockwaves, lightning slams & warcries. (+6% Attack Speed & +15% Boss DMG per point)',
             color: '#fbbf24',
             nodes: [
-                { id: 'w_w1', name: 'Battle Cry Aura', icon: '📢', desc: '+25% Damage to you and all party companions.', max: 3, stat: { partyDmgPct: 25 } },
-                { id: 'w_w2', name: 'Earthshaker Charge', icon: '💥', desc: 'Shield Charge leaves a seismic shockwave stunning enemies for 1.5s.', max: 3, stat: { stunDuration: 1.5 } },
-                { id: 'w_w3', name: 'Colossus Slayer', icon: '⚡', desc: 'Deals +50% extra damage to Dungeon Bosses, Mini-bosses and Titans.', max: 1, stat: { bossDmgPct: 50 } }
+                { id: 'w_tac_banner', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Warbanner Rush', shortName: 'Warbanner', icon: '🚩', cd: 5.2, desc: 'Surge forward 14m with a rallying cry, healing you & companions +60 HP and granting 4.5s Swiftness.', max: 3, stat: { fireRatePct: 6, bossDmgPct: 12 } },
+                { id: 'w_sk1_seismic', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Seismic Shockwave', shortName: 'Seismic', icon: '🌊', cd: 4.2, desc: 'Hurl 3 giant piercing tectonic crescent waves forward that crush and stun enemies in a long lane.', max: 3, stat: { fireRatePct: 8, damagePct: 8 } },
+                { id: 'w_sk2_thunder', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Thunder Clap', shortName: 'Thunder', icon: '⚡', cd: 6.0, desc: 'Electrified ground slam (12.5m AoE) calling lightning bolts and stunning all surrounding enemies 2.8s.', max: 3, stat: { critChance: 6, bossDmgPct: 15 } },
+                { id: 'w_ult_colossus', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Colossus Skyfall', shortName: 'Skyfall', icon: '⚡', cd: 18.0, desc: 'Ascend and crash down with a titanic lightning impact (25m AoE), obliterating foes & resetting basic CDs.', max: 3, stat: { bossDmgPct: 25, critMult: 25 } }
             ]
         }
     ],
@@ -2977,36 +3021,39 @@ const CLASS_TALENTS = {
             id: 'archmage',
             name: 'Arcane Dominance',
             icon: '🔮',
-            desc: 'Overwhelming magical firepower, mana surges and cascading spells.',
+            desc: 'Overwhelming arcane singularities, mana surges & missile storms. (+10% DMG & +25 Mana per point)',
             color: '#c084fc',
             nodes: [
-                { id: 'm_a1', name: 'Arcane Surge', icon: '✨', desc: '+25 Magic DMG and +40 Max Mana reservoir.', max: 3, stat: { damage: 25, maxMana: 40 } },
-                { id: 'm_a2', name: 'Echoing Cascade', icon: '⚡', desc: '25% chance for every spell cast to trigger a free duplicate missile.', max: 3, stat: { doubleCastPct: 25 } },
-                { id: 'm_a3', name: 'Singularity Collapse', icon: '🕳️', desc: 'Black Holes implode with celestial meteors dealing 350 AoE damage.', max: 1, stat: { blackHoleMeteors: true } }
+                { id: 'm_tac_blink', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Arcane Blink', shortName: 'Blink', icon: '✨', cd: 5.0, desc: 'Teleport 17m forward, freezing foes at origin, pulsing arcane AoE at destination & restoring +45 Mana.', max: 3, stat: { damagePct: 10, maxMana: 25 } },
+                { id: 'm_sk1_nova', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Arcane Nova', shortName: 'Nova', icon: '🔮', cd: 4.2, desc: 'Emit an expanding 360° ring of pure arcane energy (13.5m) that damages, knocks back, and dazes foes.', max: 3, stat: { damagePct: 10, fireRatePct: 8 } },
+                { id: 'm_sk2_vortex', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Black Hole Vortex', shortName: 'Vortex', icon: '🕳️', cd: 6.5, desc: 'Conjure a gravity singularity ahead that pulls nearby enemies inward before imploding for heavy AoE.', max: 3, stat: { damagePct: 12, maxMana: 30 } },
+                { id: 'm_ult_tempest', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Arcane Starfall Tempest', shortName: 'Tempest', icon: '🌟', cd: 18.0, desc: 'Unleash 24 homing arcane missiles in all directions, restore full Mana, and gain +120 Arcane Shield.', max: 3, stat: { damagePct: 15, critChance: 8 } }
             ]
         },
         {
             id: 'pyromancer',
             name: 'Infernal Pyromancer',
             icon: '🔥',
-            desc: 'Cataclysmic flame explosions, burn DoTs and phoenix rebirth.',
+            desc: 'Cataclysmic fireballs, meteor strikes & phoenix flames. (+12% DMG & +5% Crit per point)',
             color: '#f97316',
             nodes: [
-                { id: 'm_p1', name: 'Ignition Sparks', icon: '🔥', desc: 'All spells ignite foes dealing 45 Fire DMG/s for 4 seconds.', max: 3, stat: { burnDmg: 45 } },
-                { id: 'm_p2', name: 'Pyroblast Blast', icon: '☄️', desc: 'Every 3rd basic attack launches an explosive fiery meteor.', max: 3, stat: { pyroblastRank: 1 } },
-                { id: 'm_p3', name: 'Phoenix Flameborn', icon: '🦅', desc: 'Upon taking fatal damage, explode in a blaze of fire killing foes and reviving with 60% HP (60s CD).', max: 1, stat: { phoenixRevive: true } }
+                { id: 'm_tac_flamedash', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Flame Dash', shortName: 'FlameDash', icon: '🔥', cd: 4.8, desc: 'Surge forward 16m as a comet of fire, scorching enemies along your path and granting 3.5s Wrath.', max: 3, stat: { damagePct: 12, critChance: 5 } },
+                { id: 'm_sk1_fireball', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Dragonfire Barrage', shortName: 'Fireballs', icon: '🔥', cd: 3.8, desc: 'Launch a wide fan of 6 explosive fireballs that detonate on impact into fiery AoE blasts and ignite foes.', max: 3, stat: { damagePct: 12, critMult: 15 } },
+                { id: 'm_sk2_meteor', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Meteor Strike', shortName: 'Meteor', icon: '☄️', cd: 6.4, desc: 'Call down a colossal flaming meteor at target location (10.5m AoE), dealing heavy damage & burn.', max: 3, stat: { damagePct: 14, bossDmgPct: 15 } },
+                { id: 'm_ult_cataclysm', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Inferno Cataclysm', shortName: 'Cataclysm', icon: '🌋', cd: 18.0, desc: 'Rain 8 apocalyptic meteors across the battlefield, blasting all enemies and healing 35% Max HP.', max: 3, stat: { damagePct: 18, lifesteal: 3 } }
             ]
         },
         {
             id: 'chronomancer',
             name: 'Frost & Time Weaver',
             icon: '❄️',
-            desc: 'Glacial crowd control, teleport acceleration and temporal stasis.',
+            desc: 'Glacial lances, ice barriers & temporal stasis control. (+30 HP & +8% Cast Speed per point)',
             color: '#38bdf8',
             nodes: [
-                { id: 'm_c1', name: 'Glacial Chill', icon: '❄️', desc: 'Hits chill enemies by 40% and deal +30% extra damage to frozen foes.', max: 3, stat: { chillPct: 40, frozenBonusPct: 30 } },
-                { id: 'm_c2', name: 'Temporal Blink', icon: '⏳', desc: 'Arcane Blink CD reduced by 50% and leaves a freezing time vortex.', max: 3, stat: { blinkCdReduct: 50 } },
-                { id: 'm_c3', name: 'Chronos Distortion', icon: '🌀', desc: 'Every 14s, slows all nearby enemy movement by 70% while doubling your cast rate for 3.5s.', max: 1, stat: { timeDistortion: true } }
+                { id: 'm_tac_frostphase', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Frost Phase', shortName: 'FrostStep', icon: '❄️', cd: 5.0, desc: 'Phase 15m through ice, freezing nearby enemies solid for 3s and granting a +85 Ice Barrier Shield.', max: 3, stat: { maxHp: 30, armor: 3 } },
+                { id: 'm_sk1_glacier', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Glacial Lance', shortName: 'Glacier', icon: '🧊', cd: 4.0, desc: 'Fire 3 giant piercing permafrost spears that impale and freeze all enemies in their path for 2.8s.', max: 3, stat: { fireRatePct: 8, damagePct: 10 } },
+                { id: 'm_sk2_timeorb', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Chrono Stasis Field', shortName: 'Stasis', icon: '⏳', cd: 6.2, desc: 'Detonate a temporal field (14m AoE) freezing foes 3.5s, dealing cryo damage & reducing Ult CD by 4s.', max: 3, stat: { fireRatePct: 10, maxHp: 30 } },
+                { id: 'm_ult_blizzard', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Absolute Zero Blizzard', shortName: 'Blizzard', icon: '❄️', cd: 18.0, desc: 'Freeze the entire battlefield (26m AoE) for 4.5s while shattering enemies with glacial spikes.', max: 3, stat: { maxHp: 45, damagePct: 15 } }
             ]
         }
     ],
@@ -3015,45 +3062,134 @@ const CLASS_TALENTS = {
             id: 'sharpshooter',
             name: 'Deadeye Sniper',
             icon: '🎯',
-            desc: 'Hyper-critical precision, piercing ballistas and execution strikes.',
+            desc: 'Hyper-critical precision, piercing ballistas & rail-shots. (+7% Crit & +20% Crit DMG per point)',
             color: '#4ade80',
             nodes: [
-                { id: 'a_s1', name: 'Eagle Precision', icon: '🎯', desc: '+15% Critical Strike Chance and +50% Critical Damage Multiplier.', max: 3, stat: { critChance: 15, critMult: 50 } },
-                { id: 'a_s2', name: 'Armor-Piercing Wind', icon: '💨', desc: 'Arrows pierce through all enemies without losing damage.', max: 3, stat: { fullPierce: true } },
-                { id: 'a_s3', name: 'Ballista Overdrive', icon: '🏹', desc: 'Sniper Ballista fires a volley of 3 hyper-sonic piercing bolts simultaneously.', max: 1, stat: { tripleBallista: true } }
+                { id: 'a_tac_smoke', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Smoke Roll', shortName: 'SmokeRoll', icon: '💨', cd: 4.8, desc: 'Evasive roll 15m, blinding nearby foes for 2.5s and granting 1.2s invulnerability + 3.5s 100% Crit.', max: 3, stat: { critChance: 7, critMult: 20 } },
+                { id: 'a_sk1_ballista', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Piercing Ballista', shortName: 'Ballista', icon: '🎯', cd: 3.8, desc: 'Fire a hyper-velocity heavy ballista bolt (+1 bolt at Rank 2+) that pierces all enemies for massive damage.', max: 3, stat: { critChance: 7, damagePct: 10 } },
+                { id: 'a_sk2_snipe', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Deadeye Execution', shortName: 'Snipe', icon: '🦅', cd: 5.8, desc: 'Lock onto up to 6 priority enemies and call down surgical sniper headshots (+60% bonus to bosses).', max: 3, stat: { critMult: 25, bossDmgPct: 18 } },
+                { id: 'a_ult_railshot', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Orbital Rail-Barrage', shortName: 'RailShot', icon: '⚡', cd: 17.0, desc: 'Dash & fire 5 colossal hyper-sonic piercing rail-beams in a cone that obliterate everything in line.', max: 3, stat: { critChance: 10, critMult: 30 } }
             ]
         },
         {
             id: 'shadow_hunter',
-            name: 'Shadow Infiltrator',
+            name: 'Shadow Trapper',
             icon: '🗡️',
-            desc: 'Stealth evasion, toxic poison caltrops and phantom dagger storms.',
+            desc: 'Venom vaults, toxic fans of knives & leeching shadow blades. (+28 HP & +2.5 Lifesteal per point)',
             color: '#a855f7',
             nodes: [
-                { id: 'a_h1', name: 'Smoke Veil', icon: '💨', desc: 'Smoke Roll grants 1.5s complete invulnerability and +50% Movement Speed.', max: 3, stat: { rollInvuln: 1.5, rollSpeed: 50 } },
-                { id: 'a_h2', name: 'Venomous Caltrops', icon: '☠️', desc: 'Caltrops poison enemies and cause them to take +35% increased damage.', max: 3, stat: { poisonAmpPct: 35 } },
-                { id: 'a_h3', name: 'Phantom Tempest', icon: '🌪️', desc: 'Phantom Daggers spawn twice as many blades and heal +4 HP per hit.', max: 1, stat: { phantomHeal: 4 } }
+                { id: 'a_tac_vault', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Venom Vault', shortName: 'Vault', icon: '🕸️', cd: 4.6, desc: 'Vault 15m, scattering 3 explosive poison caltrop traps at origin and healing yourself +45 HP.', max: 3, stat: { maxHp: 28, lifesteal: 2.5 } },
+                { id: 'a_sk1_fan', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Toxic Fan of Knives', shortName: 'KnifeFan', icon: '🗡️', cd: 3.8, desc: 'Throw 14 poisoned daggers in a 360° ring and drop a venom trap; slows and poisons all struck foes.', max: 3, stat: { damagePct: 10, lifesteal: 2.5 } },
+                { id: 'a_sk2_blades', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Shadow Blade Vortex', shortName: 'Blades', icon: '🌀', cd: 5.8, desc: 'Unleash a whirling storm of phantom glaives (12m AoE) that slashes enemies and leeches +10 HP per hit.', max: 3, stat: { maxHp: 35, lifesteal: 3.5 } },
+                { id: 'a_ult_phantom', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Phantom Assassination', shortName: 'Phantom', icon: '🌑', cd: 17.0, desc: 'Become untouchable for 2.5s while shadow clones strike every enemy within 24m for lethal crit damage.', max: 3, stat: { damagePct: 15, lifesteal: 4 } }
             ]
         },
         {
             id: 'ranger',
             name: 'Gale Force Ranger',
             icon: '🏹',
-            desc: 'Machine-gun arrow volleys, ricochet spirals and celestial skyfalls.',
+            desc: 'Wind-step dashes, ricochet chakrams & blazing arrow storms. (+10% Attack Speed per point)',
             color: '#facc15',
             nodes: [
-                { id: 'a_r1', name: 'Rapid Quiver', icon: '⚡', desc: '+30% Arrow Attack Speed and +1 additional arrow to every attack.', max: 3, stat: { fireRatePct: 30, bonusArrows: 1 } },
-                { id: 'a_r2', name: 'Ricochet Tempest', icon: '🪃', desc: 'Arrows bounce up to 3 times to nearby targets for full damage.', max: 3, stat: { extraBounces: 3 } },
-                { id: 'a_r3', name: 'Blazing Skyfall', icon: '🔥', desc: 'Arrow Volley rains blazing burning meteors every 4 seconds continuously.', max: 1, stat: { autoVolley: true } }
+                { id: 'a_tac_gale', slot: 'tactical', slotLabel: 'Slot 2 • Mobility', name: 'Gale Wind-Step', shortName: 'WindStep', icon: '🌪️', cd: 4.5, desc: 'Dash 16m on a gust of wind, granting 5s Swiftness and firing 6 homing wind arrows at nearby foes.', max: 3, stat: { fireRatePct: 10, damagePct: 8 } },
+                { id: 'a_sk1_ricochet', slot: 'skill1', slotLabel: 'Slot 3 • Spell 1', name: 'Ricochet Chakrams', shortName: 'Chakrams', icon: '🪃', cd: 3.8, desc: 'Launch 4 electrified wind chakrams that pierce and ricochet between nearby targets.', max: 3, stat: { fireRatePct: 10, critChance: 5 } },
+                { id: 'a_sk2_volley', slot: 'skill2', slotLabel: 'Slot 4 • Spell 2', name: 'Blazing Arrow Volley', shortName: 'Volley', icon: '🔥', cd: 5.6, desc: 'Fire a wide fan of 16 blazing arrows that pierce enemies and ignite them on impact.', max: 3, stat: { fireRatePct: 12, damagePct: 10 } },
+                { id: 'a_ult_storm', slot: 'ultimate', slotLabel: 'Slot 5 • Ultimate', name: 'Skyfall Arrow Storm', shortName: 'ArrowStorm', icon: '🏹', cd: 17.0, desc: 'Evasive dash + 360° storm of 32 piercing arrows and explosive skyfall volleys.', max: 3, stat: { fireRatePct: 15, damagePct: 14 } }
             ]
         }
     ]
 };
 
 let activeTalentClass = 'Warrior';
+let listeningRebindSlot = null;
+
+function formatKeyCode(code) {
+    if (!code) return '?';
+    if (code === 'Space') return 'SPC';
+    if (code.startsWith('Key')) return code.slice(3).toUpperCase();
+    if (code.startsWith('Digit')) return code.slice(5);
+    if (code.startsWith('Numpad')) return 'NP' + code.slice(6);
+    if (code === 'ShiftLeft' || code === 'ShiftRight') return 'SHF';
+    if (code === 'ControlLeft' || code === 'ControlRight') return 'CTL';
+    if (code === 'AltLeft' || code === 'AltRight') return 'ALT';
+    if (code === 'Tab') return 'TAB';
+    return code.substring(0, 4).toUpperCase();
+}
+
+function getEquippedAbilityNode(className, slotKey) {
+    const cls = className || PLAYER.class || selectedStartHero || 'Warrior';
+    const loadout = (SAVE.abilityLoadout && SAVE.abilityLoadout[cls]) || {};
+    const equippedId = loadout[slotKey];
+    const specs = CLASS_TALENTS[cls] || [];
+    const heroTalents = (SAVE.talents && SAVE.talents[cls]) || {};
+
+    for (const spec of specs) {
+        const ranks = heroTalents[spec.id] || [0, 0, 0, 0];
+        for (let i = 0; i < spec.nodes.length; i++) {
+            const n = spec.nodes[i];
+            if (n.id === equippedId) {
+                return { node: n, spec, rank: ranks[i] || 0, nodeIdx: i };
+            }
+        }
+    }
+    // Fallback to first spec's node for that slot
+    if (specs[0]) {
+        const idx = { tactical: 0, skill1: 1, skill2: 2, ultimate: 3 }[slotKey] || 0;
+        const ranks = heroTalents[specs[0].id] || [0, 0, 0, 0];
+        return { node: specs[0].nodes[idx], spec: specs[0], rank: ranks[idx] || 0, nodeIdx: idx };
+    }
+    return null;
+}
+
+window.equipTalentAbility = function(specId, nodeIdx) {
+    initAudio();
+    const specs = CLASS_TALENTS[activeTalentClass] || [];
+    const tree = specs.find(s => s.id === specId);
+    if (!tree || !tree.nodes[nodeIdx]) return;
+    const node = tree.nodes[nodeIdx];
+
+    if (!SAVE.abilityLoadout) SAVE.abilityLoadout = {};
+    if (!SAVE.abilityLoadout[activeTalentClass]) SAVE.abilityLoadout[activeTalentClass] = {};
+    SAVE.abilityLoadout[activeTalentClass][node.slot] = node.id;
+    writeSave();
+
+    SFX.equip();
+    logMessage(`⚡ Equipped ${node.name} to ${node.slotLabel}!`, tree.color);
+    if (typeof playerMesh !== 'undefined' && playerMesh) {
+        spawnFloatingText(playerMesh.position, `⚡ EQUIPPED: ${node.name.toUpperCase()}`, tree.color, 18, true);
+    }
+    updateGUI();
+    renderTalentsModal();
+    updateStartHeroDossier();
+};
+
+window.startRebindSlot = function(slotNum) {
+    initAudio();
+    listeningRebindSlot = (listeningRebindSlot === slotNum) ? null : slotNum;
+    renderTalentsModal();
+};
+
+window.applyKeybindPreset = function(preset) {
+    initAudio();
+    if (!SAVE.keybinds) SAVE.keybinds = {};
+    if (preset === 'arpg') {
+        SAVE.keybinds = { slot1: 'Digit1', slot2: 'Space', slot3: 'KeyQ', slot4: 'KeyE', slot5: 'KeyR' };
+    } else if (preset === 'classic') {
+        SAVE.keybinds = { slot1: 'Digit1', slot2: 'KeyQ', slot3: 'KeyE', slot4: 'KeyF', slot5: 'KeyR' };
+    } else if (preset === 'numbers') {
+        SAVE.keybinds = { slot1: 'Digit1', slot2: 'Digit2', slot3: 'Digit3', slot4: 'Digit4', slot5: 'Digit5' };
+    }
+    listeningRebindSlot = null;
+    writeSave();
+    SFX.equip();
+    logMessage(`⌨️ Applied ${preset.toUpperCase()} Spell Keybind Preset!`, '#38bdf8');
+    updateGUI();
+    renderTalentsModal();
+};
 
 window.openTalentsModal = function() {
     initAudio();
+    listeningRebindSlot = null;
     activeTalentClass = (GAME.state === 'PLAYING' && PLAYER.class) ? PLAYER.class : (selectedStartHero || 'Warrior');
     const modal = document.getElementById('talents-screen');
     if (modal) modal.style.display = 'flex';
@@ -3061,6 +3197,7 @@ window.openTalentsModal = function() {
 };
 
 window.closeTalentsModal = function() {
+    listeningRebindSlot = null;
     const modal = document.getElementById('talents-screen');
     if (modal) modal.style.display = 'none';
 };
@@ -3086,11 +3223,12 @@ window.switchTalentClass = function(className) {
 
 window.investTalentPoint = function(specId, nodeIdx) {
     if (SAVE.talentPoints <= 0) {
-        logMessage('No Talent Points available! Level up or complete Dungeons/Titans to earn points.', '#ef4444');
+        logMessage('No Talent Points available! Level up or clear modes to earn 🌟 Talent Points.', '#ef4444');
         return;
     }
     const heroTalents = SAVE.talents[activeTalentClass] = SAVE.talents[activeTalentClass] || {};
-    const currentRanks = heroTalents[specId] = heroTalents[specId] || [0, 0, 0];
+    const currentRanks = heroTalents[specId] = heroTalents[specId] || [0, 0, 0, 0];
+    while (currentRanks.length < 4) currentRanks.push(0);
     
     const tree = CLASS_TALENTS[activeTalentClass].find(s => s.id === specId);
     if (!tree) return;
@@ -3098,24 +3236,27 @@ window.investTalentPoint = function(specId, nodeIdx) {
     if (!node) return;
 
     if (currentRanks[nodeIdx] >= node.max) {
-        logMessage('Talent is already at maximum rank!', '#fde047');
-        return;
-    }
-
-    // Check prerequisites: node 1 requires rank in node 0, node 2 requires rank in node 1
-    if (nodeIdx > 0 && currentRanks[nodeIdx - 1] === 0) {
-        logMessage(`Must invest at least 1 point in ${tree.nodes[nodeIdx - 1].name} first!`, '#ef4444');
+        logMessage('Ability is already at Maximum Mastery Rank!', '#fde047');
         return;
     }
 
     currentRanks[nodeIdx]++;
     SAVE.talentPoints--;
+
+    // Also automatically equip this ability into its slot when upgraded!
+    if (!SAVE.abilityLoadout) SAVE.abilityLoadout = {};
+    if (!SAVE.abilityLoadout[activeTalentClass]) SAVE.abilityLoadout[activeTalentClass] = {};
+    SAVE.abilityLoadout[activeTalentClass][node.slot] = node.id;
+
     writeSave();
     SFX.talentPick();
-    spawnFloatingText(playerMesh.position, `🌟 ${node.name.toUpperCase()} RANK ${currentRanks[nodeIdx]}!`, tree.color, 18, true);
-    logMessage(`Invested 1 Talent Point in ${node.name} (${currentRanks[nodeIdx]}/${node.max})`, tree.color);
+    if (typeof playerMesh !== 'undefined' && playerMesh) {
+        spawnFloatingText(playerMesh.position, `🌟 ${node.name.toUpperCase()} RANK ${currentRanks[nodeIdx]}!`, tree.color, 18, true);
+    }
+    logMessage(`Upgraded & Equipped ${node.name} (Rank ${currentRanks[nodeIdx]}/${node.max})`, tree.color);
 
     applyTalentPassives();
+    updateEffects();
     updateGUI();
     renderTalentsModal();
     updateStartHeroDossier();
@@ -3136,6 +3277,7 @@ window.resetClassTalents = function() {
     SFX.scrap();
     logMessage(`Reset talents for ${activeTalentClass}! Refunded ${refunded} Talent Points.`, '#38bdf8');
     applyTalentPassives();
+    updateEffects();
     updateGUI();
     renderTalentsModal();
     updateStartHeroDossier();
@@ -3150,53 +3292,106 @@ function renderTalentsModal() {
         if (btn) btn.classList.toggle('active', c === activeTalentClass);
     });
 
+    // Render Active Loadout & Keybind Bar
+    const loadoutBar = document.getElementById('talent-loadout-bar');
+    if (loadoutBar) {
+        const kb = SAVE.keybinds || { slot1: 'Digit1', slot2: 'Space', slot3: 'KeyQ', slot4: 'KeyE', slot5: 'KeyR' };
+        const tac = getEquippedAbilityNode(activeTalentClass, 'tactical');
+        const sk1 = getEquippedAbilityNode(activeTalentClass, 'skill1');
+        const sk2 = getEquippedAbilityNode(activeTalentClass, 'skill2');
+        const ult = getEquippedAbilityNode(activeTalentClass, 'ultimate');
+        const primaryInfo = activeTalentClass === 'Warrior'
+            ? { icon: '⚔️', name: 'Greatsword Cleave' }
+            : (activeTalentClass === 'Mage' ? { icon: '🔮', name: 'Arcane Bolt' } : { icon: '🏹', name: 'Longbow Shot' });
+
+        const slotsData = [
+            { num: 1, label: 'Primary Attack', icon: primaryInfo.icon, name: primaryInfo.name, key: `LMB / ${formatKeyCode(kb.slot1)}` },
+            { num: 2, label: 'Mobility / Dash', icon: tac ? tac.node.icon : '🛡️', name: tac ? tac.node.name : 'Dash', key: formatKeyCode(kb.slot2) },
+            { num: 3, label: 'Core Spell 1', icon: sk1 ? sk1.node.icon : '🌀', name: sk1 ? sk1.node.name : 'Spell 1', key: formatKeyCode(kb.slot3) },
+            { num: 4, label: 'Mastery Spell 2', icon: sk2 ? sk2.node.icon : '⚡', name: sk2 ? sk2.node.name : 'Spell 2', key: formatKeyCode(kb.slot4) },
+            { num: 5, label: 'Ultimate Ability', icon: ult ? ult.node.icon : '🌟', name: ult ? ult.node.name : 'Ultimate', key: formatKeyCode(kb.slot5) }
+        ];
+
+        loadoutBar.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+                <span style="font-size:0.78rem; font-weight:800; color:#38bdf8;">🎯 ACTIVE ${activeTalentClass.toUpperCase()} SPELL LOADOUT &amp; KEYBINDS <span style="color:#94a3b8; font-weight:normal;">(Click any key badge below to rebind, or click "⚡ Equip" on any ability in the tree!)</span></span>
+                ${listeningRebindSlot ? `<span style="font-size:0.75rem; color:#fbbf24; font-weight:800;">⌨️ Press any key to bind Slot ${listeningRebindSlot} (Esc to cancel)...</span>` : ''}
+            </div>
+            <div class="loadout-slots-row">
+                ${slotsData.map(s => `
+                    <div class="loadout-slot-pill ${listeningRebindSlot === s.num ? 'listening' : ''}">
+                        <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                            <span style="font-size:1.25rem;">${s.icon}</span>
+                            <div style="min-width:0;">
+                                <div style="font-size:0.62rem; color:#94a3b8; text-transform:uppercase;">${s.label}</div>
+                                <div style="font-size:0.76rem; font-weight:800; color:#f8fafc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${s.name}</div>
+                            </div>
+                        </div>
+                        <button class="keybind-rebind-btn" onclick="startRebindSlot(${s.num})" title="Click to rebind key for ${s.label}">
+                            ${listeningRebindSlot === s.num ? 'PRESS KEY' : s.key}
+                        </button>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
     const container = document.getElementById('talents-trees-container');
     if (!container) return;
     container.innerHTML = '';
 
     const specs = CLASS_TALENTS[activeTalentClass] || [];
     const heroTalents = SAVE.talents[activeTalentClass] || {};
+    const loadout = (SAVE.abilityLoadout && SAVE.abilityLoadout[activeTalentClass]) || {};
 
     specs.forEach(spec => {
-        const ranks = heroTalents[spec.id] || [0, 0, 0];
+        const ranks = heroTalents[spec.id] || [0, 0, 0, 0];
         const col = document.createElement('div');
         col.className = 'talent-tree-col';
-        col.style.borderColor = `${spec.color}44`;
+        col.style.borderColor = `${spec.color}55`;
 
         let nodesHtml = '';
         spec.nodes.forEach((node, idx) => {
             const rank = ranks[idx] || 0;
             const isMaxed = rank >= node.max;
-            const isLocked = (idx > 0 && (ranks[idx - 1] || 0) === 0);
-            const canAfford = SAVE.talentPoints > 0 && !isLocked && !isMaxed;
+            const isEquipped = loadout[node.slot] === node.id;
+            const canAfford = (SAVE.talentPoints || 0) > 0 && !isMaxed;
+            const bonusText = rank > 0 ? `+${rank * 25}% Power, -${rank * 8}% CD` : 'Base Power (Rank up for +25%/rank)';
 
             nodesHtml += `
-                <div class="talent-node-card ${isMaxed ? 'maxed' : ''} ${isLocked ? 'locked' : ''}" style="border-left: 3px solid ${spec.color};">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                <div class="talent-node-card ${rank > 0 ? 'unlocked' : ''} ${isMaxed ? 'maxed' : ''} ${isEquipped ? 'equipped-ability' : ''}" style="border-left: 3px solid ${spec.color};">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
                         <div style="display:flex; gap:8px; align-items:center;">
-                            <span style="font-size:1.3rem;">${node.icon}</span>
+                            <span style="font-size:1.35rem;">${node.icon}</span>
                             <div>
-                                <h4 style="margin:0; font-size:0.92rem; color:${spec.color};">${node.name}</h4>
-                                <span style="font-size:0.75rem; color:#94a3b8;">Tier ${idx + 1} &bull; ${rank}/${node.max} Ranks</span>
+                                <div style="font-size:0.65rem; font-weight:800; color:#94a3b8; text-transform:uppercase;">${node.slotLabel} &bull; ⏱️ ${(node.cd * (1 - rank * 0.08)).toFixed(1)}s CD</div>
+                                <h4 style="margin:1px 0 0 0; font-size:0.9rem; color:${spec.color};">${node.name}</h4>
                             </div>
                         </div>
+                        <span class="talent-node-rank">Rank ${rank}/${node.max}</span>
+                    </div>
+                    <p style="margin:2px 0; font-size:0.74rem; color:#cbd5e1; line-height:1.3;">${node.desc}</p>
+                    <div style="font-size:0.66rem; color:#38bdf8; font-weight:bold;">⭐ Mastery: ${bonusText}</div>
+                    <div class="talent-node-actions">
+                        <button class="talent-btn-equip ${isEquipped ? 'active' : ''}" onclick="equipTalentAbility('${spec.id}', ${idx})">
+                            ${isEquipped ? '✅ EQUIPPED IN SLOT' : '⚡ EQUIP ABILITY'}
+                        </button>
                         <button class="talent-btn-invest ${isMaxed ? 'maxed' : ''}" 
                                 ${canAfford ? '' : 'disabled'} 
                                 onclick="investTalentPoint('${spec.id}', ${idx})">
-                            ${isMaxed ? '⭐ MASTERED' : (isLocked ? '🔒 LOCKED' : '+ INVEST (1🌟)')}
+                            ${isMaxed ? '⭐ MAX RANK' : '+ UPGRADE (1🌟)'}
                         </button>
                     </div>
-                    <p style="margin:0; font-size:0.8rem; color:#cbd5e1; line-height:1.35;">${node.desc}</p>
                 </div>
             `;
         });
 
         col.innerHTML = `
-            <div class="talent-tree-header" style="background:linear-gradient(135deg, ${spec.color}22, rgba(15,23,42,0.8));">
+            <div class="talent-tree-header" style="background:linear-gradient(135deg, ${spec.color}22, rgba(15,23,42,0.85));">
                 <span class="talent-tree-icon">${spec.icon}</span>
                 <div>
-                    <h3 style="margin:0; font-size:1.05rem; color:${spec.color};">${spec.name}</h3>
-                    <p style="margin:2px 0 0 0; font-size:0.75rem; color:#cbd5e1;">${spec.desc}</p>
+                    <h3 style="margin:0; font-size:1rem; color:${spec.color};">${spec.name}</h3>
+                    <p style="margin:2px 0 0 0; font-size:0.72rem; color:#cbd5e1;">${spec.desc}</p>
                 </div>
             </div>
             <div class="talent-nodes-list">
@@ -3208,29 +3403,34 @@ function renderTalentsModal() {
 }
 
 function applyTalentPassives() {
-    if (!PLAYER.class) return;
-    const heroTalents = SAVE.talents[PLAYER.class] || {};
+    const cls = PLAYER.class || selectedStartHero || 'Warrior';
+    const heroTalents = (SAVE.talents && SAVE.talents[cls]) || {};
 
-    // Reset base bonus passives then calculate total
     let bonusHp = 0;
     let bonusArmor = 0;
     let bonusDamagePct = 0;
     let bonusFireRatePct = 0;
     let bonusCrit = 0;
     let bonusCritMult = 0;
+    let bonusLifesteal = 0;
+    let bonusMana = 0;
+    let bonusBossDmgPct = 0;
 
-    const specs = CLASS_TALENTS[PLAYER.class] || [];
+    const specs = CLASS_TALENTS[cls] || [];
     specs.forEach(spec => {
-        const ranks = heroTalents[spec.id] || [0, 0, 0];
+        const ranks = heroTalents[spec.id] || [0, 0, 0, 0];
         spec.nodes.forEach((node, idx) => {
             const r = ranks[idx] || 0;
-            if (r > 0) {
+            if (r > 0 && node.stat) {
                 if (node.stat.maxHp) bonusHp += node.stat.maxHp * r;
                 if (node.stat.armor) bonusArmor += node.stat.armor * r;
                 if (node.stat.damagePct) bonusDamagePct += node.stat.damagePct * r;
                 if (node.stat.fireRatePct) bonusFireRatePct += node.stat.fireRatePct * r;
                 if (node.stat.critChance) bonusCrit += node.stat.critChance * r;
                 if (node.stat.critMult) bonusCritMult += (node.stat.critMult * r) / 100;
+                if (node.stat.lifesteal) bonusLifesteal += node.stat.lifesteal * r;
+                if (node.stat.maxMana) bonusMana += node.stat.maxMana * r;
+                if (node.stat.bossDmgPct) bonusBossDmgPct += node.stat.bossDmgPct * r;
             }
         });
     });
@@ -3241,6 +3441,9 @@ function applyTalentPassives() {
     PLAYER.talentBonusFireRatePct = bonusFireRatePct;
     PLAYER.talentBonusCrit = bonusCrit;
     PLAYER.talentBonusCritMult = bonusCritMult;
+    PLAYER.talentBonusLifesteal = bonusLifesteal;
+    PLAYER.talentBonusMana = bonusMana;
+    PLAYER.talentBonusBossDmgPct = bonusBossDmgPct;
 }
 
 // ==========================================
@@ -3478,25 +3681,25 @@ const TITAN_STAGES = [
         id: 0,
         name: 'Gargantuan Terra-Colossus',
         title: 'Titan of the Shattered Earth',
-        hp: 3500,
+        hp: 950,
         color: 0xd97706,
         emissive: 0x92400e,
-        scale: 4.2,
-        speed: 9,
-        damage: 45,
+        scale: 3.8,
+        speed: 4.8,
+        damage: 20,
         abilities: ['boulder_rain', 'fissure_slam'],
-        desc: 'Crushes with earthshaking fists and calls down massive granite boulders.'
+        desc: 'Crushes with earthshaking fists and calls down granite boulders.'
     },
     {
         id: 1,
         name: 'Frost Dragon Sovereign Valthor',
         title: 'Emperor of the Glacial Wastes',
-        hp: 5800,
+        hp: 1450,
         color: 0x38bdf8,
         emissive: 0x0284c7,
-        scale: 4.8,
-        speed: 12,
-        damage: 55,
+        scale: 4.2,
+        speed: 5.4,
+        damage: 25,
         abilities: ['ice_nova_ring', 'blizzard_vortex'],
         desc: 'Chills the colosseum with freezing breath and razor-sharp ice storms.'
     },
@@ -3504,12 +3707,12 @@ const TITAN_STAGES = [
         id: 2,
         name: 'Infernal Demon Balor',
         title: 'Lord of the Abyssal Hellfire',
-        hp: 8500,
+        hp: 2050,
         color: 0xef4444,
         emissive: 0xb91c1c,
-        scale: 5.2,
-        speed: 14,
-        damage: 65,
+        scale: 4.6,
+        speed: 5.9,
+        damage: 30,
         abilities: ['hellfire_eruption', 'lava_pillars'],
         desc: 'Unleashes waves of brimstone and geysers of molten magma.'
     },
@@ -3517,12 +3720,12 @@ const TITAN_STAGES = [
         id: 3,
         name: 'Void Archon Chronos',
         title: 'Devourer of Spacetime',
-        hp: 12000,
+        hp: 2750,
         color: 0xa855f7,
         emissive: 0x6b21a8,
-        scale: 5.5,
-        speed: 15,
-        damage: 75,
+        scale: 5.0,
+        speed: 6.4,
+        damage: 35,
         abilities: ['gravity_vortex', 'temporal_slow'],
         desc: 'Rips open singularity rifts and warps the fabric of time.'
     },
@@ -3530,12 +3733,12 @@ const TITAN_STAGES = [
         id: 4,
         name: 'Supreme Sovereign Deus-Rex',
         title: 'The Primordial God-Colossus',
-        hp: 18000,
+        hp: 3600,
         color: 0xfbbf24,
         emissive: 0xd97706,
-        scale: 6.0,
-        speed: 16,
-        damage: 90,
+        scale: 5.4,
+        speed: 6.8,
+        damage: 42,
         abilities: ['solar_beam', 'titan_supernova', 'elemental_storm'],
         desc: 'The supreme architect of destruction wielding pure celestial energy.'
     }
@@ -3609,6 +3812,15 @@ const TITAN_BOONS = [
 
 let titanActiveColossus = null;
 let titanArenaMeshes = [];
+let titanSupplyTimer = 0;
+
+function spawnEnemyProjectile(pos, dir, speed = 18, damage = 20, colorHex = 0xef4444, life = 3.2) {
+    const p = new Projectile(pos.clone(), dir.clone(), true, colorHex, speed, life);
+    p.isEnemyProjectile = true;
+    p.damage = damage;
+    p.mesh.scale.set(0.95, 0.95, 0.95);
+    return p;
+}
 
 function initTitanGauntlet() {
     clearTitanArena();
@@ -3616,13 +3828,20 @@ function initTitanGauntlet() {
     GAME.titanTimer = 0;
     GAME.titanDefeated = false;
     GAME.titanBoons = [];
+    titanSupplyTimer = 4.0;
 
     // Build Circular Colosseum Arena
     buildTitanArena();
     loadTitanStage(0);
 
-    const hudTitan = document.getElementById('hud-titan-stage');
-    if (hudTitan) hudTitan.style.display = 'flex';
+    const topCenter = document.getElementById('hud-top-center');
+    const hordeHeader = document.getElementById('hud-horde-mode-header');
+    const dunHeader = document.getElementById('hud-dungeon-header');
+    const titanHeader = document.getElementById('hud-titan-header');
+    if (topCenter) topCenter.style.display = 'flex';
+    if (hordeHeader) hordeHeader.style.display = 'none';
+    if (dunHeader) dunHeader.style.display = 'none';
+    if (titanHeader) titanHeader.style.display = 'block';
 }
 
 function clearTitanArena() {
@@ -3725,11 +3944,27 @@ function updateTitanGauntlet(dt, playerPos) {
         playerPos.z = Math.sin(angle) * 60;
     }
 
+    // Periodic Colosseum Supply Drops (Health, Mana & Gold) so player can sustain
+    titanSupplyTimer += dt;
+    if (titanSupplyTimer >= 9.5) {
+        titanSupplyTimer = 0;
+        const ang1 = Math.random() * Math.PI * 2;
+        const r1 = 16 + Math.random() * 20;
+        new Item(Math.cos(ang1) * r1, Math.sin(ang1) * r1, 'health');
+        if (PLAYER.class === 'Mage') {
+            const ang2 = ang1 + Math.PI;
+            new Item(Math.cos(ang2) * r1, Math.sin(ang2) * r1, 'mana');
+        } else {
+            const ang2 = ang1 + Math.PI;
+            new Item(Math.cos(ang2) * r1, Math.sin(ang2) * r1, 'gold');
+        }
+    }
+
     // Titan special attack cycles
     if (titanActiveColossus && titanActiveColossus.hp > 0) {
-        titanActiveColossus.specialTimer = (titanActiveColossus.specialTimer || 3.0) - dt;
+        titanActiveColossus.specialTimer = (titanActiveColossus.specialTimer || 3.5) - dt;
         if (titanActiveColossus.specialTimer <= 0) {
-            titanActiveColossus.specialTimer = 4.0;
+            titanActiveColossus.specialTimer = 4.8;
             executeTitanSpecialAttack(titanActiveColossus);
         }
         updateBossHUD(titanActiveColossus);
@@ -3744,77 +3979,83 @@ function executeTitanSpecialAttack(boss) {
     const bPos = boss.mesh.position;
 
     if (stageIdx === 0) {
-        // Terra Colossus: Boulder Rain
+        // Terra Colossus: Boulder Rain with ground telegraph ring
         SFX.earthquake();
         spawnFloatingText(bPos, '🪨 BOULDER SHATTER!', '#d97706', 20, true);
-        for (let i = 0; i < 6; i++) {
-            const rx = playerMesh.position.x + (Math.random() - 0.5) * 20;
-            const rz = playerMesh.position.z + (Math.random() - 0.5) * 20;
-            const bGeo = new THREE.DodecahedronGeometry(2.2);
+        for (let i = 0; i < 4; i++) {
+            const rx = playerMesh.position.x + (Math.random() - 0.5) * 22;
+            const rz = playerMesh.position.z + (Math.random() - 0.5) * 22;
+            const warnGeo = new THREE.RingGeometry(0.5, 4.2, 24);
+            const warnMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide, transparent: true, opacity: 0.65 });
+            const warnRing = new THREE.Mesh(warnGeo, warnMat);
+            warnRing.rotation.x = -Math.PI / 2;
+            warnRing.position.set(rx, 0.15, rz);
+            new VFXObject(warnRing, 1.15, (wm, wprog) => {
+                wm.material.opacity = (1 - wprog * 0.5) * 0.65;
+            });
+
+            const bGeo = new THREE.DodecahedronGeometry(2.0);
             const bMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
             const boulder = new THREE.Mesh(bGeo, bMat);
             boulder.position.set(rx, 25, rz);
-            scene.add(boulder);
-            new VFXObject(boulder, 0.9, (m, prog) => {
+            new VFXObject(boulder, 1.15, (m, prog) => {
                 m.position.y = 25 - prog * 24;
-                if (prog >= 0.95 && m.parent) {
+                if (prog >= 0.96 && m.parent) {
                     createImpact(new THREE.Vector3(rx, 0, rz), 0xd97706);
-                    if (playerMesh.position.distanceTo(new THREE.Vector3(rx, 0, rz)) < 5.5) {
-                        PLAYER.hp -= 40;
+                    if (playerMesh.position.distanceTo(new THREE.Vector3(rx, 0, rz)) < 4.2 && PLAYER.invulnerableTimer <= 0) {
+                        const raw = Math.max(5, 22 - (PERM.damageReduction || 0));
+                        PLAYER.hp -= raw;
                         showDamageVignette();
                         checkPlayerDeath();
+                        updateGUI();
                     }
                 }
             });
         }
     } else if (stageIdx === 1) {
-        // Frost Wyrm: Ice Shard Nova
+        // Frost Wyrm: Ice Shard Nova (dodgeable speed)
         SFX.frostNova();
         spawnFloatingText(bPos, '❄️ GLACIAL RING!', '#38bdf8', 20, true);
-        for (let i = 0; i < 12; i++) {
-            const angle = (i / 12) * Math.PI * 2;
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
             const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-            const p = new Projectile(bPos.clone().add(new THREE.Vector3(0, 2, 0)), dir);
-            p.speed = 30;
-            p.damage = 40;
-            p.mesh.material.color.setHex(0x38bdf8);
+            spawnEnemyProjectile(bPos.clone().add(new THREE.Vector3(0, 1.5, 0)), dir, 16, 18, 0x38bdf8, 3.2);
         }
     } else if (stageIdx === 2) {
         // Infernal Balor: Hellfire Eruption
         SFX.bomb();
         spawnFloatingText(bPos, '🔥 HELLFIRE ERUPTION!', '#ef4444', 20, true);
         for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
+            const angle = (i / 8) * Math.PI * 2 + 0.2;
             const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-            const p = new Projectile(bPos.clone().add(new THREE.Vector3(0, 2, 0)), dir);
-            p.speed = 32;
-            p.damage = 50;
-            p.mesh.material.color.setHex(0xf97316);
+            spawnEnemyProjectile(bPos.clone().add(new THREE.Vector3(0, 1.5, 0)), dir, 17, 22, 0xf97316, 3.2);
         }
     } else if (stageIdx === 3) {
         // Void Chronos: Singularity
         SFX.blackHole();
         spawnFloatingText(bPos, '🕳️ VOID SINGULARITY!', '#a855f7', 22, true);
-        // Pull player toward boss
         const pullDir = bPos.clone().sub(playerMesh.position).normalize();
-        playerMesh.position.addScaledVector(pullDir, 8);
+        playerMesh.position.addScaledVector(pullDir, 4.5);
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            spawnEnemyProjectile(bPos.clone().add(new THREE.Vector3(0, 1.5, 0)), dir, 16, 24, 0xa855f7, 3.0);
+        }
     } else {
         // Supreme Deus-Rex: Supernova Nova
         SFX.titanRoar();
         spawnFloatingText(bPos, '👑 CELESTIAL SUPERNOVA!', '#fbbf24', 24, true);
-        for (let i = 0; i < 16; i++) {
-            const angle = (i / 16) * Math.PI * 2;
+        for (let i = 0; i < 10; i++) {
+            const angle = (i / 10) * Math.PI * 2;
             const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-            const p = new Projectile(bPos.clone().add(new THREE.Vector3(0, 3, 0)), dir);
-            p.speed = 35;
-            p.damage = 60;
-            p.mesh.material.color.setHex(0xfbbf24);
+            spawnEnemyProjectile(bPos.clone().add(new THREE.Vector3(0, 2.0, 0)), dir, 18, 26, 0xfbbf24, 3.2);
         }
     }
 }
 
 function onTitanColossusSlain() {
     GAME.boonDraftActive = true;
+    const slainPos = titanActiveColossus && titanActiveColossus.mesh ? titanActiveColossus.mesh.position.clone() : new THREE.Vector3(0, 1, 0);
     titanActiveColossus = null;
     SFX.lootLegendary();
 
@@ -3824,6 +4065,12 @@ function onTitanColossusSlain() {
     SAVE.essence += 200;
     SAVE.talentPoints = (SAVE.talentPoints || 0) + 1; // +1 Talent Point per Titan
     writeSave();
+
+    // Heal player 55% Max HP & restore Mana after each Titan stage + drop gear beam!
+    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.round(PLAYER.maxHp * 0.55));
+    PLAYER.mana = PLAYER.maxMana;
+    spawnDungeonLootDrop(slainPos.x, slainPos.z, 'boss', true);
+    updateGUI();
 
     if (GAME.titanStage >= 4) {
         // Victory across all 5 Titans!
@@ -4150,24 +4397,54 @@ window.addEventListener('keydown', (e) => {
 
     initAudio();
 
-    // 2. Dedicated Spell & Skill Hotkeys (Guaranteed 100% Uninterfered)
-    if (e.code === 'Digit1') {
+    // If user is currently rebinding a spell slot in the Ability Talent Tree
+    if (listeningRebindSlot) {
+        if (e.code === 'Escape') {
+            listeningRebindSlot = null;
+            renderTalentsModal();
+            return;
+        }
+        const forbidden = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyI', 'KeyN', 'KeyB', 'KeyJ', 'KeyL', 'KeyG', 'KeyX']);
+        if (forbidden.has(e.code)) {
+            logMessage(`${formatKeyCode(e.code)} is reserved for movement/menus! Choose another key.`, '#ef4444');
+            return;
+        }
+        if (!SAVE.keybinds) SAVE.keybinds = {};
+        SAVE.keybinds[`slot${listeningRebindSlot}`] = e.code;
+        const reboundSlot = listeningRebindSlot;
+        listeningRebindSlot = null;
+        writeSave();
+        SFX.equip();
+        logMessage(`⌨️ Bound Slot ${reboundSlot} to [${formatKeyCode(e.code)}]!`, '#34d399');
+        updateGUI();
+        renderTalentsModal();
+        return;
+    }
+
+    // 2. Customizable Spell & Skill Hotkeys (plus 1-5 number row support)
+    const kb = SAVE.keybinds || { slot1: 'Digit1', slot2: 'Space', slot3: 'KeyQ', slot4: 'KeyE', slot5: 'KeyR' };
+    if (e.code === kb.slot1 || e.code === 'Digit1') {
+        e.preventDefault();
         usePrimaryAttack();
         return;
     }
-    if (e.code === 'Digit2' || e.code === 'KeyE') {
+    if (e.code === kb.slot2 || e.code === 'Digit2') {
+        e.preventDefault();
         useTacticalSkill();
         return;
     }
-    if (e.code === 'Digit3' || e.code === 'KeyR') {
+    if (e.code === kb.slot3 || e.code === 'Digit3') {
+        e.preventDefault();
         useClassSkill1();
         return;
     }
-    if (e.code === 'Digit4' || e.code === 'KeyF') {
+    if (e.code === kb.slot4 || e.code === 'Digit4' || e.code === 'KeyF') {
+        e.preventDefault();
         useClassSkill2();
         return;
     }
-    if (e.code === 'Digit5' || e.code === 'Space' || e.code === 'KeyQ') {
+    if (e.code === kb.slot5 || e.code === 'Digit5') {
+        e.preventDefault();
         useUltimate();
         return;
     }
@@ -5282,6 +5559,10 @@ class TreasureChest {
             writeSave();
             spawnFloatingText(this.group.position, `+${bonusEss} BONUS ESSENCE ✨`, '#c084fc', 16, true, '✨');
         }
+        // 40% chance for Treasure Chests to drop an equippable Gear piece!
+        if (Math.random() < 0.40) {
+            spawnDungeonLootDrop(this.x, this.z, 'chest', false);
+        }
 
         setTimeout(() => {
             scene.remove(this.group);
@@ -5291,7 +5572,7 @@ class TreasureChest {
     }
 }
 
-// --- ACTIVE CLASS ULTIMATE ABILITIES ---
+// --- ACTIVE CLASS ULTIMATE ABILITIES (SLOT 5) ---
 window.useUltimate = function() {
     if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
     if (PLAYER.ultCooldown > 0) {
@@ -5299,19 +5580,104 @@ window.useUltimate = function() {
         return;
     }
 
+    const eqUlt = getEquippedAbilityNode(PLAYER.class, 'ultimate');
+    const ultId = eqUlt && eqUlt.node ? eqUlt.node.id : (PLAYER.class === 'Warrior' ? 'w_ult_quake' : (PLAYER.class === 'Mage' ? 'm_ult_blizzard' : 'a_ult_storm'));
+    const rank = eqUlt ? eqUlt.rank : 0;
+    const rankMult = 1 + rank * 0.25;
+    const cdMult = Math.max(0.6, 1 - rank * 0.08);
+    const hasChrono = SAVE.equipped && SAVE.equipped[PLAYER.class] && SAVE.equipped[PLAYER.class].accessory === 'acc_10';
+    const baseCd = (eqUlt && eqUlt.node && eqUlt.node.cd) ? eqUlt.node.cd : 18.0;
+
+    PLAYER.ultMaxCooldown = Math.max(6, baseCd * cdMult * (hasChrono ? 0.65 : 1.0));
     PLAYER.ultCooldown = PLAYER.ultMaxCooldown;
     trackQuestProgress('ult', 1);
     const playerPos = playerMesh.position;
+    const aimDir = new THREE.Vector3();
+    playerMesh.getWorldDirection(aimDir);
 
-    if (PLAYER.class === 'Warrior') {
+    const baseDmg = Math.round((165 + PLAYER.level * 24 + (PLAYER.damage || 30) * 1.6) * rankMult);
+
+    if (ultId === 'w_ult_ragnarok') {
+        SFX.earthquake();
+        SFX.meteor();
+        cameraShakeTimer = 0.38;
+        BUFFS.wrath = Math.max(BUFFS.wrath || 0, 6.0 + rank * 1.5);
+        BUFFS.swiftness = Math.max(BUFFS.swiftness || 0, 6.0 + rank * 1.5);
+        updateEffects();
+        updateBuffsHUD();
+        logMessage('🔥 AVATAR OF RAGNAROK ACTIVATED!', '#ef4444');
+        spawnFloatingText(playerPos, '🔥 AVATAR OF RAGNAROK!', '#ef4444', 22, true);
+
+        const ringMesh = new THREE.Mesh(
+            new THREE.RingGeometry(1, 2.8, 32),
+            new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.92 })
+        );
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.2, playerPos.z);
+        new VFXObject(ringMesh, 0.55, (m, prog) => {
+            const scale = 1 + prog * 17;
+            m.scale.set(scale, scale, scale);
+            m.material.opacity = (1 - prog) * 0.92;
+        });
+
+        const radius = 22 + rank * 2;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= radius) {
+                e.burnTimer = 5.0;
+                e.burnDmg = Math.round(30 * rankMult);
+                e.stunTimer = 2.0;
+                e.takeDamage(baseDmg, true, '🔥 RAGNAROK!');
+            }
+        });
+        chests.forEach(c => { if (playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
+
+    } else if (ultId === 'w_ult_colossus') {
+        SFX.colossus();
+        SFX.thunder();
+        cameraShakeTimer = 0.4;
+        PLAYER.invulnerableTimer = Math.max(PLAYER.invulnerableTimer || 0, 1.8);
+        PLAYER.tacticalCooldown = 0;
+        PLAYER.skill1Cooldown = 0;
+        logMessage('⚡ COLOSSUS SKYFALL ACTIVATED!', '#fbbf24');
+        spawnFloatingText(playerPos, '⚡ COLOSSUS SKYFALL!', '#fbbf24', 22, true);
+
+        playerMesh.position.addScaledVector(aimDir, 8);
+        clampPlayerToArena();
+
+        const ringMesh = new THREE.Mesh(
+            new THREE.RingGeometry(1.2, 3.0, 32),
+            new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide, transparent: true, opacity: 0.95 })
+        );
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.2, playerPos.z);
+        new VFXObject(ringMesh, 0.55, (m, prog) => {
+            const scale = 1 + prog * 18;
+            m.scale.set(scale, scale, scale);
+            m.material.opacity = (1 - prog) * 0.95;
+        });
+
+        const radius = 25 + rank * 2;
+        const skyDmg = Math.round(baseDmg * 1.25);
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= radius) {
+                e.stunTimer = 3.2;
+                e.takeDamage(skyDmg, true, '⚡ SKYFALL!');
+            }
+        });
+        chests.forEach(c => { if (playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(skyDmg); });
+
+    } else if (PLAYER.class === 'Warrior' || ultId === 'w_ult_quake') {
         SFX.earthquake();
         cameraShakeTimer = 0.35;
-        logMessage('💥 EARTHQUAKE SLAM ACTIVATED!', '#f87171');
-        spawnFloatingText(playerPos, '💥 EARTHQUAKE SLAM!', '#f87171', 22, true);
+        const shieldGain = Math.round((160 + PLAYER.level * 15) * rankMult);
+        GAME.shield = (GAME.shield || 0) + shieldGain;
+        logMessage(`💥 EARTHQUAKE CATACLYSM! (+${shieldGain} Shield)`, '#38bdf8');
+        spawnFloatingText(playerPos, '💥 EARTHQUAKE CATACLYSM!', '#38bdf8', 22, true);
 
-        const ringGeo = new THREE.RingGeometry(1, 2.5, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xf87171, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        const ringMesh = new THREE.Mesh(
+            new THREE.RingGeometry(1, 2.5, 32),
+            new THREE.MeshBasicMaterial({ color: 0xf87171, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
+        );
         ringMesh.rotation.x = -Math.PI / 2;
         ringMesh.position.set(playerPos.x, 0.15, playerPos.z);
         new VFXObject(ringMesh, 0.5, (m, prog) => {
@@ -5320,33 +5686,88 @@ window.useUltimate = function() {
             m.material.opacity = (1 - prog) * 0.9;
         });
 
-        const radius = 22;
-        const damage = 180 + PLAYER.level * 25 + (SAVE.upgrades.power || 0) * 15;
+        const radius = 24 + rank * 2;
         enemies.forEach(e => {
             const d = playerPos.distanceTo(e.mesh.position);
             if (d <= radius) {
-                e.stunTimer = 3.5;
+                e.stunTimer = 3.8;
                 const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerPos).normalize();
-                e.mesh.position.addScaledVector(pushDir, 7);
+                e.mesh.position.addScaledVector(pushDir, 6);
                 if (IS_MULTIPLAYER) {
-                    WS.send(JSON.stringify({ type: 'HIT_ENEMY', enemyId: e.id, damage: damage }));
+                    WS.send(JSON.stringify({ type: 'HIT_ENEMY', enemyId: e.id, damage: baseDmg }));
                 } else {
-                    e.takeDamage(damage, true, '💥 SLAM!');
+                    e.takeDamage(baseDmg, true, '💥 SLAM!');
                 }
             }
         });
-        chests.forEach(c => {
-            if (playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(damage);
-        });
+        chests.forEach(c => { if (playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
 
-    } else if (PLAYER.class === 'Mage') {
+    } else if (ultId === 'm_ult_tempest') {
+        SFX.prismaticNova();
+        PLAYER.mana = PLAYER.maxMana;
+        GAME.shield = (GAME.shield || 0) + Math.round(120 * rankMult);
+        BUFFS.swiftness = Math.max(BUFFS.swiftness || 0, 6.0);
+        updateEffects();
+        updateBuffsHUD();
+        logMessage('🌟 ARCANE STARFALL TEMPEST!', '#c084fc');
+        spawnFloatingText(playerPos, '🌟 STARFALL TEMPEST!', '#c084fc', 22, true);
+
+        const missileCount = 24 + rank * 4;
+        for (let i = 0; i < missileCount; i++) {
+            const angle = (i / missileCount) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), dir, true, 0xc084fc, 85, 2.4);
+            p.pierce = 4;
+            p.damage = Math.round(baseDmg * 0.65);
+        }
+
+    } else if (ultId === 'm_ult_cataclysm') {
+        SFX.meteor();
+        cameraShakeTimer = 0.4;
+        const healAmt = Math.round(PLAYER.maxHp * 0.35);
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + healAmt);
+        logMessage(`🌋 INFERNO CATACLYSM! (+${healAmt} HP)`, '#f97316');
+        spawnFloatingText(playerPos, '🌋 INFERNO CATACLYSM!', '#f97316', 22, true);
+
+        const meteorCount = 8 + rank * 2;
+        for (let i = 0; i < meteorCount; i++) {
+            setTimeout(() => {
+                if (GAME.state !== 'PLAYING') return;
+                const ang = (i / meteorCount) * Math.PI * 2 + Math.random() * 0.4;
+                const dist = 5 + Math.random() * 14;
+                const tx = playerMesh.position.x + Math.cos(ang) * dist;
+                const tz = playerMesh.position.z + Math.sin(ang) * dist;
+                createImpact(new THREE.Vector3(tx, 0.5, tz), 0xf97316);
+                const ring = new THREE.Mesh(
+                    new THREE.RingGeometry(0.8, 6.5, 24),
+                    new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
+                );
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.set(tx, 0.2, tz);
+                new VFXObject(ring, 0.45, (m, prog) => {
+                    const sc = 1 + prog * 1.6;
+                    m.scale.set(sc, sc, sc);
+                    m.material.opacity = (1 - prog) * 0.9;
+                });
+                enemies.forEach(e => {
+                    if (Math.hypot(e.mesh.position.x - tx, e.mesh.position.z - tz) <= 9.5) {
+                        e.burnTimer = 4.5;
+                        e.burnDmg = Math.round(28 * rankMult);
+                        e.takeDamage(Math.round(baseDmg * 0.75), true, '☄️ INFERNO!');
+                    }
+                });
+            }, i * 95);
+        }
+
+    } else if (PLAYER.class === 'Mage' || ultId === 'm_ult_blizzard') {
         SFX.frostNova();
-        logMessage('❄️ FROST NOVA & BLIZZARD ACTIVATED!', '#38bdf8');
-        spawnFloatingText(playerPos, '❄️ FROST NOVA!', '#38bdf8', 22, true);
+        logMessage('❄️ ABSOLUTE ZERO BLIZZARD!', '#38bdf8');
+        spawnFloatingText(playerPos, '❄️ ABSOLUTE ZERO!', '#38bdf8', 22, true);
 
-        const novaGeo = new THREE.RingGeometry(1, 2.2, 32);
-        const novaMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
-        const novaMesh = new THREE.Mesh(novaGeo, novaMat);
+        const novaMesh = new THREE.Mesh(
+            new THREE.RingGeometry(1, 2.2, 32),
+            new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.95 })
+        );
         novaMesh.rotation.x = -Math.PI / 2;
         novaMesh.position.set(playerPos.x, 0.2, playerPos.z);
         new VFXObject(novaMesh, 0.6, (m, prog) => {
@@ -5355,43 +5776,75 @@ window.useUltimate = function() {
             m.material.opacity = (1 - prog) * 0.95;
         });
 
-        const radius = 25;
-        const damage = 150 + PLAYER.level * 22 + (SAVE.upgrades.power || 0) * 12;
+        const radius = 26 + rank * 2;
         enemies.forEach(e => {
             const d = playerPos.distanceTo(e.mesh.position);
             if (d <= radius) {
-                e.freezeTimer = 4.0;
+                e.freezeTimer = 4.5 + rank * 0.5;
                 if (IS_MULTIPLAYER) {
-                    WS.send(JSON.stringify({ type: 'HIT_ENEMY', enemyId: e.id, damage: damage }));
+                    WS.send(JSON.stringify({ type: 'HIT_ENEMY', enemyId: e.id, damage: baseDmg }));
                 } else {
-                    e.takeDamage(damage, true, '❄️ FROZEN!');
+                    e.takeDamage(baseDmg, true, '❄️ FROZEN!');
                 }
             }
         });
-        chests.forEach(c => {
-            if (playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(damage);
-        });
+        chests.forEach(c => { if (playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
 
-    } else if (PLAYER.class === 'Archer') {
-        SFX.arrowStorm();
+    } else if (ultId === 'a_ult_railshot') {
+        SFX.sniper();
         PLAYER.invulnerableTimer = 1.5;
-        logMessage('🏹 ARROW BARRAGE & DASH ACTIVATED!', '#34d399');
-        spawnFloatingText(playerPos, '🏹 ARROW BARRAGE!', '#34d399', 22, true);
+        logMessage('⚡ ORBITAL RAIL-BARRAGE!', '#4ade80');
+        spawnFloatingText(playerPos, '⚡ ORBITAL RAIL-BARRAGE!', '#4ade80', 22, true);
 
-        const dashDir = new THREE.Vector3();
-        playerMesh.getWorldDirection(dashDir);
-        playerMesh.position.addScaledVector(dashDir, 9);
-        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
-        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+        const beamCount = 5 + rank;
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < beamCount; i++) {
+            const offset = ((i - (beamCount - 1) / 2) / Math.max(1, beamCount - 1)) * 0.42;
+            const ang = baseAngle + offset;
+            const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), dir, true, 0x4ade80, 150, 2.2);
+            p.mesh.scale.set(3.2, 3.2, 5.5);
+            p.pierce = 999;
+            p.damage = Math.round(baseDmg * 1.15);
+        }
 
-        const count = 32;
+    } else if (ultId === 'a_ult_phantom') {
+        SFX.dash();
+        SFX.crit();
+        PLAYER.invulnerableTimer = 2.5 + rank * 0.4;
+        logMessage('🌑 PHANTOM ASSASSINATION!', '#a855f7');
+        spawnFloatingText(playerPos, '🌑 PHANTOM ASSASSINATION!', '#a855f7', 22, true);
+
+        const radius = 24 + rank * 2;
+        let healed = 0;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= radius) {
+                createImpact(e.mesh.position, 0xa855f7);
+                e.takeDamage(Math.round(baseDmg * 1.1), true, '🌑 ASSASSINATE!');
+                healed += 8;
+            }
+        });
+        if (healed > 0) {
+            PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.min(80, healed));
+        }
+
+    } else {
+        // Skyfall Arrow Storm (a_ult_storm)
+        SFX.arrowStorm();
+        PLAYER.invulnerableTimer = 1.8;
+        logMessage('🏹 SKYFALL ARROW STORM!', '#34d399');
+        spawnFloatingText(playerPos, '🏹 SKYFALL ARROW STORM!', '#34d399', 22, true);
+
+        playerMesh.position.addScaledVector(aimDir, 9);
+        clampPlayerToArena();
+
+        const count = 32 + rank * 4;
         for (let i = 0; i < count; i++) {
             const angle = (i / count) * Math.PI * 2;
             const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-            const p = new Projectile(playerMesh.position.clone().add(new THREE.Vector3(0, 1, 0)), dir);
-            p.speed = 110;
-            p.pierce = 5;
-            p.life = 2.0;
+            const p = new Projectile(playerMesh.position.clone().add(new THREE.Vector3(0, 1, 0)), dir, true, 0x34d399, 110, 2.0);
+            p.pierce = 6;
+            p.damage = Math.round(baseDmg * 0.65);
         }
     }
 
@@ -5545,19 +5998,37 @@ function processServerTick(data) {
 function updateWaveHUD() {
     const topCenter = document.getElementById('hud-top-center');
     if (!topCenter) return;
+    topCenter.style.display = 'flex';
+
+    const hordeHeader = document.getElementById('hud-horde-mode-header');
+    const dunHeader = document.getElementById('hud-dungeon-header');
+    const titanHeader = document.getElementById('hud-titan-header');
+    const actionArea = document.getElementById('wave-action-area');
+    const skipBtn = document.getElementById('ui-skip-prep-btn');
 
     if (GAME.mode === 'dungeon') {
-        topCenter.style.display = 'none';
+        if (hordeHeader) hordeHeader.style.display = 'none';
+        if (dunHeader) dunHeader.style.display = 'block';
+        if (titanHeader) titanHeader.style.display = 'none';
+        if (actionArea) actionArea.style.display = 'none';
         return;
     }
-    topCenter.style.display = 'block';
+    if (GAME.mode === 'titan') {
+        if (hordeHeader) hordeHeader.style.display = 'none';
+        if (dunHeader) dunHeader.style.display = 'none';
+        if (titanHeader) titanHeader.style.display = 'block';
+        if (actionArea) actionArea.style.display = 'none';
+        return;
+    }
+
+    if (hordeHeader) hordeHeader.style.display = 'block';
+    if (dunHeader) dunHeader.style.display = 'none';
+    if (titanHeader) titanHeader.style.display = 'none';
 
     const waveEl = document.getElementById('ui-wave');
     const badgeEl = document.getElementById('wave-badge');
     const subStatusEl = document.getElementById('wave-sub-status');
     const barEl = document.getElementById('wave-bar');
-    const actionArea = document.getElementById('wave-action-area');
-    const skipBtn = document.getElementById('ui-skip-prep-btn');
 
     if (waveEl) waveEl.innerText = GAME.wave;
 
@@ -5565,22 +6036,30 @@ function updateWaveHUD() {
         const seconds = Math.max(0, Math.ceil(GAME.rushTimer));
         const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
         if (badgeEl) {
-            badgeEl.innerHTML = `⏱️ RIFT RUSH &bull; WAVE ${GAME.wave}`;
+            badgeEl.innerHTML = `⏱️ RIFT RUSH &bull; SURGE ${GAME.wave}`;
             badgeEl.style.color = '#fbbf24';
         }
-        if (subStatusEl) subStatusEl.innerText = `Survive ${clock} · ${GAME.kills} kills`;
+        if (subStatusEl) {
+            subStatusEl.innerText = `${clock} left · ${GAME.kills} kills (${GAME.enemiesKilled}/${GAME.totalWaveEnemies})`;
+        }
         if (barEl) {
             barEl.style.width = `${Math.max(0, Math.min(100, (GAME.rushTimer / 180) * 100))}%`;
             barEl.style.background = 'linear-gradient(90deg, #f59e0b, #f97316)';
         }
-        if (actionArea) actionArea.style.display = 'none';
+        if (actionArea) {
+            actionArea.style.display = (GAME.waveState === 'PREPARING' || GAME.waveState === 'WAVE_CLEAR') ? 'block' : 'none';
+        }
+        if (skipBtn) skipBtn.innerText = '⚡ Trigger Surge Now';
         return;
     }
+
+    const modePrefix = GAME.mode === 'rift' ? '🌀 RIFT TRIAL' : '🌊 WAVE';
+    const waveSuffix = GAME.mode === 'rift' ? ` / ${GAME.riftTotalWaves}` : '';
 
     if (GAME.waveState === 'PREPARING') {
         const secs = Math.max(0, Math.ceil(GAME.waveTimer));
         if (badgeEl) {
-            badgeEl.innerHTML = `⏳ PREPARING &bull; WAVE <span id="ui-wave">${GAME.wave}</span>`;
+            badgeEl.innerHTML = `⏳ ${modePrefix} <span id="ui-wave">${GAME.wave}</span>${waveSuffix}`;
             badgeEl.style.color = '#fde047';
         }
         if (subStatusEl) subStatusEl.innerText = `Starting in ${secs}s`;
@@ -5593,13 +6072,14 @@ function updateWaveHUD() {
         if (skipBtn) skipBtn.innerText = '⚔️ Start Next Wave';
     } else if (GAME.waveState === 'WAVE_CLEAR') {
         const secs = Math.max(0, Math.ceil(GAME.waveTimer));
+        const maxBreak = GAME.mode === 'rift' ? 6 : 12;
         if (badgeEl) {
-            badgeEl.innerHTML = `🎉 WAVE ${GAME.wave} CLEARED!`;
+            badgeEl.innerHTML = `🎉 WAVE ${GAME.wave}${waveSuffix} CLEARED!`;
             badgeEl.style.color = '#34d399';
         }
         if (subStatusEl) subStatusEl.innerText = `Next wave in ${secs}s`;
         if (barEl) {
-            const pct = Math.max(0, Math.min(100, (GAME.waveTimer / 12) * 100));
+            const pct = Math.max(0, Math.min(100, (GAME.waveTimer / maxBreak) * 100));
             barEl.style.width = pct + '%';
             barEl.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
         }
@@ -5608,11 +6088,11 @@ function updateWaveHUD() {
     } else { // WAVE_ACTIVE
         if (badgeEl) {
             if (GAME.isBossWave) {
-                badgeEl.innerHTML = `👑 BOSS WAVE <span id="ui-wave">${GAME.wave}</span>`;
+                badgeEl.innerHTML = `👑 BOSS WAVE <span id="ui-wave">${GAME.wave}</span>${waveSuffix}`;
                 badgeEl.style.color = '#f43f5e';
             } else {
-                badgeEl.innerHTML = `🌊 WAVE <span id="ui-wave">${GAME.wave}</span>`;
-                badgeEl.style.color = '#38bdf8';
+                badgeEl.innerHTML = `${modePrefix} <span id="ui-wave">${GAME.wave}</span>${waveSuffix}`;
+                badgeEl.style.color = GAME.mode === 'rift' ? '#c084fc' : '#38bdf8';
             }
         }
         if (subStatusEl) {
@@ -5624,7 +6104,7 @@ function updateWaveHUD() {
             barEl.style.width = pct + '%';
             barEl.style.background = GAME.isBossWave 
                 ? 'linear-gradient(90deg, #ef4444, #f43f5e)' 
-                : 'linear-gradient(90deg, #00b894, #00cec9)';
+                : (GAME.mode === 'rift' ? 'linear-gradient(90deg, #9333ea, #c084fc)' : 'linear-gradient(90deg, #00b894, #00cec9)');
         }
         if (actionArea) actionArea.style.display = 'none';
     }
@@ -6301,6 +6781,30 @@ function updatePartyFramesHUD(force = false) {
 
 let dungeonTraps = [];
 
+function clampPlayerToArena() {
+    if (!playerMesh) return;
+    if (GAME.mode === 'dungeon') {
+        const ch = DUNGEON_CHAMBERS[currentDungeonRoomIdx];
+        if (ch) {
+            playerMesh.position.x = Math.max(ch.xMin + 1.5, Math.min(ch.xMax - 1.5, playerMesh.position.x));
+            playerMesh.position.z = Math.max(ch.zMin + 1.0, playerMesh.position.z);
+            if (!dungeonMeshes.some(m => m.userData && m.userData.chamberIdx === currentDungeonRoomIdx && m.userData.open)) {
+                playerMesh.position.z = Math.min(ch.gateZ - 1.5, playerMesh.position.z);
+            }
+        }
+    } else if (GAME.mode === 'titan') {
+        const pDist = Math.hypot(playerMesh.position.x, playerMesh.position.z);
+        if (pDist > 58) {
+            const angle = Math.atan2(playerMesh.position.z, playerMesh.position.x);
+            playerMesh.position.x = Math.cos(angle) * 58;
+            playerMesh.position.z = Math.sin(angle) * 58;
+        }
+    } else {
+        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
+        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+    }
+}
+
 function loadDungeonChamber(chamberIdx) {
     currentDungeonRoomIdx = chamberIdx;
     GAME.dungeonRoom = chamberIdx;
@@ -6308,60 +6812,91 @@ function loadDungeonChamber(chamberIdx) {
     if (!ch) return;
 
     // Clear old chamber traps
-    dungeonTraps.forEach(t => { if (t.mesh) scene.remove(t.mesh); });
+    dungeonTraps.forEach(t => { if (t.group) scene.remove(t.group); else if (t.mesh) scene.remove(t.mesh); });
     dungeonTraps = [];
+
+    // Auto-revive any downed companions & heal party between chambers!
+    if (chamberIdx > 0) {
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.round(PLAYER.maxHp * 0.45));
+        PLAYER.mana = PLAYER.maxMana;
+        raidCompanions.forEach(c => {
+            if (c.isDowned) {
+                c.isDowned = false;
+                c.hp = Math.round(c.maxHp * 0.65);
+                c.mesh.rotation.z = 0;
+            } else {
+                c.hp = Math.min(c.maxHp, c.hp + Math.round(c.maxHp * 0.5));
+            }
+        });
+        updatePartyFramesHUD(true);
+        updateGUI();
+        // Spawn a bonus reward chest at the entrance of new chambers
+        new TreasureChest(0, ch.spawnZ + 6);
+    }
 
     // Update Dungeon HUD
     const nameEl = document.getElementById('dungeon-room-name');
     const objEl = document.getElementById('dungeon-obj-text');
     if (nameEl) nameEl.innerText = ch.name;
-    if (objEl) objEl.innerText = ch.desc;
+    if (objEl) objEl.innerText = `${ch.desc} (0/${ch.mobs.length})`;
 
     SFX.waveStart();
     logMessage(`ENTERED: ${ch.name}`, '#c084fc');
     spawnFloatingText(playerMesh.position, ch.name, '#c084fc', 20, true, '🏰');
 
-    // Spawn Chamber Mobs in Formations with scaled hardcore stats
+    // Spawn Chamber Mobs in Formations with balanced stats & pack IDs
     ch.mobs.forEach(m => {
         const e = new Enemy(m.x, m.z, m.type);
         e.isDungeonMob = true;
         e.chamberIdx = chamberIdx;
+        e.pack = m.pack || 1;
         e.isAggroed = false;
+        e.isMiniBoss = Boolean(m.isMiniBoss);
         e.originPos = new THREE.Vector3(m.x, 0, m.z);
         if (m.name) e.name = m.name;
         if (m.isFinalBoss) {
             malakorBossRef = e;
-            e.hp = 3800 + (SAVE.upgrades.power || 0) * 150;
+            e.hp = 1350 + (SAVE.upgrades.power || 0) * 55;
             e.maxHp = e.hp;
-            e.bossSpellTimer = 2.5;
+            e.damage = 24;
+            e.speed = 5.2;
+            e.bossSpellTimer = 3.5;
             e.hasSpawnedMinions = false;
             e.isEnraged = false;
+        } else if (m.isMiniBoss) {
+            e.hp = 420 + (SAVE.upgrades.power || 0) * 25;
+            e.maxHp = e.hp;
+            e.damage = 18;
+            e.speed = 5.0;
         } else {
-            // Scale chamber difficulty for hardcore experience
-            e.hp = Math.round(e.hp * (1.15 + chamberIdx * 0.12));
-            e.damage = Math.round(e.damage * (1.1 + chamberIdx * 0.08));
+            e.hp = Math.round(e.hp * (0.95 + chamberIdx * 0.08));
+            e.maxHp = e.hp;
+            e.damage = Math.round(e.damage * (0.9 + chamberIdx * 0.06));
         }
     });
 
-    // Generate Dynamic Spike Traps and Hazards in Chamber
-    const trapCount = 2 + chamberIdx * 2;
+    // Generate Dynamic Spike Traps away from spawnZ and gateZ with telegraphed cycle
+    const trapCount = 2 + chamberIdx;
+    const minSafeZ = ch.spawnZ + 12;
+    const maxSafeZ = ch.gateZ - 12;
     for (let i = 0; i < trapCount; i++) {
-        const tx = (ch.xMin + 4) + Math.random() * (ch.xMax - ch.xMin - 8);
-        const tz = (ch.zMin + 8) + Math.random() * (ch.zMax - ch.zMin - 16);
+        if (maxSafeZ <= minSafeZ) break;
+        const tx = (ch.xMin + 8) + Math.random() * (ch.xMax - ch.xMin - 16);
+        const tz = minSafeZ + Math.random() * (maxSafeZ - minSafeZ);
         
         const trapGroup = new THREE.Group();
-        const baseGeo = new THREE.BoxGeometry(4, 0.2, 4);
+        const baseGeo = new THREE.BoxGeometry(3.6, 0.2, 3.6);
         const baseMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
         const base = new THREE.Mesh(baseGeo, baseMat);
         base.position.y = 0.1;
         trapGroup.add(base);
 
-        const spikeGeo = new THREE.ConeGeometry(0.3, 1.8, 6);
+        const spikeGeo = new THREE.ConeGeometry(0.28, 1.6, 6);
         const spikeMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.3, metalness: 0.8 });
-        for (let sx = -1.2; sx <= 1.2; sx += 1.2) {
-            for (let sz = -1.2; sz <= 1.2; sz += 1.2) {
+        for (let sx = -1.1; sx <= 1.1; sx += 1.1) {
+            for (let sz = -1.1; sz <= 1.1; sz += 1.1) {
                 const sp = new THREE.Mesh(spikeGeo, spikeMat);
-                sp.position.set(sx, 0.9, sz);
+                sp.position.set(sx, 0.8, sz);
                 trapGroup.add(sp);
             }
         }
@@ -6371,12 +6906,13 @@ function loadDungeonChamber(chamberIdx) {
 
         dungeonTraps.push({
             group: trapGroup,
+            baseMat: baseMat,
             x: tx,
             z: tz,
-            radius: 2.2,
-            timer: Math.random() * 3.0,
+            radius: 1.85,
+            timer: Math.random() * 3.8,
             active: false,
-            cycleDuration: 3.0
+            cycleDuration: 3.8
         });
     }
 
@@ -6390,30 +6926,62 @@ function updateDungeon(dt, playerPos) {
     const ch = DUNGEON_CHAMBERS[currentDungeonRoomIdx];
     if (!ch) return;
 
-    // 1. Companion AI & Party HUD
-    raidCompanions.forEach(c => c.update(dt, playerPos));
+    // 1. Companion AI, Proximity Revive & Party HUD
+    raidCompanions.forEach(c => {
+        if (c.isDowned) {
+            const distToDowned = playerPos.distanceTo(c.mesh.position);
+            if (distToDowned < 5.5 && !GAME.isDowned) {
+                c.reviveTimer = (c.reviveTimer || 0) + dt;
+                if (c.reviveTimer >= 1.2) {
+                    c.reviveTimer = 0;
+                    c.isDowned = false;
+                    c.hp = Math.round(c.maxHp * 0.65);
+                    c.mesh.rotation.z = 0;
+                    SFX.healSpell();
+                    spawnFloatingText(c.mesh.position, `✨ ${c.name.toUpperCase()} REVIVED!`, '#34d399', 18, true);
+                    logMessage(`Revived companion ${c.name}!`, '#34d399');
+                    updatePartyFramesHUD(true);
+                }
+            } else {
+                c.reviveTimer = 0;
+            }
+        } else {
+            c.update(dt, playerPos);
+        }
+    });
     updatePartyFramesHUD();
 
-    // 2. Dynamic Traps Cycle & Hazard Damage
+    // 2. Dynamic Traps Cycle & Telegraphed Hazard Damage
     dungeonTraps.forEach(trap => {
         trap.timer = (trap.timer + dt) % trap.cycleDuration;
-        trap.active = trap.timer > (trap.cycleDuration * 0.55);
+        const warnPhase = trap.timer > (trap.cycleDuration * 0.42) && trap.timer <= (trap.cycleDuration * 0.62);
+        trap.active = trap.timer > (trap.cycleDuration * 0.62);
+
+        if (trap.baseMat) {
+            trap.baseMat.color.setHex(trap.active ? 0xef4444 : (warnPhase ? 0xf59e0b : 0x334155));
+        }
 
         // Animate trap spikes raising and retracting
-        const targetY = trap.active ? 0 : -1.6;
+        const targetY = trap.active ? 0 : -1.5;
         trap.group.children.forEach((child, i) => {
-            if (i > 0) child.position.y = THREE.MathUtils.lerp(child.position.y, targetY + 0.9, 0.2);
+            if (i > 0) child.position.y = THREE.MathUtils.lerp(child.position.y, targetY + 0.8, 0.2);
         });
 
-        if (trap.active) {
+        if (trap.active && PLAYER.invulnerableTimer <= 0) {
             const dist = Math.hypot(playerPos.x - trap.x, playerPos.z - trap.z);
             if (dist < trap.radius) {
                 if (!PLAYER.trapHitCooldown || PLAYER.trapHitCooldown <= 0) {
-                    PLAYER.trapHitCooldown = 1.0;
-                    PLAYER.hp -= 22;
+                    PLAYER.trapHitCooldown = 1.25;
+                    let trapDmg = Math.max(4, 12 - Math.round((PERM.damageReduction || 0) * 0.5));
+                    if (GAME.shield > 0) {
+                        const abs = Math.min(GAME.shield, trapDmg);
+                        GAME.shield -= abs;
+                        trapDmg -= abs;
+                    }
+                    PLAYER.hp -= trapDmg;
                     SFX.trap();
                     showDamageVignette();
-                    spawnFloatingText(playerPos, '⚠️ SPIKE TRAP! -22', '#ef4444', 18, true, '🩸');
+                    spawnFloatingText(playerPos, `⚠️ SPIKE TRAP! -${trapDmg}`, '#ef4444', 18, true, '🩸');
                     checkPlayerDeath();
                     updateGUI();
                 }
@@ -6423,24 +6991,25 @@ function updateDungeon(dt, playerPos) {
 
     if (PLAYER.trapHitCooldown > 0) PLAYER.trapHitCooldown -= dt;
 
-    // 3. Mob Aggro Pull Logic
+    // 3. Tactical Pack-Based Mob Aggro Pull Logic (only pulls same pack, not whole room!)
     enemies.forEach(e => {
         if (!e.isDungeonMob || e.hp <= 0) return;
         if (!e.isAggroed) {
             const dPlayer = playerPos.distanceTo(e.mesh.position);
             let dComp = 999;
             raidCompanions.forEach(c => {
-                const dc = c.mesh.position.distanceTo(e.mesh.position);
-                if (dc < dComp) dComp = dc;
+                if (!c.isDowned) {
+                    const dc = c.mesh.position.distanceTo(e.mesh.position);
+                    if (dc < dComp) dComp = dc;
+                }
             });
 
-            if (dPlayer < 24 || dComp < 22 || e.hp < e.maxHp) {
-                // Pull whole mob pack
+            if (dPlayer < 17 || dComp < 15 || e.hp < e.maxHp) {
                 e.isAggroed = true;
                 SFX.aggro();
-                spawnFloatingText(e.mesh.position, '⚠️ AGGRO!', '#ef4444', 16, true, '❗');
+                spawnFloatingText(e.mesh.position, '⚠️ PACK AGGRO!', '#ef4444', 16, true, '❗');
                 enemies.forEach(other => {
-                    if (other.isDungeonMob && other.chamberIdx === currentDungeonRoomIdx) {
+                    if (other.isDungeonMob && other.chamberIdx === currentDungeonRoomIdx && other.pack === e.pack) {
                         other.isAggroed = true;
                     }
                 });
@@ -6448,43 +7017,40 @@ function updateDungeon(dt, playerPos) {
         }
     });
 
-    // 4. Hardcore Final Boss Malakor Mechanics with Multi-Phase Spells
+    // 4. Balanced Final Boss Malakor Mechanics with Multi-Phase Spells
     if (malakorBossRef && malakorBossRef.hp > 0) {
-        malakorBossRef.bossSpellTimer = (malakorBossRef.bossSpellTimer || 3.0) - dt;
+        malakorBossRef.bossSpellTimer = (malakorBossRef.bossSpellTimer || 3.8) - dt;
         
         // Phase 2 Minion Summon at 60% HP
         if (malakorBossRef.hp <= malakorBossRef.maxHp * 0.60 && !malakorBossRef.hasSpawnedMinions) {
             malakorBossRef.hasSpawnedMinions = true;
             SFX.bossRoar();
             spawnFloatingText(malakorBossRef.mesh.position, '👑 SHADOW MINIONS SUMMONED!', '#a855f7', 22, true);
-            const m1 = new Enemy(-12, 385, 'orc');
-            m1.isDungeonMob = true; m1.chamberIdx = 4; m1.isAggroed = true;
-            const m2 = new Enemy(12, 385, 'orc');
-            m2.isDungeonMob = true; m2.chamberIdx = 4; m2.isAggroed = true;
+            const m1 = new Enemy(-10, 385, 'slime');
+            m1.isDungeonMob = true; m1.chamberIdx = 4; m1.pack = 1; m1.isAggroed = true;
+            const m2 = new Enemy(10, 385, 'slime');
+            m2.isDungeonMob = true; m2.chamberIdx = 4; m2.pack = 1; m2.isAggroed = true;
         }
 
         // Phase 3 Enrage at 30% HP
         if (malakorBossRef.hp <= malakorBossRef.maxHp * 0.30 && !malakorBossRef.isEnraged) {
             malakorBossRef.isEnraged = true;
-            malakorBossRef.speed *= 1.35;
+            malakorBossRef.speed *= 1.18;
             SFX.titanRoar();
-            spawnFloatingText(malakorBossRef.mesh.position, '🔥 MALAKOR ENRAGED!', '#ef4444', 26, true);
+            spawnFloatingText(malakorBossRef.mesh.position, '🔥 MALAKOR ENRAGED!', '#ef4444', 24, true);
         }
 
         if (malakorBossRef.bossSpellTimer <= 0) {
-            malakorBossRef.bossSpellTimer = malakorBossRef.isEnraged ? 2.5 : 4.0;
+            malakorBossRef.bossSpellTimer = malakorBossRef.isEnraged ? 3.4 : 4.6;
             SFX.frostNova();
             spawnFloatingText(malakorBossRef.mesh.position, '🔮 NETHER NOVA!', '#a855f7', 18, true);
             
-            // Spawn 10 Void energy orbs radiating outward
-            const orbCount = malakorBossRef.isEnraged ? 12 : 8;
+            // Spawn dodgeable Void energy orbs radiating outward that target the player
+            const orbCount = malakorBossRef.isEnraged ? 8 : 6;
             for (let i = 0; i < orbCount; i++) {
                 const angle = (i / orbCount) * Math.PI * 2;
                 const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
-                const p = new Projectile(malakorBossRef.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir);
-                p.speed = 35;
-                p.damage = 40;
-                p.mesh.material.color.setHex(0xa855f7);
+                spawnEnemyProjectile(malakorBossRef.mesh.position.clone().add(new THREE.Vector3(0, 1.5, 0)), dir, 16, 18, 0xa855f7, 3.2);
             }
         }
         updateBossHUD(malakorBossRef);
@@ -6494,6 +7060,14 @@ function updateDungeon(dt, playerPos) {
     const activeEnemiesInRoom = enemies.filter(e => e.isDungeonMob && e.chamberIdx === currentDungeonRoomIdx && e.hp > 0);
     const gateTargetZ = (currentDungeonRoomIdx === 4) ? 395 : ch.gateZ;
     const distToTarget = Math.max(0, Math.round(gateTargetZ - playerPos.z));
+
+    const objEl = document.getElementById('dungeon-obj-text');
+    if (objEl) {
+        const killedInRoom = Math.max(0, (GAME.dungeonRoomTotal || ch.mobs.length) - activeEnemiesInRoom.length);
+        objEl.innerText = activeEnemiesInRoom.length > 0
+            ? `⚔️ ${ch.desc} (${killedInRoom}/${GAME.dungeonRoomTotal || ch.mobs.length})`
+            : `✨ Chamber Cleared! Proceed through the gate!`;
+    }
 
     // Update 3D Guiding Waypoint Arrow
     if (dungeonWaypointArrow) {
@@ -6538,8 +7112,21 @@ function updateDungeon(dt, playerPos) {
             gate.userData.open = true;
             SFX.gateOpen();
             scene.remove(gate);
-            spawnFloatingText(playerPos, '🚪 GATE UNSEALED! PROCEED!', '#34d399', 20, true, '✨');
-            logMessage(`Chamber gate unlocked! Advance to next room.`, '#34d399');
+            // Bonus Gold, EXP & Talent Point on clearing chambers!
+            const clearGold = 70 + currentDungeonRoomIdx * 35;
+            const clearExp = 55 + currentDungeonRoomIdx * 25;
+            GAME.gold += clearGold;
+            PLAYER.exp += clearExp;
+            if (currentDungeonRoomIdx === 1 || currentDungeonRoomIdx === 3) {
+                SAVE.talentPoints = (SAVE.talentPoints || 0) + 1;
+                writeSave();
+                spawnFloatingText(playerPos, '🌟 +1 TALENT POINT & GATE OPEN!', '#fbbf24', 20, true, '🌟');
+            } else {
+                spawnFloatingText(playerPos, '🚪 GATE UNSEALED! PROCEED!', '#34d399', 20, true, '✨');
+            }
+            checkLevelUp();
+            updateGUI();
+            logMessage(`Chamber ${currentDungeonRoomIdx + 1} cleared! (+${clearGold}g, +${clearExp} EXP) Advance to next room.`, '#34d399');
         }
 
         // If player crosses into next chamber
@@ -6554,12 +7141,7 @@ function updateDungeon(dt, playerPos) {
         triggerDungeonVictory();
     }
 
-    // 7. Loot Drops Update
-    for (let i = dungeonLootDrops.length - 1; i >= 0; i--) {
-        dungeonLootDrops[i].update(dt, playerPos);
-    }
-
-    // 8. Restrict Player Pathing to Chamber & Corridor Boundaries
+    // 7. Restrict Player Pathing to Chamber & Corridor Boundaries
     playerPos.x = Math.max(ch.xMin + 1.5, Math.min(ch.xMax - 1.5, playerPos.x));
     playerPos.z = Math.max(ch.zMin + 1.0, playerPos.z);
     if (!dungeonMeshes.some(m => m.userData && m.userData.chamberIdx === currentDungeonRoomIdx && m.userData.open)) {
@@ -6571,16 +7153,19 @@ function spawnDungeonLootDrop(x, z, mobType, isBoss) {
     const roll = Math.random();
     let rarity = 'common';
     if (isBoss) {
-        rarity = (roll < 0.45 ? 'epic' : 'legendary');
+        rarity = (roll < 0.40 ? 'epic' : 'legendary');
     } else {
-        if (roll < 0.45) rarity = 'common';
-        else if (roll < 0.82) rarity = 'rare';
-        else rarity = 'epic';
+        if (roll < 0.35) rarity = 'common';
+        else if (roll < 0.78) rarity = 'rare';
+        else if (roll < 0.95) rarity = 'epic';
+        else rarity = 'legendary';
     }
 
-    // Filter database items by rarity
-    const matching = Object.keys(ITEM_DATABASE).filter(k => ITEM_DATABASE[k].rarity === rarity);
-    const chosenId = matching[Math.floor(Math.random() * matching.length)] || 'war_wep_2';
+    // Filter database items by rarity, with 75% preference for items usable by the player's current class!
+    const allMatching = Object.keys(ITEM_DATABASE).filter(k => ITEM_DATABASE[k].rarity === rarity);
+    const classMatching = allMatching.filter(k => ITEM_DATABASE[k].classReq === 'All' || ITEM_DATABASE[k].classReq === PLAYER.class);
+    const pool = (classMatching.length > 0 && Math.random() < 0.75) ? classMatching : allMatching;
+    const chosenId = pool[Math.floor(Math.random() * pool.length)] || 'war_wep_2';
 
     new DungeonLootItem(x, z, chosenId);
     if (rarity === 'legendary' || rarity === 'epic') {
@@ -6671,8 +7256,10 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
     INRUN.speedMult = 1.0;
 
     document.getElementById('start-screen').style.display = 'none';
-    const lobbyScreen = document.getElementById('lobby-screen');
-    if (lobbyScreen) lobbyScreen.style.display = 'none';
+    ['lobby-screen', 'skill-screen', 'talents-screen', 'pause-screen', 'shop-screen', 'gear-screen', 'quests-screen', 'leaderboard-screen', 'boon-draft-screen', 'game-over', 'dungeon-victory-screen'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
     
     document.getElementById('ui-class').innerText = heroName;
     
@@ -6687,29 +7274,25 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
     updateGUI();
 
     const waveHUD = document.getElementById('hud-top-center');
-    const dunObj = document.getElementById('hud-dungeon-obj');
     const dunParty = document.getElementById('hud-dungeon-party');
-    const titanHUD = document.getElementById('hud-titan-stage');
 
     if (GAME.mode === 'dungeon') {
-        if (waveHUD) waveHUD.style.display = 'none';
-        if (dunObj) dunObj.style.display = 'block';
+        if (waveHUD) waveHUD.style.display = 'flex';
         if (dunParty) dunParty.style.display = 'flex';
-        if (titanHUD) titanHUD.style.display = 'none';
         clearTitanArena();
         initDungeonMode();
+        updateWaveHUD();
         cameraAngleY = 0;
         targetCameraAngleY = 0;
         cameraPitch = 1.0;
         updateCompassHUD();
         camera.position.set(playerMesh.position.x, 38, playerMesh.position.z + 24);
     } else if (GAME.mode === 'titan') {
-        if (waveHUD) waveHUD.style.display = 'none';
-        if (dunObj) dunObj.style.display = 'none';
+        if (waveHUD) waveHUD.style.display = 'flex';
         if (dunParty) dunParty.style.display = 'none';
-        if (titanHUD) titanHUD.style.display = 'flex';
         clearDungeonState();
         initTitanGauntlet();
+        updateWaveHUD();
         cameraAngleY = 0;
         targetCameraAngleY = 0;
         cameraPitch = 1.0;
@@ -6730,10 +7313,8 @@ window.startGame = function(className, isMultiplayer = false, initPayload = null
         chests.length = 0;
         clearSpellEntities();
 
-        if (waveHUD) waveHUD.style.display = 'block';
-        if (dunObj) dunObj.style.display = 'none';
+        if (waveHUD) waveHUD.style.display = 'flex';
         if (dunParty) dunParty.style.display = 'none';
-        if (titanHUD) titanHUD.style.display = 'none';
         updateWaveHUD();
         playerMesh.position.set(0, 1, 0);
         cameraAngleY = 0;
@@ -6996,11 +7577,27 @@ function updateEffects() {
         GAME.shield = Math.max(GAME.shield, bonusShield);
     }
 
-    EFFECTS.lifesteal = skillLifesteal + PERM.lifesteal;
-    PLAYER.damage = Math.round((base.baseDamage + dmgBonus) * PERM.damageMult * INRUN.damageMult);
+    const gearDmg = (PLAYER.gearBonus && PLAYER.gearBonus.damage) || 0;
+    const gearHp = (PLAYER.gearBonus && PLAYER.gearBonus.hp) || 0;
+    const gearMana = (PLAYER.gearBonus && PLAYER.gearBonus.mana) || 0;
+    const gearArmor = (PLAYER.gearBonus && PLAYER.gearBonus.armor) || 0;
+    const gearLifesteal = (PLAYER.gearBonus && PLAYER.gearBonus.lifesteal) || 0;
+    const talentHp = PLAYER.talentBonusHp || 0;
+    const talentMana = PLAYER.talentBonusMana || 0;
+    const talentArmor = PLAYER.talentBonusArmor || 0;
+    const talentDmgMult = 1 + ((PLAYER.talentBonusDmgPct || 0) / 100);
+    const talentFireRateMult = 1 + ((PLAYER.talentBonusFireRatePct || 0) / 100);
+    const talentLifesteal = PLAYER.talentBonusLifesteal || 0;
+
+    EFFECTS.fireRateMult *= PERM.fireRateMult * talentFireRateMult;
+    EFFECTS.lifesteal = skillLifesteal + PERM.lifesteal + gearLifesteal + talentLifesteal;
+    PERM.damageReduction = ((SAVE.upgrades.ironSkin || 0) * 2) + gearArmor + talentArmor;
+
+    PLAYER.damage = Math.round((base.baseDamage + gearDmg + dmgBonus) * PERM.damageMult * talentDmgMult * INRUN.damageMult);
+    PLAYER.maxMana = base.baseMana + PERM.manaBonus + gearMana + talentMana;
 
     const oldMaxHp = PLAYER.maxHp;
-    PLAYER.maxHp = base.baseHp + PERM.hpBonus + hpBonus;
+    PLAYER.maxHp = base.baseHp + PERM.hpBonus + gearHp + talentHp + hpBonus;
     const delta = PLAYER.maxHp - oldMaxHp;
     if (delta > 0) PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + delta);
     PLAYER.hp = Math.min(PLAYER.hp, PLAYER.maxHp);
@@ -7023,124 +7620,214 @@ function updateEffects() {
     if (countEl) countEl.innerText = PLAYER.skills.length;
 }
 
-// --- TACTICAL SKILL SYSTEM ---
+// --- TACTICAL MOBILITY SKILL SYSTEM (SLOT 2) ---
 window.useTacticalSkill = function() {
     if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
     if (PLAYER.tacticalCooldown > 0) {
-        logMessage(`Tactical skill cooling down (${Math.ceil(PLAYER.tacticalCooldown)}s)`, '#94a3b8');
+        logMessage(`Mobility skill cooling down (${PLAYER.tacticalCooldown.toFixed(1)}s)`, '#94a3b8');
         return;
     }
 
-    let maxCd = 6.0;
-    if (PLAYER.class === 'Warrior') maxCd = 6.5;
-    else if (PLAYER.class === 'Mage') maxCd = 5.5;
-    else if (PLAYER.class === 'Archer') maxCd = 5.0;
-
+    const eqTac = getEquippedAbilityNode(PLAYER.class, 'tactical');
+    const tacId = eqTac && eqTac.node ? eqTac.node.id : (PLAYER.class === 'Warrior' ? 'w_tac_shield' : (PLAYER.class === 'Mage' ? 'm_tac_blink' : 'a_tac_smoke'));
+    const rank = eqTac ? eqTac.rank : 0;
+    const rankMult = 1 + rank * 0.25;
+    const cdMult = Math.max(0.6, 1 - rank * 0.08);
     const hasChrono = SAVE.equipped && SAVE.equipped[PLAYER.class] && SAVE.equipped[PLAYER.class].accessory === 'acc_10';
-    if (hasChrono) maxCd *= 0.65;
+    const baseCd = (eqTac && eqTac.node && eqTac.node.cd) ? eqTac.node.cd : 5.0;
 
+    const maxCd = Math.max(2.0, baseCd * cdMult * (hasChrono ? 0.65 : 1.0));
     PLAYER.tacticalMaxCooldown = maxCd;
     PLAYER.tacticalCooldown = maxCd;
 
     const playerPos = playerMesh.position;
+    const startPos = playerPos.clone();
     const aimDir = new THREE.Vector3();
     playerMesh.getWorldDirection(aimDir);
+    const baseDmg = Math.round((85 + PLAYER.level * 14 + (PLAYER.damage || 30) * 0.9) * rankMult);
 
-    if (PLAYER.class === 'Warrior') {
-        // Shield Charge
+    if (tacId === 'w_tac_leap') {
         SFX.dash();
-        SFX.hit();
+        SFX.earthquake();
         cameraShakeTimer = 0.25;
-        logMessage('🛡️ SHIELD CHARGE!', '#f87171');
-        spawnFloatingText(playerPos, '🛡️ CHARGE!', '#f87171', 20, true);
+        playerMesh.position.addScaledVector(aimDir, 16);
+        clampPlayerToArena();
+        PLAYER.bloodlustStacks = Math.min(10, (PLAYER.bloodlustStacks || 0) + 5);
+        PLAYER.bloodlustTimer = 6.0;
+        updateEffects();
+        logMessage('🩸 SAVAGE LEAP & BLEED!', '#ef4444');
+        spawnFloatingText(playerPos, '🩸 SAVAGE LEAP!', '#ef4444', 20, true);
 
-        const shieldGain = 60 + PLAYER.level * 10;
-        GAME.shield = Math.min(250, GAME.shield + shieldGain);
+        const ring = new THREE.Mesh(new THREE.RingGeometry(1, 9.5, 24), new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(playerPos.x, 0.2, playerPos.z);
+        new VFXObject(ring, 0.4, (m, prog) => { m.scale.setScalar(1 + prog * 0.6); m.material.opacity = (1 - prog) * 0.9; });
 
-        const dashDistance = 16;
-        playerMesh.position.addScaledVector(aimDir, dashDistance);
-        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
-        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
-
-        const trailGeo = new THREE.CylinderGeometry(2, 3, 16, 16);
-        const trailMat = new THREE.MeshBasicMaterial({ color: 0xf87171, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
-        const trailMesh = new THREE.Mesh(trailGeo, trailMat);
-        trailMesh.rotation.x = Math.PI / 2;
-        trailMesh.position.set(playerPos.x - aimDir.x * 8, 1, playerPos.z - aimDir.z * 8);
-        trailMesh.lookAt(playerPos.x, 1, playerPos.z);
-        new VFXObject(trailMesh, 0.4, (m, prog) => {
-            m.material.opacity = (1 - prog) * 0.8;
-            m.scale.set(1 + prog * 1.5, 1, 1 + prog * 1.5);
-        });
-
-        const chargeDmg = 120 + PLAYER.level * 18 + (SAVE.upgrades.power || 0) * 10;
         enemies.forEach(e => {
-            if (playerMesh.position.distanceTo(e.mesh.position) <= 12) {
-                e.stunTimer = 2.0;
-                e.takeDamage(chargeDmg, true, '💥 SMASH!');
-                const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerMesh.position).normalize();
-                e.mesh.position.addScaledVector(pushDir, 8);
+            if (playerPos.distanceTo(e.mesh.position) <= 11.5) {
+                e.burnTimer = 4.0;
+                e.burnDmg = Math.round(32 * rankMult);
+                e.takeDamage(baseDmg, true, '🩸 BLEED!');
             }
         });
 
-    } else if (PLAYER.class === 'Mage') {
-        // Arcane Blink
-        SFX.teleport();
-        logMessage('✨ ARCANE BLINK & FREEZE!', '#38bdf8');
-        spawnFloatingText(playerPos, '✨ BLINK!', '#38bdf8', 20, true);
+    } else if (tacId === 'w_tac_banner') {
+        SFX.dash();
+        SFX.healSpell();
+        playerMesh.position.addScaledVector(aimDir, 14);
+        clampPlayerToArena();
+        const healAmt = Math.round(60 * rankMult);
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + healAmt);
+        raidCompanions.forEach(c => { if (!c.isDowned) c.hp = Math.min(c.maxHp, c.hp + healAmt); });
+        BUFFS.swiftness = Math.max(BUFFS.swiftness || 0, 4.5);
+        updateEffects();
+        updateBuffsHUD();
+        logMessage(`🚩 WARBANNER RUSH! (+${healAmt} HP & Swiftness)`, '#fbbf24');
+        spawnFloatingText(playerPos, `🚩 WARBANNER! +${healAmt} HP`, '#fbbf24', 20, true);
 
-        const startPos = playerPos.clone();
-        const blinkGeo = new THREE.RingGeometry(0.5, 3.5, 24);
-        const blinkMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-        const blinkMesh = new THREE.Mesh(blinkGeo, blinkMat);
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 10.5) {
+                const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerPos).normalize();
+                e.mesh.position.addScaledVector(pushDir, 6);
+                e.takeDamage(baseDmg, false, '🚩 RUSH!');
+            }
+        });
+
+    } else if (PLAYER.class === 'Warrior' || tacId === 'w_tac_shield') {
+        SFX.dash();
+        SFX.hit();
+        cameraShakeTimer = 0.22;
+        const shieldGain = Math.round((75 + PLAYER.level * 10) * rankMult);
+        GAME.shield = Math.min(400, (GAME.shield || 0) + shieldGain);
+        playerMesh.position.addScaledVector(aimDir, 15);
+        clampPlayerToArena();
+        logMessage(`🛡️ SHIELD CHARGE! (+${shieldGain} Shield)`, '#38bdf8');
+        spawnFloatingText(playerPos, `🛡️ CHARGE! +${shieldGain}`, '#38bdf8', 20, true);
+
+        const trailMesh = new THREE.Mesh(new THREE.CylinderGeometry(2, 3, 15, 16), new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
+        trailMesh.rotation.x = Math.PI / 2;
+        trailMesh.position.set(playerPos.x - aimDir.x * 7.5, 1, playerPos.z - aimDir.z * 7.5);
+        trailMesh.lookAt(playerPos.x, 1, playerPos.z);
+        new VFXObject(trailMesh, 0.4, (m, prog) => { m.material.opacity = (1 - prog) * 0.8; m.scale.set(1 + prog * 1.4, 1, 1 + prog * 1.4); });
+
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 12) {
+                e.stunTimer = 2.2;
+                e.takeDamage(Math.round(baseDmg * 1.15), true, '💥 SMASH!');
+                const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerPos).normalize();
+                e.mesh.position.addScaledVector(pushDir, 7);
+            }
+        });
+
+    } else if (tacId === 'm_tac_flamedash') {
+        SFX.dash();
+        SFX.meteor();
+        playerMesh.position.addScaledVector(aimDir, 16);
+        clampPlayerToArena();
+        BUFFS.wrath = Math.max(BUFFS.wrath || 0, 3.5);
+        updateBuffsHUD();
+        logMessage('🔥 FLAME DASH & WRATH!', '#f97316');
+        spawnFloatingText(playerPos, '🔥 FLAME DASH!', '#f97316', 20, true);
+
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 8.5, 24), new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.set(startPos.x, 0.2, startPos.z);
+        new VFXObject(ring, 0.45, (m, prog) => { m.scale.setScalar(1 + prog * 1.2); m.material.opacity = (1 - prog) * 0.9; });
+
+        enemies.forEach(e => {
+            if (startPos.distanceTo(e.mesh.position) <= 10 || playerPos.distanceTo(e.mesh.position) <= 10) {
+                e.burnTimer = 4.0;
+                e.burnDmg = Math.round(28 * rankMult);
+                e.takeDamage(baseDmg, true, '🔥 SCORCH!');
+            }
+        });
+
+    } else if (tacId === 'm_tac_frostphase') {
+        SFX.frostNova();
+        const shieldGain = Math.round(85 * rankMult);
+        GAME.shield = Math.min(400, (GAME.shield || 0) + shieldGain);
+        enemies.forEach(e => {
+            if (startPos.distanceTo(e.mesh.position) <= 11) {
+                e.freezeTimer = 3.0;
+                e.takeDamage(baseDmg, false, '❄️ FROZEN');
+            }
+        });
+        playerMesh.position.addScaledVector(aimDir, 15);
+        clampPlayerToArena();
+        logMessage(`❄️ FROST PHASE! (+${shieldGain} Ice Barrier)`, '#38bdf8');
+        spawnFloatingText(playerPos, `❄️ FROST PHASE! +${shieldGain}`, '#38bdf8', 20, true);
+
+    } else if (PLAYER.class === 'Mage' || tacId === 'm_tac_blink') {
+        SFX.teleport();
+        logMessage('✨ ARCANE BLINK & MANA SURGE!', '#c084fc');
+        spawnFloatingText(playerPos, '✨ BLINK!', '#c084fc', 20, true);
+
+        const blinkMesh = new THREE.Mesh(new THREE.RingGeometry(0.5, 3.5, 24), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
         blinkMesh.rotation.x = -Math.PI / 2;
         blinkMesh.position.set(startPos.x, 0.2, startPos.z);
-        new VFXObject(blinkMesh, 0.5, (m, prog) => {
-            const sc = 1 + prog * 4;
-            m.scale.set(sc, sc, sc);
-            m.material.opacity = (1 - prog) * 0.9;
-        });
+        new VFXObject(blinkMesh, 0.5, (m, prog) => { m.scale.setScalar(1 + prog * 4); m.material.opacity = (1 - prog) * 0.9; });
 
         enemies.forEach(e => {
             if (startPos.distanceTo(e.mesh.position) <= 10) {
                 e.freezeTimer = 2.5;
-                e.takeDamage(80 + PLAYER.level * 14, false, '❄️ FROZEN');
+                e.takeDamage(baseDmg, false, '❄️ FROZEN');
             }
         });
 
-        playerMesh.position.addScaledVector(aimDir, 18);
-        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
-        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+        playerMesh.position.addScaledVector(aimDir, 17);
+        clampPlayerToArena();
+        PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + Math.round(45 * rankMult));
 
-        PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + 35);
+    } else if (tacId === 'a_tac_vault') {
+        SFX.dash();
+        SFX.caltrops();
+        const healAmt = Math.round(45 * rankMult);
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + healAmt);
+        for (let i = 0; i < 3; i++) {
+            const trapMesh = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.8, 5), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.6 }));
+            trapMesh.position.set(startPos.x + (i - 1) * 2.5, 0.4, startPos.z + (Math.random() - 0.5) * 2);
+            scene.add(trapMesh);
+            groundTraps.push({ mesh: trapMesh, life: 12, dmg: Math.round(75 * rankMult) });
+        }
+        playerMesh.position.addScaledVector(aimDir, 15);
+        clampPlayerToArena();
+        logMessage(`🕸️ VENOM VAULT! (+${healAmt} HP & Poison Mines)`, '#a855f7');
+        spawnFloatingText(playerPos, `🕸️ VENOM VAULT! +${healAmt} HP`, '#a855f7', 20, true);
 
-        const arrGeo = new THREE.SphereGeometry(2, 16, 16);
-        const arrMat = new THREE.MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.7, wireframe: true });
-        const arrMesh = new THREE.Mesh(arrGeo, arrMat);
-        arrMesh.position.copy(playerMesh.position);
-        new VFXObject(arrMesh, 0.35, (m, prog) => {
-            m.scale.set(1 + prog * 2, 1 + prog * 2, 1 + prog * 2);
-            m.material.opacity = (1 - prog) * 0.7;
-        });
+    } else if (tacId === 'a_tac_gale') {
+        SFX.dash();
+        SFX.arrowStorm();
+        BUFFS.swiftness = Math.max(BUFFS.swiftness || 0, 5.0);
+        updateEffects();
+        updateBuffsHUD();
+        playerMesh.position.addScaledVector(aimDir, 16);
+        clampPlayerToArena();
+        logMessage('🌪️ GALE WIND-STEP!', '#facc15');
+        spawnFloatingText(playerPos, '🌪️ WIND-STEP!', '#facc15', 20, true);
 
-    } else if (PLAYER.class === 'Archer') {
-        // Smoke Roll & 100% Crit buff
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1, 0)), dir, true, 0xfacc15, 95, 1.8);
+            p.pierce = 3;
+            p.damage = Math.round(baseDmg * 0.85);
+        }
+
+    } else {
+        // Smoke Roll (a_tac_smoke)
         SFX.dash();
         logMessage('💨 SMOKE ROLL & 100% CRIT!', '#34d399');
         spawnFloatingText(playerPos, '💨 EVASION ROLL!', '#34d399', 20, true);
 
-        PLAYER.invulnerableTimer = 1.0;
-        BUFFS.wrath = 3.5;
+        PLAYER.invulnerableTimer = 1.2 + rank * 0.25;
+        BUFFS.wrath = 3.5 + rank * 0.5;
         updateBuffsHUD();
 
         playerMesh.position.addScaledVector(aimDir, 15);
-        playerMesh.position.x = Math.max(-490, Math.min(490, playerMesh.position.x));
-        playerMesh.position.z = Math.max(-490, Math.min(490, playerMesh.position.z));
+        clampPlayerToArena();
 
-        const smokeGeo = new THREE.SphereGeometry(4.5, 12, 12);
-        const smokeMat = new THREE.MeshBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.75 });
-        const smokeMesh = new THREE.Mesh(smokeGeo, smokeMat);
-        smokeMesh.position.set(playerPos.x, 1.5, playerPos.z);
+        const smokeMesh = new THREE.Mesh(new THREE.SphereGeometry(4.5, 12, 12), new THREE.MeshBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.75 }));
+        smokeMesh.position.set(startPos.x, 1.5, startPos.z);
         new VFXObject(smokeMesh, 1.2, (m, prog) => {
             const sc = 1 + prog * 1.5;
             m.scale.set(sc, sc * 0.6, sc);
@@ -7148,7 +7835,7 @@ window.useTacticalSkill = function() {
         });
 
         enemies.forEach(e => {
-            if (playerPos.distanceTo(e.mesh.position) <= 8) {
+            if (startPos.distanceTo(e.mesh.position) <= 9) {
                 e.stunTimer = 2.5;
                 spawnFloatingText(e.mesh.position, '🌫️ BLINDED', '#94a3b8', 14, false);
             }
@@ -7162,195 +7849,413 @@ window.usePrimaryAttack = function() {
     attemptFire();
 };
 
-// --- CLASS SKILL 1 (SLOT 3: R / 3) ---
+// --- CLASS SKILL 1 (SLOT 3) ---
 window.useClassSkill1 = function() {
     if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
     if (PLAYER.skill1Cooldown > 0) {
-        logMessage(`Skill 1 cooling down (${Math.ceil(PLAYER.skill1Cooldown)}s)`, '#94a3b8');
+        logMessage(`Spell 1 cooling down (${PLAYER.skill1Cooldown.toFixed(1)}s)`, '#94a3b8');
         return;
     }
+
+    const eqSk1 = getEquippedAbilityNode(PLAYER.class, 'skill1');
+    const sk1Id = eqSk1 && eqSk1.node ? eqSk1.node.id : (PLAYER.class === 'Warrior' ? 'w_sk1_whirl' : (PLAYER.class === 'Mage' ? 'm_sk1_nova' : 'a_sk1_ballista'));
+    const rank = eqSk1 ? eqSk1.rank : 0;
+    const rankMult = 1 + rank * 0.25;
+    const cdMult = Math.max(0.6, 1 - rank * 0.08);
+    const baseCd = (eqSk1 && eqSk1.node && eqSk1.node.cd) ? eqSk1.node.cd : 4.0;
+
+    PLAYER.skill1MaxCooldown = Math.max(1.8, baseCd * cdMult);
+    PLAYER.skill1Cooldown = PLAYER.skill1MaxCooldown;
 
     const playerPos = playerMesh.position;
     const aimDir = new THREE.Vector3();
     playerMesh.getWorldDirection(aimDir);
+    const baseDmg = Math.round((110 + PLAYER.level * 16 + (PLAYER.damage || 30) * 1.15) * rankMult);
 
-    if (PLAYER.class === 'Warrior') {
-        // Whirlwind: 360° Cleave Spin
-        PLAYER.skill1MaxCooldown = 4.2;
-        PLAYER.skill1Cooldown = 4.2;
+    if (sk1Id === 'w_sk1_bulwark') {
+        SFX.earthquake();
+        cameraShakeTimer = 0.2;
+        const shieldGain = Math.round(60 * rankMult);
+        GAME.shield = (GAME.shield || 0) + shieldGain;
+        logMessage(`🏰 IRON BULWARK SLAM! (+${shieldGain} Shield)`, '#38bdf8');
+        spawnFloatingText(playerPos, `🏰 BULWARK SLAM! +${shieldGain}`, '#38bdf8', 20, true);
+
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.5, 11.0, 32), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.4, playerPos.z);
+        new VFXObject(ringMesh, 0.4, (m, prog) => { m.scale.setScalar(1 + prog * 0.5); m.material.opacity = (1 - prog) * 0.9; });
+
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 11.5) {
+                e.stunTimer = 1.8;
+                e.speed = Math.max(2.5, e.speed * 0.65);
+                e.takeDamage(baseDmg, true, '🏰 BULWARK!');
+            }
+        });
+        chests.forEach(c => { if (!c.destroyed && playerPos.distanceTo(c.group.position) <= 11.5) c.takeDamage(baseDmg); });
+
+    } else if (sk1Id === 'w_sk1_seismic') {
+        SFX.slash();
+        SFX.earthquake();
+        logMessage('🌊 SEISMIC SHOCKWAVE!', '#fbbf24');
+        spawnFloatingText(playerPos, '🌊 SEISMIC WAVE!', '#fbbf24', 20, true);
+
+        const waveCount = 3 + (rank >= 2 ? 1 : 0);
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < waveCount; i++) {
+            const offset = ((i - (waveCount - 1) / 2) / Math.max(1, waveCount - 1)) * 0.35;
+            const ang = baseAngle + offset;
+            const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1, 0)), dir, true, 0xfbbf24, 78, 1.8);
+            p.mesh.scale.set(4.2, 0.3, 2.0);
+            p.pierce = 8;
+            p.damage = baseDmg;
+        }
+
+    } else if (PLAYER.class === 'Warrior' || sk1Id === 'w_sk1_whirl') {
         SFX.whirlwind();
         cameraShakeTimer = 0.18;
-        logMessage('🌀 WHIRLWIND SLASH!', '#f87171');
+        logMessage('🌀 WHIRLWIND CLEAVE!', '#f87171');
         spawnFloatingText(playerPos, '🌀 WHIRLWIND!', '#f87171', 20, true);
 
-        // Spin animation
         weaponGroup.rotation.y += Math.PI * 4;
         setTimeout(() => { if (GAME.state === 'PLAYING') weaponGroup.rotation.y -= Math.PI * 4; }, 180);
 
-        // Cyclone Ring VFX
-        const ringGeo = new THREE.RingGeometry(2.5, 9.5, 32);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0xfca5a5, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(2.5, 10.5, 32), new THREE.MeshBasicMaterial({ color: 0xfca5a5, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
         ringMesh.rotation.x = -Math.PI / 2;
         ringMesh.position.set(playerPos.x, 0.8, playerPos.z);
-        new VFXObject(ringMesh, 0.35, (m, prog) => {
-            m.rotation.z += 0.25;
-            m.scale.set(1 + prog * 0.4, 1 + prog * 0.4, 1 + prog * 0.4);
-            m.material.opacity = (1 - prog) * 0.9;
-        });
+        new VFXObject(ringMesh, 0.35, (m, prog) => { m.rotation.z += 0.25; m.scale.setScalar(1 + prog * 0.4); m.material.opacity = (1 - prog) * 0.9; });
 
-        const radius = 11.5;
-        const damage = 115 + PLAYER.level * 16 + (SAVE.upgrades.power || 0) * 10;
+        const radius = 12.0 + rank;
+        let totalHealed = 0;
         enemies.forEach(e => {
             if (playerPos.distanceTo(e.mesh.position) <= radius) {
                 const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerPos).normalize();
-                e.mesh.position.addScaledVector(pushDir, 5.0);
-                e.takeDamage(damage, true, '🌀 WHIRL!');
-                if (EFFECTS.lifesteal > 0) {
-                    const heal = Math.max(1, Math.round(damage * 0.25));
-                    PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + heal);
-                }
+                e.mesh.position.addScaledVector(pushDir, 4.5);
+                e.takeDamage(baseDmg, true, '🌀 WHIRL!');
+                totalHealed += Math.max(4, Math.round(baseDmg * 0.08));
             }
         });
-        chests.forEach(c => {
-            if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(damage);
-        });
+        if (totalHealed > 0) {
+            PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.min(45, totalHealed));
+        }
+        chests.forEach(c => { if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
 
-    } else if (PLAYER.class === 'Mage') {
-        // Arcane Nova: Radial Burst
-        PLAYER.skill1MaxCooldown = 4.5;
-        PLAYER.skill1Cooldown = 4.5;
+    } else if (sk1Id === 'm_sk1_fireball') {
+        SFX.shoot('Mage');
+        SFX.bomb();
+        logMessage('🔥 DRAGONFIRE BARRAGE!', '#f97316');
+        spawnFloatingText(playerPos, '🔥 DRAGONFIRE!', '#f97316', 20, true);
+
+        const count = 6 + rank;
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < count; i++) {
+            const offset = ((i - (count - 1) / 2) / Math.max(1, count - 1)) * 0.65;
+            const ang = baseAngle + offset;
+            const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), dir, true, 0xf97316, 82, 2.0);
+            p.mesh.scale.set(1.6, 1.6, 1.6);
+            p.pierce = 3;
+            p.damage = Math.round(baseDmg * 0.85);
+        }
+
+    } else if (sk1Id === 'm_sk1_glacier') {
         SFX.frostNova();
-        logMessage('🔮 ARCANE NOVA!', '#38bdf8');
-        spawnFloatingText(playerPos, '🔮 ARCANE NOVA!', '#38bdf8', 20, true);
+        logMessage('🧊 GLACIAL LANCE!', '#38bdf8');
+        spawnFloatingText(playerPos, '🧊 GLACIAL LANCE!', '#38bdf8', 20, true);
 
-        const novaGeo = new THREE.RingGeometry(1.5, 12.0, 32);
-        const novaMat = new THREE.MeshBasicMaterial({ color: 0x818cf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-        const novaMesh = new THREE.Mesh(novaGeo, novaMat);
+        const count = 3 + (rank >= 2 ? 1 : 0);
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < count; i++) {
+            const offset = ((i - (count - 1) / 2) / Math.max(1, count - 1)) * 0.28;
+            const ang = baseAngle + offset;
+            const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), dir, true, 0x67e8f9, 105, 2.2);
+            p.mesh.scale.set(1.8, 1.8, 3.8);
+            p.pierce = 999;
+            p.damage = baseDmg;
+            p.freezesOnHit = 2.8;
+        }
+
+    } else if (PLAYER.class === 'Mage' || sk1Id === 'm_sk1_nova') {
+        SFX.frostNova();
+        logMessage('🔮 ARCANE NOVA!', '#c084fc');
+        spawnFloatingText(playerPos, '🔮 ARCANE NOVA!', '#c084fc', 20, true);
+
+        const novaMesh = new THREE.Mesh(new THREE.RingGeometry(1.5, 12.5, 32), new THREE.MeshBasicMaterial({ color: 0x818cf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
         novaMesh.rotation.x = -Math.PI / 2;
         novaMesh.position.set(playerPos.x, 0.4, playerPos.z);
-        new VFXObject(novaMesh, 0.4, (m, prog) => {
-            m.scale.set(1 + prog * 0.6, 1 + prog * 0.6, 1 + prog * 0.6);
-            m.material.opacity = (1 - prog) * 0.9;
-        });
+        new VFXObject(novaMesh, 0.4, (m, prog) => { m.scale.setScalar(1 + prog * 0.6); m.material.opacity = (1 - prog) * 0.9; });
 
-        const radius = 13.0;
-        const damage = 100 + PLAYER.level * 15 + (SAVE.upgrades.power || 0) * 10;
+        const radius = 13.5 + rank;
         enemies.forEach(e => {
             if (playerPos.distanceTo(e.mesh.position) <= radius) {
-                e.freezeTimer = 2.0;
-                e.takeDamage(damage, true, '🔮 NOVA');
+                e.freezeTimer = 2.2;
+                const pushDir = new THREE.Vector3().subVectors(e.mesh.position, playerPos).normalize();
+                e.mesh.position.addScaledVector(pushDir, 4.5);
+                e.takeDamage(baseDmg, true, '🔮 NOVA');
             }
         });
+        chests.forEach(c => { if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
 
-    } else if (PLAYER.class === 'Archer') {
-        // Piercing Ballista: Giant Arrow
-        PLAYER.skill1MaxCooldown = 4.0;
-        PLAYER.skill1Cooldown = 4.0;
+    } else if (sk1Id === 'a_sk1_fan') {
+        SFX.caltrops();
+        SFX.arrowStorm();
+        logMessage('🗡️ TOXIC FAN OF KNIVES!', '#a855f7');
+        spawnFloatingText(playerPos, '🗡️ FAN OF KNIVES!', '#a855f7', 20, true);
+
+        const count = 14 + rank * 2;
+        for (let i = 0; i < count; i++) {
+            const angle = (i / count) * Math.PI * 2;
+            const dir = new THREE.Vector3(Math.cos(angle), 0, Math.sin(angle));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.0, 0)), dir, true, 0xa855f7, 92, 1.5);
+            p.pierce = 3;
+            p.damage = Math.round(baseDmg * 0.78);
+        }
+        const trapMesh = new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.8, 5), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669, emissiveIntensity: 0.6 }));
+        trapMesh.position.set(playerPos.x, 0.4, playerPos.z);
+        scene.add(trapMesh);
+        groundTraps.push({ mesh: trapMesh, life: 12, dmg: baseDmg });
+
+    } else if (sk1Id === 'a_sk1_ricochet') {
         SFX.shoot('Archer');
-        logMessage('🏹 PIERCING BALLISTA!', '#34d399');
-        spawnFloatingText(playerPos, '🏹 BALLISTA!', '#34d399', 20, true);
+        logMessage('🪃 RICOCHET CHAKRAMS!', '#facc15');
+        spawnFloatingText(playerPos, '🪃 CHAKRAMS!', '#facc15', 20, true);
 
-        const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), aimDir, true, 0x34d399, 130, 2.2);
-        p.mesh.scale.set(3.0, 3.0, 4.5);
-        p.pierce = 999;
-        p.damage = 140 + PLAYER.level * 20 + (SAVE.upgrades.power || 0) * 12;
+        const count = 4 + rank;
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < count; i++) {
+            const offset = ((i - (count - 1) / 2) / Math.max(1, count - 1)) * 0.45;
+            const ang = baseAngle + offset;
+            const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.1, 0)), dir, true, 0xfacc15, 98, 2.2);
+            p.mesh.scale.set(1.5, 0.4, 1.5);
+            p.pierce = 5;
+            p.damage = Math.round(baseDmg * 0.9);
+        }
+
+    } else {
+        // Piercing Ballista (a_sk1_ballista)
+        SFX.shoot('Archer');
+        logMessage('🎯 PIERCING BALLISTA!', '#34d399');
+        spawnFloatingText(playerPos, '🎯 BALLISTA!', '#34d399', 20, true);
+
+        const boltCount = rank >= 2 ? 2 : 1;
+        const baseAngle = Math.atan2(aimDir.z, aimDir.x);
+        for (let i = 0; i < boltCount; i++) {
+            const offset = boltCount > 1 ? (i - 0.5) * 0.12 : 0;
+            const dir = new THREE.Vector3(Math.cos(baseAngle + offset), 0, Math.sin(baseAngle + offset));
+            const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1.2, 0)), dir, true, 0x34d399, 130, 2.2);
+            p.mesh.scale.set(3.0, 3.0, 4.5);
+            p.pierce = 999;
+            p.damage = Math.round(baseDmg * 1.35);
+        }
     }
 
     updateGUI();
 };
 
-// --- CLASS SKILL 2 (SLOT 4: F / 4) ---
+// --- CLASS SKILL 2 (SLOT 4) ---
 window.useClassSkill2 = function() {
     if (GAME.state !== 'PLAYING' || GAME.isDowned) return;
     if (PLAYER.skill2Cooldown > 0) {
-        logMessage(`Skill 2 cooling down (${Math.ceil(PLAYER.skill2Cooldown)}s)`, '#94a3b8');
+        logMessage(`Spell 2 cooling down (${PLAYER.skill2Cooldown.toFixed(1)}s)`, '#94a3b8');
         return;
     }
+
+    const eqSk2 = getEquippedAbilityNode(PLAYER.class, 'skill2');
+    const sk2Id = eqSk2 && eqSk2.node ? eqSk2.node.id : (PLAYER.class === 'Warrior' ? 'w_sk2_thunder' : (PLAYER.class === 'Mage' ? 'm_sk2_meteor' : 'a_sk2_volley'));
+    const rank = eqSk2 ? eqSk2.rank : 0;
+    const rankMult = 1 + rank * 0.25;
+    const cdMult = Math.max(0.6, 1 - rank * 0.08);
+    const baseCd = (eqSk2 && eqSk2.node && eqSk2.node.cd) ? eqSk2.node.cd : 6.0;
+
+    PLAYER.skill2MaxCooldown = Math.max(2.4, baseCd * cdMult);
+    PLAYER.skill2Cooldown = PLAYER.skill2MaxCooldown;
 
     const playerPos = playerMesh.position;
     const aimDir = new THREE.Vector3();
     playerMesh.getWorldDirection(aimDir);
+    const baseDmg = Math.round((135 + PLAYER.level * 18 + (PLAYER.damage || 30) * 1.35) * rankMult);
 
-    if (PLAYER.class === 'Warrior') {
-        // Thunder Clap: Ground Stun Shockwave
-        PLAYER.skill2MaxCooldown = 6.5;
-        PLAYER.skill2Cooldown = 6.5;
+    if (sk2Id === 'w_sk2_aegis') {
+        SFX.healSpell();
+        SFX.thunder();
+        const healAmt = Math.round(PLAYER.maxHp * (0.28 + rank * 0.05));
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + healAmt);
+        logMessage(`☀️ AEGIS JUDGMENT! (+${healAmt} HP & Holy Blast)`, '#fbbf24');
+        spawnFloatingText(playerPos, `☀️ JUDGMENT! +${healAmt} HP`, '#fbbf24', 22, true);
+
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.0, 11.5, 28), new THREE.MeshBasicMaterial({ color: 0xfde047, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }));
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.25, playerPos.z);
+        new VFXObject(ringMesh, 0.5, (m, prog) => { m.scale.setScalar(1 + prog * 0.8); m.material.opacity = (1 - prog) * 0.92; });
+
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 12.0) {
+                e.stunTimer = 2.2;
+                e.takeDamage(baseDmg, true, '☀️ JUDGMENT!');
+            }
+        });
+
+    } else if (sk2Id === 'w_sk2_rend') {
+        SFX.slash();
+        SFX.crit();
+        cameraShakeTimer = 0.25;
+        logMessage('🪓 BLOODTHIRST EXECUTION!', '#ef4444');
+        spawnFloatingText(playerPos, '🪓 EXECUTION REND!', '#ef4444', 22, true);
+
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.5, 12.5, 28), new THREE.MeshBasicMaterial({ color: 0xef4444, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }));
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.3, playerPos.z);
+        new VFXObject(ringMesh, 0.4, (m, prog) => { m.scale.setScalar(1 + prog * 0.5); m.material.opacity = (1 - prog) * 0.92; });
+
+        let healed = 0;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 13.0) {
+                const execMult = (e.hp <= e.maxHp * 0.5) ? 1.75 : 1.0;
+                e.takeDamage(Math.round(baseDmg * execMult), true, execMult > 1 ? '🩸 EXECUTE!' : '🪓 REND!');
+                healed += 10;
+            }
+        });
+        if (healed > 0) PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.min(60, healed));
+
+    } else if (PLAYER.class === 'Warrior' || sk2Id === 'w_sk2_thunder') {
         SFX.thunder();
         cameraShakeTimer = 0.28;
         logMessage('⚡ THUNDER CLAP!', '#38bdf8');
         spawnFloatingText(playerPos, '⚡ THUNDER CLAP!', '#38bdf8', 22, true);
 
-        const ringGeo = new THREE.RingGeometry(1.0, 10.0, 24);
-        const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.0, 10.5, 24), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.95 }));
         ringMesh.rotation.x = -Math.PI / 2;
         ringMesh.position.set(playerPos.x, 0.2, playerPos.z);
-        new VFXObject(ringMesh, 0.45, (m, prog) => {
-            const sc = 1 + prog * 1.2;
-            m.scale.set(sc, sc, sc);
-            m.material.opacity = (1 - prog) * 0.95;
-        });
+        new VFXObject(ringMesh, 0.45, (m, prog) => { m.scale.setScalar(1 + prog * 1.2); m.material.opacity = (1 - prog) * 0.95; });
 
-        const radius = 11.0;
-        const damage = 130 + PLAYER.level * 18 + (SAVE.upgrades.power || 0) * 12;
+        const radius = 12.5 + rank;
         enemies.forEach(e => {
             if (playerPos.distanceTo(e.mesh.position) <= radius) {
-                e.stunTimer = 2.5;
-                e.takeDamage(damage, true, '⚡ STUNNED!');
+                e.stunTimer = 2.8;
+                e.takeDamage(baseDmg, true, '⚡ STUNNED!');
             }
         });
-        chests.forEach(c => {
-            if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(damage);
+        chests.forEach(c => { if (!c.destroyed && playerPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
+
+    } else if (sk2Id === 'm_sk2_vortex') {
+        SFX.blackHole();
+        const targetPos = playerPos.clone().addScaledVector(aimDir, 11);
+        logMessage('🕳️ BLACK HOLE VORTEX!', '#c084fc');
+        spawnFloatingText(targetPos, '🕳️ BLACK HOLE!', '#c084fc', 22, true);
+
+        const vortexMesh = new THREE.Mesh(new THREE.SphereGeometry(2.8, 16, 16), new THREE.MeshBasicMaterial({ color: 0x9333ea, transparent: true, opacity: 0.85, wireframe: true }));
+        vortexMesh.position.set(targetPos.x, 1.5, targetPos.z);
+        new VFXObject(vortexMesh, 0.9, (m, prog) => {
+            m.rotation.y += 0.25;
+            m.scale.setScalar(1 + Math.sin(prog * Math.PI) * 1.4);
+            enemies.forEach(e => {
+                if (targetPos.distanceTo(e.mesh.position) <= 16) {
+                    const pull = new THREE.Vector3().subVectors(targetPos, e.mesh.position).normalize();
+                    e.mesh.position.addScaledVector(pull, 0.35);
+                }
+            });
         });
 
-    } else if (PLAYER.class === 'Mage') {
-        // Meteor Strike
-        PLAYER.skill2MaxCooldown = 7.0;
-        PLAYER.skill2Cooldown = 7.0;
+        enemies.forEach(e => {
+            if (targetPos.distanceTo(e.mesh.position) <= 14) {
+                e.stunTimer = 2.0;
+                e.takeDamage(baseDmg, true, '🕳️ VORTEX!');
+            }
+        });
+
+    } else if (sk2Id === 'm_sk2_timeorb') {
+        SFX.frostNova();
+        PLAYER.ultCooldown = Math.max(0, (PLAYER.ultCooldown || 0) - 4.0);
+        logMessage('⏳ CHRONO STASIS FIELD! (-4s Ult CD)', '#38bdf8');
+        spawnFloatingText(playerPos, '⏳ CHRONO STASIS!', '#38bdf8', 22, true);
+
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(1.0, 13.5, 32), new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.25, playerPos.z);
+        new VFXObject(ringMesh, 0.55, (m, prog) => { m.scale.setScalar(1 + prog * 0.5); m.material.opacity = (1 - prog) * 0.9; });
+
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 14.5) {
+                e.freezeTimer = 3.5;
+                e.takeDamage(baseDmg, true, '⏳ STASIS!');
+            }
+        });
+
+    } else if (PLAYER.class === 'Mage' || sk2Id === 'm_sk2_meteor') {
         SFX.earthquake();
         cameraShakeTimer = 0.3;
         logMessage('☄️ METEOR STRIKE!', '#f97316');
-        
         const targetPos = playerPos.clone().addScaledVector(aimDir, 12);
         spawnFloatingText(targetPos, '☄️ METEOR!', '#f97316', 22, true);
 
-        const craterGeo = new THREE.RingGeometry(1.0, 8.0, 24);
-        const craterMat = new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.9 });
-        const craterMesh = new THREE.Mesh(craterGeo, craterMat);
+        const craterMesh = new THREE.Mesh(new THREE.RingGeometry(1.0, 8.5, 24), new THREE.MeshBasicMaterial({ color: 0xf97316, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
         craterMesh.rotation.x = -Math.PI / 2;
         craterMesh.position.set(targetPos.x, 0.2, targetPos.z);
-        new VFXObject(craterMesh, 0.7, (m, prog) => {
-            m.scale.set(1 + prog * 0.5, 1 + prog * 0.5, 1 + prog * 0.5);
-            m.material.opacity = (1 - prog) * 0.9;
-        });
+        new VFXObject(craterMesh, 0.7, (m, prog) => { m.scale.setScalar(1 + prog * 0.5); m.material.opacity = (1 - prog) * 0.9; });
 
-        const radius = 9.5;
-        const damage = 160 + PLAYER.level * 22 + (SAVE.upgrades.power || 0) * 15;
+        const radius = 10.5 + rank;
         enemies.forEach(e => {
             if (targetPos.distanceTo(e.mesh.position) <= radius) {
-                e.burnTimer = 4.0;
-                e.takeDamage(damage, true, '🔥 METEOR');
+                e.burnTimer = 4.5;
+                e.burnDmg = Math.round(28 * rankMult);
+                e.takeDamage(Math.round(baseDmg * 1.15), true, '🔥 METEOR');
             }
         });
+        chests.forEach(c => { if (!c.destroyed && targetPos.distanceTo(c.group.position) <= radius) c.takeDamage(baseDmg); });
 
-    } else if (PLAYER.class === 'Archer') {
-        // Arrow Volley: Fan of 14 Arrows
-        PLAYER.skill2MaxCooldown = 6.0;
-        PLAYER.skill2Cooldown = 6.0;
+    } else if (sk2Id === 'a_sk2_snipe') {
+        SFX.sniper();
+        logMessage('🦅 DEADEYE EXECUTION!', '#4ade80');
+        spawnFloatingText(playerPos, '🦅 DEADEYE SNIPE!', '#4ade80', 22, true);
+
+        const targets = [...enemies]
+            .filter(e => e.hp > 0 && playerPos.distanceTo(e.mesh.position) <= 38)
+            .sort((a, b) => b.hp - a.hp)
+            .slice(0, 6 + rank * 2);
+
+        targets.forEach(t => {
+            createImpact(t.mesh.position, 0x4ade80);
+            const mult = t.isBoss ? 1.6 : 1.15;
+            t.takeDamage(Math.round(baseDmg * mult), true, '🎯 HEADSHOT!');
+        });
+
+    } else if (sk2Id === 'a_sk2_blades') {
+        SFX.whirlwind();
+        logMessage('🌀 SHADOW BLADE VORTEX!', '#a855f7');
+        spawnFloatingText(playerPos, '🌀 SHADOW BLADES!', '#a855f7', 22, true);
+
+        const ringMesh = new THREE.Mesh(new THREE.RingGeometry(2.0, 12.0, 28), new THREE.MeshBasicMaterial({ color: 0xa855f7, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+        ringMesh.rotation.x = -Math.PI / 2;
+        ringMesh.position.set(playerPos.x, 0.6, playerPos.z);
+        new VFXObject(ringMesh, 0.45, (m, prog) => { m.rotation.z += 0.35; m.scale.setScalar(1 + prog * 0.4); m.material.opacity = (1 - prog) * 0.9; });
+
+        let healed = 0;
+        enemies.forEach(e => {
+            if (playerPos.distanceTo(e.mesh.position) <= 12.5) {
+                e.takeDamage(baseDmg, true, '🌀 GLAIVE!');
+                healed += 10 + rank * 3;
+            }
+        });
+        if (healed > 0) PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.min(65, healed));
+
+    } else {
+        // Blazing Arrow Volley (a_sk2_volley)
         SFX.arrowStorm();
-        logMessage('🏹 ARROW VOLLEY!', '#fbbf24');
-        spawnFloatingText(playerPos, '🏹 VOLLEY!', '#fbbf24', 20, true);
+        logMessage('🔥 BLAZING ARROW VOLLEY!', '#fbbf24');
+        spawnFloatingText(playerPos, '🔥 VOLLEY!', '#fbbf24', 20, true);
 
-        const arrowCount = 14;
+        const arrowCount = 16 + rank * 2;
         const baseAngle = Math.atan2(aimDir.z, aimDir.x);
         for (let i = 0; i < arrowCount; i++) {
-            const offset = ((i - arrowCount / 2) / (arrowCount / 2)) * (Math.PI / 4);
+            const offset = ((i - arrowCount / 2) / (arrowCount / 2)) * (Math.PI / 3.8);
             const ang = baseAngle + offset;
             const dir = new THREE.Vector3(Math.cos(ang), 0, Math.sin(ang));
             const p = new Projectile(playerPos.clone().add(new THREE.Vector3(0, 1, 0)), dir, true, 0xfde047, 95, 1.8);
-            p.pierce = 2;
-            p.damage = 70 + PLAYER.level * 10;
+            p.pierce = 3;
+            p.damage = Math.round(baseDmg * 0.65);
         }
     }
 
@@ -7846,6 +8751,40 @@ class Projectile {
     }
 
     update(dt) {
+        if (this.isEnemyProjectile) {
+            this.mesh.position.addScaledVector(this.dir, this.speed * dt);
+            this.mesh.rotation.y += dt * 10;
+            this.mesh.rotation.x += dt * 8;
+            this.life -= dt;
+
+            if (playerMesh && !GAME.isDowned) {
+                const pPos = this.mesh.position;
+                const distXZ = Math.hypot(pPos.x - playerMesh.position.x, pPos.z - playerMesh.position.z);
+                if (distXZ < 1.45) {
+                    if (PLAYER.invulnerableTimer && PLAYER.invulnerableTimer > 0) {
+                        this.life = 0;
+                        return;
+                    }
+                    let rawDmg = Math.max(4, (this.damage || 18) - (PERM.damageReduction || 0));
+                    if (GAME.shield > 0) {
+                        const absorb = Math.min(GAME.shield, rawDmg);
+                        GAME.shield -= absorb;
+                        rawDmg -= absorb;
+                    }
+                    if (rawDmg > 0) {
+                        PLAYER.hp -= rawDmg;
+                        spawnFloatingText(playerMesh.position, `-${Math.round(rawDmg)}`, '#ef4444', 16, true);
+                        showDamageVignette();
+                        checkPlayerDeath();
+                    }
+                    createImpact(pPos, 0xef4444);
+                    updateGUI();
+                    this.life = 0;
+                }
+            }
+            return;
+        }
+
         if (EFFECTS.homing > 0 && enemies.length > 0) {
             let closest = null; let minDist = 40;
             enemies.forEach(e => {
@@ -7878,7 +8817,13 @@ class Projectile {
             if (distXZ < enemy.hitRadius + effectiveRadius + 0.8) {
                 if (pPos.y >= ePos.y - 1.0 && pPos.y <= ePos.y + (enemy.height || 2) + 1.0) {
                     
-                    let { dmg, isCrit } = rollDamage();
+                    let { dmg, isCrit } = rollDamage(enemy);
+                    if (typeof this.damage === 'number' && this.damage > 0) {
+                        dmg = isCrit ? Math.round(this.damage * 1.65) : Math.round(this.damage);
+                    }
+                    if (this.freezesOnHit && this.freezesOnHit > 0) {
+                        enemy.freezeTimer = Math.max(enemy.freezeTimer || 0, this.freezesOnHit);
+                    }
                     
                     // Berserker Wrath (Warrior w11)
                     if (PLAYER.class === 'Warrior') {
@@ -8027,10 +8972,10 @@ function attemptFire() {
         return;
     }
 
-    if (PLAYER.class === 'Mage' && PLAYER.mana < 4) return;
-    if (PLAYER.class === 'Mage') PLAYER.mana -= 4;
+    if (PLAYER.class === 'Mage' && PLAYER.mana < 2) return;
+    if (PLAYER.class === 'Mage') PLAYER.mana -= 2;
     
-    const baseCooldown = PLAYER.class === 'Archer' ? 0.15 : 0.25;
+    const baseCooldown = PLAYER.class === 'Archer' ? 0.14 : 0.22;
     PLAYER.fireCooldown = baseCooldown / EFFECTS.fireRateMult;
 
     playerMesh.updateMatrixWorld(true);
@@ -8117,39 +9062,41 @@ class Enemy {
         this.isBoss = false;
         this.stunTimer = 0;
         this.freezeTimer = 0;
+        this.attackCooldown = 0;
+        const rushMult = GAME.mode === 'rush' ? 0.78 : 1.0;
 
         if (type.startsWith('boss_')) {
             this.isBoss = true;
             this.mesh = new THREE.Mesh(geoBoss, matBoss);
             this.hitRadius = 3.0; this.height = 6.0;
-            this.hp = 500 + GAME.wave * 150;
+            this.hp = Math.round((360 + GAME.wave * 85) * rushMult);
             this.maxHp = this.hp;
-            this.speed = 8.5;
-            this.damage = 25 + GAME.wave * 2;
+            this.speed = 5.4;
+            this.damage = 20 + Math.round(GAME.wave * 1.5);
             this.mesh.position.y = 3.0;
             this.name = type === 'boss_slimeking' ? 'King Slime' : (type === 'boss_necromancer' ? 'Malakar the Void Lich' : 'Gorgar the Orc Warlord');
         } else if (type === 'orc') {
             this.mesh = new THREE.Mesh(geoOrc, matOrc);
             this.hitRadius = 1.6; this.height = 3.5;
-            this.hp = 70 + GAME.wave * 15;
+            this.hp = Math.round((48 + GAME.wave * 9) * rushMult);
             this.maxHp = this.hp;
-            this.speed = 8.5;
-            this.damage = 18;
+            this.speed = 5.0;
+            this.damage = 14;
             this.mesh.position.y = 1.75;
         } else if (type === 'slime') {
             this.mesh = new THREE.Mesh(geoSlime, matSlime);
             this.hitRadius = 1.3; this.height = 2;
-            this.hp = 35 + GAME.wave * 8;
+            this.hp = Math.round((26 + GAME.wave * 6) * rushMult);
             this.maxHp = this.hp;
-            this.speed = 11;
-            this.damage = 12;
+            this.speed = 6.0;
+            this.damage = 10;
             this.mesh.position.y = 1.5;
         } else {
             this.mesh = new THREE.Mesh(geoCube, matCube);
             this.hitRadius = 0.8; this.height = 1.0;
-            this.hp = 15 + GAME.wave * 5;
+            this.hp = Math.round((13 + GAME.wave * 3.5) * rushMult);
             this.maxHp = this.hp;
-            this.speed = 15;
+            this.speed = 7.4;
             this.damage = 6;
             this.mesh.position.y = 0.5;
         }
@@ -8163,6 +9110,7 @@ class Enemy {
 
     update(dt, playerPos) {
         if (GAME.isDowned) return;
+        if (this.attackCooldown > 0) this.attackCooldown -= dt;
 
         // Dungeon Mob Aggro Check
         if (this.isDungeonMob && !this.isAggroed) {
@@ -8197,7 +9145,7 @@ class Enemy {
                 if (!c.isDowned) {
                     const d = this.mesh.position.distanceTo(c.mesh.position);
                     // Tanks get higher aggro weight
-                    const weightedDist = c.role === 'Tank' ? d * 0.75 : d;
+                    const weightedDist = c.role === 'Tank' ? d * 0.72 : d;
                     if (weightedDist < minTargetDist) {
                         minTargetDist = weightedDist;
                         targetPos = c.mesh.position;
@@ -8209,26 +9157,29 @@ class Enemy {
 
         const dir = new THREE.Vector3(targetPos.x - this.mesh.position.x, 0, targetPos.z - this.mesh.position.z);
         const dist = dir.length();
-        dir.normalize();
+        if (dist > 0.0001) dir.normalize();
 
-        if (dist > this.hitRadius + 1.0) {
+        if (dist > this.hitRadius + 1.05) {
             this.mesh.position.addScaledVector(dir, this.speed * dt);
             this.mesh.lookAt(targetPos.x, this.mesh.position.y, targetPos.z);
-        } else {
+        } else if (this.attackCooldown <= 0) {
+            this.attackCooldown = this.isBoss ? 1.25 : 1.05;
+
             if (targetCompanion) {
-                // Attack Companion
+                // Attack Companion on cooldown without suiciding!
                 targetCompanion.takeDamage(this.damage);
-                this.takeDamage(9999, false);
+                if (!this.isBoss) {
+                    this.mesh.position.addScaledVector(dir, -1.8);
+                }
                 return;
             }
 
             if (PLAYER.invulnerableTimer && PLAYER.invulnerableTimer > 0) {
-                // Invulnerable during dash, ultimate or purifying ward
                 return;
             }
             let rawDmg = this.damage;
             if (PERM.damageReduction > 0) {
-                rawDmg = Math.max(1, rawDmg - PERM.damageReduction);
+                rawDmg = Math.max(2, rawDmg - PERM.damageReduction);
             }
             let dmg = rawDmg;
             if (GAME.shield > 0) {
@@ -8252,8 +9203,12 @@ class Enemy {
                 }
             }
 
+            // Step-back recoil for non-bosses so enemies don't stack inside the player
+            if (!this.isBoss && this.hp > 0) {
+                this.mesh.position.addScaledVector(dir, -2.0);
+            }
+
             updateGUI();
-            this.takeDamage(9999, false); 
         }
 
         if (EFFECTS.auraDamage > 0 && dist < 12) {
@@ -8269,7 +9224,7 @@ class Enemy {
         if (this.isDungeonMob && !this.isAggroed) {
             this.isAggroed = true;
             enemies.forEach(other => {
-                if (other.isDungeonMob && other.chamberIdx === this.chamberIdx) {
+                if (other.isDungeonMob && other.chamberIdx === this.chamberIdx && other.pack === this.pack) {
                     other.isAggroed = true;
                 }
             });
@@ -8282,8 +9237,10 @@ class Enemy {
             scene.remove(this.mesh);
             createImpact(this.mesh.position, this.mesh.material.color ? this.mesh.material.color.getHex() : 0xffffff);
             
-            PLAYER.exp += this.isBoss ? 100 : (this.type === 'orc' ? 18 : (this.type === 'slime' ? 12 : 6));
-            GAME.score += this.isBoss ? 200 : 10;
+            const modeExpMult = GAME.mode === 'rush' ? 1.6 : (GAME.mode === 'rift' ? 1.45 : 1.0);
+            const baseExp = this.isBoss ? 140 : (this.isMiniBoss ? 65 : (this.type === 'orc' ? 28 : (this.type === 'slime' ? 18 : 10)));
+            PLAYER.exp += Math.round(baseExp * modeExpMult);
+            GAME.score += this.isBoss ? 250 : (this.isMiniBoss ? 100 : 12);
             GAME.kills++;
             GAME.enemiesKilled++;
 
@@ -8327,20 +9284,25 @@ class Enemy {
 
             if (this.isDungeonMob) {
                 // Dungeon Loot Drop System
-                const lootChance = this.isBoss ? 1.0 : (this.isMiniBoss ? 1.0 : 0.38);
+                const lootChance = this.isBoss ? 1.0 : (this.isMiniBoss ? 1.0 : 0.42);
                 if (Math.random() < lootChance) {
                     spawnDungeonLootDrop(this.mesh.position.x, this.mesh.position.z, this.type, this.isBoss || this.isMiniBoss);
                 }
                 new Item(this.mesh.position.x, this.mesh.position.z, 'gold');
-                if (Math.random() < 0.25) new Item(this.mesh.position.x + 1, this.mesh.position.z, 'health');
+                if (Math.random() < 0.35 || PLAYER.hp < PLAYER.maxHp * 0.65) {
+                    new Item(this.mesh.position.x + 1, this.mesh.position.z, 'health');
+                }
             } else if (!IS_MULTIPLAYER) {
-                const dropRate = 0.28 + PERM.dropBonus;
-                if (Math.random() < dropRate || this.isBoss) {
+                const dropRate = 0.42 + PERM.dropBonus;
+                if (Math.random() < dropRate || this.isBoss || this.isMiniBoss) {
                     new Item(this.mesh.position.x, this.mesh.position.z);
                 }
-                if (this.isBoss) {
+                if (this.isBoss || this.isMiniBoss) {
                     new Item(this.mesh.position.x + 2, this.mesh.position.z, 'gold');
-                    new Item(this.mesh.position.x - 2, this.mesh.position.z, 'gold');
+                    new Item(this.mesh.position.x - 2, this.mesh.position.z, 'health');
+                    spawnDungeonLootDrop(this.mesh.position.x, this.mesh.position.z, this.type, this.isBoss);
+                } else if (this.type === 'orc' && Math.random() < 0.08) {
+                    spawnDungeonLootDrop(this.mesh.position.x, this.mesh.position.z, this.type, false);
                 }
                 if (PLAYER.class === 'Mage' && Math.random() < 0.35) {
                     new Item(this.mesh.position.x, this.mesh.position.z, 'mana');
@@ -8366,13 +9328,16 @@ class Item {
         
         let type = typeHint;
         if (!type) {
-            if(r < 0.20) type = 'health';
-            else if(r < 0.35 && PLAYER.class === 'Mage') type = 'mana';
-            else if(r < 0.60) type = 'gold';
-            else if(r < 0.70) type = 'maxhp';
-            else if(r < 0.80) type = 'magnet';
-            else if(r < 0.90) type = 'bomb';
-            else type = 'gold';
+            const lowHp = PLAYER.hp < PLAYER.maxHp * 0.65;
+            const lowMana = PLAYER.class === 'Mage' && PLAYER.mana < PLAYER.maxMana * 0.6;
+            if (lowHp && r < 0.40) type = 'health';
+            else if (lowMana && r < 0.35) type = 'mana';
+            else if (r < 0.26) type = 'health';
+            else if (r < 0.40 && PLAYER.class === 'Mage') type = 'mana';
+            else if (r < 0.72) type = 'gold';
+            else if (r < 0.82) type = 'maxhp';
+            else if (r < 0.92) type = 'magnet';
+            else type = 'bomb';
         }
         this.type = type;
 
@@ -8395,12 +9360,17 @@ class Item {
         this.mesh.rotation.y += dt * 3;
         if(this.type === 'maxhp') this.mesh.rotation.x += dt * 2;
         
+        const dist = this.mesh.position.distanceTo(playerPos);
         if (this.magnetized) {
             const dir = new THREE.Vector3().subVectors(playerPos, this.mesh.position).normalize();
             this.mesh.position.addScaledVector(dir, 85 * dt);
+        } else if (dist < Math.max(11.5, PERM.pickupRadius * 1.9)) {
+            // Smooth proximity pull so items naturally gravitate toward nearby players
+            const dir = new THREE.Vector3().subVectors(playerPos, this.mesh.position).normalize();
+            this.mesh.position.addScaledVector(dir, 26 * dt);
         }
 
-        if (this.mesh.position.distanceTo(playerPos) < PERM.pickupRadius) {
+        if (dist < PERM.pickupRadius) {
             if (IS_MULTIPLAYER && this.id) {
                 WS.send(JSON.stringify({ type: 'COLLECT_ITEM', itemId: this.id }));
             } else {
@@ -8414,17 +9384,17 @@ class Item {
 
 function applyItemEffect(type) {
     if(type === 'health') { 
-        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + 50); 
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + 55); 
         SFX.item(); 
-        logMessage("+50 HP", "#ef4444"); 
+        logMessage("+55 HP", "#ef4444"); 
     }
     if(type === 'mana') { 
-        PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + 50); 
+        PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + 55); 
         SFX.item(); 
-        logMessage("+50 Mana", "#38bdf8"); 
+        logMessage("+55 Mana", "#38bdf8"); 
     }
     if(type === 'gold') { 
-        const g = Math.round(15 * PERM.goldMult); 
+        const g = Math.round((22 + (GAME.wave || 1) * 3) * PERM.goldMult); 
         GAME.gold += g; 
         trackQuestProgress('gold', g);
         SFX.coin(); 
@@ -8484,7 +9454,10 @@ function checkLevelUp() {
     if (PLAYER.exp >= PLAYER.expNeeded) {
         PLAYER.level++;
         PLAYER.exp -= PLAYER.expNeeded;
-        PLAYER.expNeeded = Math.floor(PLAYER.expNeeded * 1.45);
+        PLAYER.expNeeded = Math.floor(PLAYER.expNeeded * 1.32);
+        SAVE.talentPoints = (SAVE.talentPoints || 0) + 1;
+        writeSave();
+        PLAYER.hp = Math.min(PLAYER.maxHp, PLAYER.hp + Math.round(PLAYER.maxHp * 0.25));
         triggerLevelUp();
     }
 }
@@ -8627,7 +9600,19 @@ function updateGUI() {
         }
     }
 
-    // --- BOTTOM ACTION BAR (SLOTS 1 - 5) ---
+    // --- BOTTOM ACTION BAR (SLOTS 1 - 5) WITH CUSTOM SPELL LOADOUT & KEYBINDS ---
+    const kb = SAVE.keybinds || { slot1: 'Digit1', slot2: 'Space', slot3: 'KeyQ', slot4: 'KeyE', slot5: 'KeyR' };
+    const k1 = document.getElementById('skill-key-1');
+    const k2 = document.getElementById('skill-key-2');
+    const k3 = document.getElementById('skill-key-3');
+    const k4 = document.getElementById('skill-key-4');
+    const k5 = document.getElementById('skill-key-5');
+    if (k1) k1.innerText = formatKeyCode(kb.slot1);
+    if (k2) k2.innerText = formatKeyCode(kb.slot2);
+    if (k3) k3.innerText = formatKeyCode(kb.slot3);
+    if (k4) k4.innerText = formatKeyCode(kb.slot4);
+    if (k5) k5.innerText = formatKeyCode(kb.slot5);
+
     // Slot 1: Primary Attack
     const s1Icon = document.getElementById('skill-icon-1');
     const s1Name = document.getElementById('skill-name-1');
@@ -8641,7 +9626,7 @@ function updateGUI() {
     }
     if (s1Cd && s1Btn) {
         if (PLAYER.fireCooldown > 0) {
-            const fireMax = PLAYER.class === 'Archer' ? 0.15 : (PLAYER.class === 'Warrior' ? 0.28 : 0.25);
+            const fireMax = PLAYER.class === 'Archer' ? 0.14 : (PLAYER.class === 'Warrior' ? 0.28 : 0.22);
             const pct = Math.min(100, (PLAYER.fireCooldown / fireMax) * 100);
             s1Cd.style.height = pct + '%';
             s1Btn.classList.remove('ready-glow');
@@ -8653,101 +9638,113 @@ function updateGUI() {
         }
     }
 
-    // Slot 2: Tactical Skill
+    // Slot 2: Tactical Mobility Ability (from Ability Talent Tree)
+    const eqTac = getEquippedAbilityNode(PLAYER.class, 'tactical');
     const s2Icon = document.getElementById('skill-icon-2');
     const s2Name = document.getElementById('skill-name-2');
     const s2Cd = document.getElementById('skill-cd-2');
     const s2CdText = document.getElementById('skill-cd-text-2');
     const s2Btn = document.getElementById('skill-slot-2');
-    if (s2Icon && s2Name) {
-        if (PLAYER.class === 'Warrior') { s2Icon.innerText = '🛡️'; s2Name.innerText = 'Charge'; }
-        else if (PLAYER.class === 'Mage') { s2Icon.innerText = '✨'; s2Name.innerText = 'Blink'; }
-        else { s2Icon.innerText = '💨'; s2Name.innerText = 'Roll'; }
+    if (s2Icon && s2Name && eqTac && eqTac.node) {
+        s2Icon.innerText = eqTac.node.icon;
+        s2Name.innerText = eqTac.node.shortName || eqTac.node.name;
+        if (s2Btn) s2Btn.title = `${eqTac.node.name} [${formatKeyCode(kb.slot2)}] — ${eqTac.node.desc}`;
     }
     if (s2Cd && s2CdText && s2Btn) {
         const tMax = PLAYER.tacticalMaxCooldown || 5.0;
         if (PLAYER.tacticalCooldown > 0) {
             const pct = Math.min(100, (PLAYER.tacticalCooldown / tMax) * 100);
             s2Cd.style.height = pct + '%';
+            s2CdText.style.display = 'block';
             s2CdText.innerText = `${PLAYER.tacticalCooldown.toFixed(1)}s`;
             s2Btn.classList.remove('ready-glow');
         } else {
             s2Cd.style.height = '0%';
+            s2CdText.style.display = 'none';
             s2CdText.innerText = '';
             s2Btn.classList.add('ready-glow');
         }
     }
 
-    // Slot 3: Class Skill 1
+    // Slot 3: Core Spell 1 (from Ability Talent Tree)
+    const eqSk1 = getEquippedAbilityNode(PLAYER.class, 'skill1');
     const s3Icon = document.getElementById('skill-icon-3');
     const s3Name = document.getElementById('skill-name-3');
     const s3Cd = document.getElementById('skill-cd-3');
     const s3CdText = document.getElementById('skill-cd-text-3');
     const s3Btn = document.getElementById('skill-slot-3');
-    if (s3Icon && s3Name) {
-        if (PLAYER.class === 'Warrior') { s3Icon.innerText = '🌀'; s3Name.innerText = 'Whirlwind'; }
-        else if (PLAYER.class === 'Mage') { s3Icon.innerText = '🔮'; s3Name.innerText = 'Nova'; }
-        else { s3Icon.innerText = '🎯'; s3Name.innerText = 'Ballista'; }
+    if (s3Icon && s3Name && eqSk1 && eqSk1.node) {
+        s3Icon.innerText = eqSk1.node.icon;
+        s3Name.innerText = eqSk1.node.shortName || eqSk1.node.name;
+        if (s3Btn) s3Btn.title = `${eqSk1.node.name} [${formatKeyCode(kb.slot3)}] — ${eqSk1.node.desc}`;
     }
     if (s3Cd && s3CdText && s3Btn) {
-        const sk1Max = PLAYER.skill1MaxCooldown || 4.2;
+        const sk1Max = PLAYER.skill1MaxCooldown || 4.0;
         if (PLAYER.skill1Cooldown > 0) {
             const pct = Math.min(100, (PLAYER.skill1Cooldown / sk1Max) * 100);
             s3Cd.style.height = pct + '%';
+            s3CdText.style.display = 'block';
             s3CdText.innerText = `${PLAYER.skill1Cooldown.toFixed(1)}s`;
             s3Btn.classList.remove('ready-glow');
         } else {
             s3Cd.style.height = '0%';
+            s3CdText.style.display = 'none';
             s3CdText.innerText = '';
             s3Btn.classList.add('ready-glow');
         }
     }
 
-    // Slot 4: Class Skill 2
+    // Slot 4: Mastery Spell 2 (from Ability Talent Tree)
+    const eqSk2 = getEquippedAbilityNode(PLAYER.class, 'skill2');
     const s4Icon = document.getElementById('skill-icon-4');
     const s4Name = document.getElementById('skill-name-4');
     const s4Cd = document.getElementById('skill-cd-4');
     const s4CdText = document.getElementById('skill-cd-text-4');
     const s4Btn = document.getElementById('skill-slot-4');
-    if (s4Icon && s4Name) {
-        if (PLAYER.class === 'Warrior') { s4Icon.innerText = '⚡'; s4Name.innerText = 'Thunder'; }
-        else if (PLAYER.class === 'Mage') { s4Icon.innerText = '☄️'; s4Name.innerText = 'Meteor'; }
-        else { s4Icon.innerText = '🔥'; s4Name.innerText = 'Volley'; }
+    if (s4Icon && s4Name && eqSk2 && eqSk2.node) {
+        s4Icon.innerText = eqSk2.node.icon;
+        s4Name.innerText = eqSk2.node.shortName || eqSk2.node.name;
+        if (s4Btn) s4Btn.title = `${eqSk2.node.name} [${formatKeyCode(kb.slot4)}] — ${eqSk2.node.desc}`;
     }
     if (s4Cd && s4CdText && s4Btn) {
-        const sk2Max = PLAYER.skill2MaxCooldown || 6.5;
+        const sk2Max = PLAYER.skill2MaxCooldown || 6.0;
         if (PLAYER.skill2Cooldown > 0) {
             const pct = Math.min(100, (PLAYER.skill2Cooldown / sk2Max) * 100);
             s4Cd.style.height = pct + '%';
+            s4CdText.style.display = 'block';
             s4CdText.innerText = `${PLAYER.skill2Cooldown.toFixed(1)}s`;
             s4Btn.classList.remove('ready-glow');
         } else {
             s4Cd.style.height = '0%';
+            s4CdText.style.display = 'none';
             s4CdText.innerText = '';
             s4Btn.classList.add('ready-glow');
         }
     }
 
-    // Slot 5: Ultimate Ability
+    // Slot 5: Ultimate Ability (from Ability Talent Tree)
+    const eqUlt = getEquippedAbilityNode(PLAYER.class, 'ultimate');
     const s5Icon = document.getElementById('skill-icon-5');
     const s5Name = document.getElementById('skill-name-5');
     const s5Cd = document.getElementById('skill-cd-5');
     const s5CdText = document.getElementById('skill-cd-text-5');
     const s5Btn = document.getElementById('skill-slot-5');
-    if (s5Icon && s5Name) {
-        if (PLAYER.class === 'Warrior') { s5Icon.innerText = '💥'; s5Name.innerText = 'Colossus'; }
-        else if (PLAYER.class === 'Mage') { s5Icon.innerText = '❄️'; s5Name.innerText = 'Blizzard'; }
-        else { s5Icon.innerText = '🏹'; s5Name.innerText = 'Storm'; }
+    if (s5Icon && s5Name && eqUlt && eqUlt.node) {
+        s5Icon.innerText = eqUlt.node.icon;
+        s5Name.innerText = eqUlt.node.shortName || eqUlt.node.name;
+        if (s5Btn) s5Btn.title = `${eqUlt.node.name} [${formatKeyCode(kb.slot5)}] — ${eqUlt.node.desc}`;
     }
     if (s5Cd && s5CdText && s5Btn) {
-        const ultMax = PLAYER.ultMaxCooldown || 20.0;
+        const ultMax = PLAYER.ultMaxCooldown || 18.0;
         if (PLAYER.ultCooldown > 0) {
             const pct = Math.min(100, (PLAYER.ultCooldown / ultMax) * 100);
             s5Cd.style.height = pct + '%';
+            s5CdText.style.display = 'block';
             s5CdText.innerText = `${Math.ceil(PLAYER.ultCooldown)}s`;
             s5Btn.classList.remove('ready-glow');
         } else {
             s5Cd.style.height = '0%';
+            s5CdText.style.display = 'none';
             s5CdText.innerText = 'READY';
             s5Btn.classList.add('ready-glow');
         }
@@ -8782,9 +9779,10 @@ function completeChallengeVictory() {
     GAME.challengeCompletePending = false;
     GAME.state = 'CHALLENGE_VICTORY';
     const goldBanked = GAME.gold;
-    const bonusEssence = GAME.mode === 'rift' ? 500 : 200 + Math.floor(GAME.kills * 2);
+    const bonusEssence = GAME.mode === 'rift' ? 500 : 250 + Math.floor(GAME.kills * 2.5);
     GAME.score += bonusEssence;
     SAVE.essence += goldBanked + bonusEssence;
+    SAVE.talentPoints = (SAVE.talentPoints || 0) + 2; // +2 Talent Points for completing Rift Trial or Rift Rush!
     writeSave();
     saveScoreToLeaderboard();
     SFX.lootLegendary();
@@ -8799,7 +9797,7 @@ function completeChallengeVictory() {
     const victoryScreen = document.getElementById('challenge-victory-screen');
 
     if (title) title.innerText = GAME.mode === 'rift' ? t('rift_victory_title', '🌀 RIFT SEALED!') : t('rush_victory_title', '⏱️ RUSH SURVIVED!');
-    if (subtitle) subtitle.innerText = t('challenge_victory_subtitle', 'The realm is safe—for now. Your run rewards are ready.');
+    if (subtitle) subtitle.innerText = t('challenge_victory_subtitle', 'The realm is safe—for now. Your run rewards (+2 🌟 Talent Points) are ready.');
     if (modeLabel) modeLabel.innerText = GAME.mode === 'rift' ? t('mode_rift', 'Rift Trial') : t('mode_rush', 'Rift Rush');
     if (goldEl) goldEl.innerText = `+${goldBanked}`;
     if (essenceEl) essenceEl.innerText = `+${bonusEssence}`;
@@ -8815,23 +9813,54 @@ function completeChallengeVictory() {
 function spawnSoloWaveEnemy() {
     const playerPos = playerMesh.position;
     const angle = Math.random() * Math.PI * 2;
-    const dist = 45 + Math.random() * 35; 
+    // Spawn closer in Rush and Rift modes so waves flow briskly without distant stragglers
+    const minDist = GAME.mode === 'rush' ? 22 : (GAME.mode === 'rift' ? 26 : 32);
+    const rangeDist = GAME.mode === 'rush' ? 16 : (GAME.mode === 'rift' ? 18 : 22);
+    const dist = minDist + Math.random() * rangeDist;
     const x = playerPos.x + Math.cos(angle) * dist;
     const z = playerPos.z + Math.sin(angle) * dist;
 
-    if (GAME.isBossWave && !GAME.bossSpawned && GAME.enemiesSpawned >= Math.floor(GAME.totalWaveEnemies * 0.4)) {
+    if (GAME.isBossWave && !GAME.bossSpawned && GAME.enemiesSpawned >= Math.floor(GAME.totalWaveEnemies * 0.35)) {
         GAME.bossSpawned = true;
         let type = 'boss_warlord';
-        if (GAME.wave === 10) type = 'boss_slimeking';
+        if (GAME.mode === 'rift') type = 'boss_necromancer';
+        else if (GAME.wave === 10) type = 'boss_slimeking';
         else if (GAME.wave >= 15) type = 'boss_necromancer';
-        new Enemy(x, z, type);
+        const boss = new Enemy(x, z, type);
+        if (GAME.mode === 'rift') {
+            boss.name = 'Vaelgor the Rift Archon';
+            boss.hp = 520 + (SAVE.upgrades.power || 0) * 35;
+            boss.maxHp = boss.hp;
+        }
         SFX.bossRoar();
+        GAME.enemiesSpawned++;
+    } else if (GAME.mode === 'rift' && GAME.wave === 3 && !GAME.bossSpawned && GAME.enemiesSpawned >= Math.floor(GAME.totalWaveEnemies * 0.45)) {
+        // Mid-run Rift Herald Mini-Boss on Wave 3
+        GAME.bossSpawned = true;
+        const herald = new Enemy(x, z, 'orc');
+        herald.isMiniBoss = true;
+        herald.name = 'Rift Herald';
+        herald.mesh.scale.set(1.5, 1.5, 1.5);
+        herald.hp = 240;
+        herald.maxHp = 240;
+        spawnFloatingText(herald.mesh.position, '🌀 RIFT HERALD!', '#c084fc', 18, true);
+        GAME.enemiesSpawned++;
+    } else if (GAME.mode === 'rush' && GAME.wave % 3 === 0 && !GAME.bossSpawned && GAME.enemiesSpawned >= Math.floor(GAME.totalWaveEnemies * 0.45)) {
+        // Golden Rift Pinata Elite every 3rd surge in Rush mode
+        GAME.bossSpawned = true;
+        const pinata = new Enemy(x, z, 'slime');
+        pinata.isMiniBoss = true;
+        pinata.name = 'Golden Rift Pinata';
+        pinata.mesh.scale.set(1.6, 1.6, 1.6);
+        pinata.hp = 160 + GAME.wave * 18;
+        pinata.maxHp = pinata.hp;
+        spawnFloatingText(pinata.mesh.position, '🪙 GOLDEN RIFT PINATA!', '#fbbf24', 18, true);
         GAME.enemiesSpawned++;
     } else {
         const r = Math.random();
         let type = 'bluecube';
         if (GAME.wave >= 2 && r < 0.35) type = 'slime';
-        else if (GAME.wave >= 3 && r < 0.70) type = 'orc';
+        else if (GAME.wave >= 3 && r < 0.65) type = 'orc';
         new Enemy(x, z, type);
         GAME.enemiesSpawned++;
     }
@@ -9022,7 +10051,7 @@ function animate() {
         if (PLAYER.fireCooldown > 0) PLAYER.fireCooldown -= dt;
         
         if (PLAYER.class === 'Mage' && PLAYER.mana < PLAYER.maxMana) {
-            PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + dt * 16);
+            PLAYER.mana = Math.min(PLAYER.maxMana, PLAYER.mana + dt * (22 + (PERM.manaRegenPerSec || 0)));
             updateGUI();
         }
 
@@ -9190,6 +10219,11 @@ function animate() {
             chests[i].update(dt, playerMesh.position);
         }
 
+        // Update Ground Equipment Loot Beams across all modes
+        for (let i = dungeonLootDrops.length - 1; i >= 0; i--) {
+            dungeonLootDrops[i].update(dt, playerMesh.position);
+        }
+
         if (GAME.mode === 'dungeon') {
             const playerPos = playerMesh.position;
             for (let i = enemies.length - 1; i >= 0; i--) {
@@ -9234,7 +10268,7 @@ function animate() {
             enemies.forEach(e => {
                 if (e.targetPos) e.mesh.position.lerp(e.targetPos, 0.35);
                 if (e.mesh.position.distanceTo(playerMesh.position) < e.hitRadius + 1.0 && !GAME.isDowned && PLAYER.invulnerableTimer <= 0) {
-                    let dmg = e.damage * dt * 2.0;
+                    let dmg = e.damage * dt * 1.5;
                     if (GAME.shield > 0) {
                         const absorb = Math.min(GAME.shield, dmg);
                         GAME.shield -= absorb;
@@ -9255,14 +10289,16 @@ function animate() {
                 if (items[i].life === -1) items.splice(i, 1);
             }
         } else {
-            // Solo Wave Management
+            // Solo Wave Management (Horde, Rift Trial & Rift Rush)
             if (GAME.waveState === 'PREPARING') {
                 GAME.waveTimer -= dt;
                 updateWaveHUD();
                 if (GAME.waveTimer <= 0) {
                     GAME.waveState = 'WAVE_ACTIVE';
-                    GAME.isBossWave = (GAME.wave % 5 === 0);
-                    GAME.totalWaveEnemies = GAME.mode === 'rift' ? 20 + GAME.wave * 10 : (GAME.mode === 'rush' ? 18 + GAME.wave * 9 : 15 + GAME.wave * 8);
+                    GAME.isBossWave = (GAME.mode === 'rift') ? (GAME.wave === GAME.riftTotalWaves) : (GAME.wave % 5 === 0);
+                    GAME.totalWaveEnemies = GAME.mode === 'rift'
+                        ? (12 + GAME.wave * 5)
+                        : (GAME.mode === 'rush' ? (12 + GAME.wave * 4) : (12 + GAME.wave * 6));
                     GAME.enemiesSpawned = 0;
                     GAME.enemiesKilled = 0;
                     GAME.bossSpawned = false;
@@ -9278,7 +10314,7 @@ function animate() {
                 if (GAME.waveTimer <= 0) {
                     GAME.wave++;
                     GAME.waveState = 'PREPARING';
-                    GAME.waveTimer = GAME.mode === 'rush' ? 2 : 4;
+                    GAME.waveTimer = GAME.mode === 'rush' ? 1.5 : (GAME.mode === 'rift' ? 2.5 : 3.5);
                     updateWaveHUD();
                 }
             } else if (GAME.waveState === 'WAVE_ACTIVE') {
@@ -9288,22 +10324,32 @@ function animate() {
                     else enemies[i].update(dt, playerPos);
                 }
 
-                const maxActive = Math.min(80, 20 + GAME.wave * 5);
-                const spawnChance = GAME.mode === 'rush' ? 0.62 : 0.35;
+                const maxActive = GAME.mode === 'rush' ? Math.min(45, 18 + GAME.wave * 3) : Math.min(60, 16 + GAME.wave * 4);
+                const spawnChance = GAME.mode === 'rush' ? 0.34 : 0.28;
                 if (enemies.length < maxActive && GAME.enemiesSpawned < GAME.totalWaveEnemies && Math.random() < spawnChance) {
                     spawnSoloWaveEnemy();
                 }
 
-                // Check Wave Completion
-                if (GAME.enemiesSpawned >= GAME.totalWaveEnemies && enemies.length === 0) {
+                // Check Wave Completion (in Rush mode, advance automatically when <= 2 stragglers remain so action never stalls!)
+                const waveFinished = (GAME.mode === 'rush')
+                    ? (GAME.enemiesSpawned >= GAME.totalWaveEnemies && enemies.length <= 2)
+                    : (GAME.enemiesSpawned >= GAME.totalWaveEnemies && enemies.length === 0);
+
+                if (waveFinished) {
                     GAME.waveState = 'WAVE_CLEAR';
-                    GAME.waveTimer = GAME.mode === 'rush' ? 2 : 12;
-                    const bonusGold = 50 + GAME.wave * 25;
-                    const bonusExp = 40 + GAME.wave * 20;
+                    GAME.waveTimer = GAME.mode === 'rush' ? 1.5 : (GAME.mode === 'rift' ? 6 : 10);
+                    const bonusGold = 65 + GAME.wave * 30;
+                    const bonusExp = 55 + GAME.wave * 25;
                     GAME.gold += bonusGold;
                     PLAYER.exp += bonusExp;
                     SAVE.essence += Math.floor(bonusGold * 0.5);
                     writeSave();
+                    if (GAME.mode === 'rush') {
+                        triggerMagnet();
+                        PLAYER.tacticalCooldown = Math.max(0, (PLAYER.tacticalCooldown || 0) - 2.5);
+                        PLAYER.skill1Cooldown = Math.max(0, (PLAYER.skill1Cooldown || 0) - 2.5);
+                        PLAYER.skill2Cooldown = Math.max(0, (PLAYER.skill2Cooldown || 0) - 2.5);
+                    }
                     checkLevelUp();
                     trackQuestProgress('waves', 1);
                     trackQuestProgress('gold', bonusGold);

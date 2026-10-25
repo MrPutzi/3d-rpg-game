@@ -23,7 +23,7 @@ function startWave(room) {
     room.waveState = 'WAVE_ACTIVE';
     room.isBossWave = (room.wave % 5 === 0);
     const playerCount = Math.max(1, room.players.size);
-    room.totalWaveEnemies = Math.min(180, 15 + room.wave * 8 + (playerCount - 1) * 12);
+    room.totalWaveEnemies = Math.min(140, 12 + room.wave * 6 + (playerCount - 1) * 9);
     room.enemiesSpawned = 0;
     room.enemiesKilled = 0;
     room.bossSpawned = false;
@@ -279,18 +279,18 @@ wss.on('connection', (ws, req) => {
                     room.enemiesKilled++;
 
                     // Drop item
-                    if (Math.random() < (enemy.isBoss ? 1.0 : 0.28)) {
+                    if (Math.random() < (enemy.isBoss ? 1.0 : 0.42)) {
                         const itemId = 'i_' + Math.random().toString(36).substr(2, 9);
                         const r = Math.random();
                         let type = 'gold';
                         if (enemy.isBoss) {
                             type = 'maxhp';
-                        } else if (r < 0.20) type = 'health';
-                        else if (r < 0.35) type = 'mana';
-                        else if (r < 0.60) type = 'gold';
-                        else if (r < 0.70) type = 'maxhp';
-                        else if (r < 0.80) type = 'magnet';
-                        else if (r < 0.90) type = 'bomb';
+                        } else if (r < 0.28) type = 'health';
+                        else if (r < 0.42) type = 'mana';
+                        else if (r < 0.72) type = 'gold';
+                        else if (r < 0.82) type = 'maxhp';
+                        else if (r < 0.92) type = 'magnet';
+                        else type = 'bomb';
                         room.items.set(itemId, { id: itemId, x: enemy.x, z: enemy.z, type });
                     }
 
@@ -424,14 +424,14 @@ setInterval(() => {
             for (const p of room.players.values()) totalLevel += (p.level || 1);
             const avgLevel = totalLevel / room.players.size;
 
-            const maxActiveAtOnce = Math.min(80, 20 + room.wave * 5 + room.players.size * 10);
+            const maxActiveAtOnce = Math.min(60, 16 + room.wave * 4 + room.players.size * 8);
 
-            if (room.enemies.size < maxActiveAtOnce && room.enemiesSpawned < room.totalWaveEnemies && Math.random() < 0.35) {
+            if (room.enemies.size < maxActiveAtOnce && room.enemiesSpawned < room.totalWaveEnemies && Math.random() < 0.28) {
                 const livingPlayers = Array.from(room.players.values()).filter(p => !p.isDowned && p.hp > 0);
                 if (livingPlayers.length > 0) {
                     const target = livingPlayers[Math.floor(Math.random() * livingPlayers.length)];
                     const angle = Math.random() * Math.PI * 2;
-                    const dist = 45 + Math.random() * 35;
+                    const dist = 32 + Math.random() * 22;
                     const eid = 'e_' + Math.random().toString(36).substr(2, 9);
                     
                     // Boss Spawn check
@@ -439,15 +439,15 @@ setInterval(() => {
                         room.bossSpawned = true;
                         let bossType = 'boss_warlord';
                         let bossName = 'Gorgar the Orc Warlord';
-                        let bossHp = 400 + room.wave * 120 + room.players.size * 200;
+                        let bossHp = 340 + room.wave * 85 + room.players.size * 150;
                         if (room.wave === 10) {
                             bossType = 'boss_slimeking';
                             bossName = 'King Slime';
-                            bossHp = 700 + room.players.size * 300;
+                            bossHp = 580 + room.players.size * 220;
                         } else if (room.wave >= 15) {
                             bossType = 'boss_necromancer';
                             bossName = 'Malakar the Void Lich';
-                            bossHp = 1000 + room.players.size * 400;
+                            bossHp = 820 + room.players.size * 300;
                         }
 
                         room.enemies.set(eid, {
@@ -456,25 +456,25 @@ setInterval(() => {
                             name: bossName,
                             hp: bossHp,
                             maxHp: bossHp,
-                            speed: 9,
+                            speed: 5.4,
                             hitRadius: 3.0,
                             height: 5.0,
-                            damage: 25 + room.wave * 2,
+                            damage: 20 + room.wave * 1.5,
                             x: target.x + Math.cos(angle) * dist,
                             z: target.z + Math.sin(angle) * dist,
                             isBoss: true
                         });
                         room.enemiesSpawned++;
                     } else {
-                        // Regular Wave Mob
+                        // Regular Wave Mob (slower speeds & balanced HP)
                         const r = Math.random();
-                        let type = 'bluecube', hp = 15 + room.wave * 6 + avgLevel * 3, speed = 15 + Math.random() * 4, hitRadius = 0.8, damage = 6 + room.wave * 1.5;
+                        let type = 'bluecube', hp = 13 + room.wave * 3.5 + avgLevel * 2, speed = 7.2 + Math.random() * 1.5, hitRadius = 0.8, damage = 5 + room.wave * 1.2;
                         if (room.wave >= 2 && r < 0.35) {
-                            type = 'slime'; hp = 35 + room.wave * 10 + avgLevel * 5; speed = 11 + Math.random() * 3; hitRadius = 1.3; damage = 12 + room.wave * 2;
-                        } else if (room.wave >= 3 && r < 0.70) {
-                            type = 'orc'; hp = 75 + room.wave * 18 + avgLevel * 8; speed = 8.5 + Math.random() * 3; hitRadius = 1.6; damage = 18 + room.wave * 3;
-                        } else if (room.wave >= 4 && r < 0.85) {
-                            type = 'skitterer'; hp = 25 + room.wave * 7; speed = 20 + Math.random() * 4; hitRadius = 0.9; damage = 10 + room.wave * 2;
+                            type = 'slime'; hp = 26 + room.wave * 6 + avgLevel * 3; speed = 5.8 + Math.random() * 1.2; hitRadius = 1.3; damage = 10 + room.wave * 1.5;
+                        } else if (room.wave >= 3 && r < 0.68) {
+                            type = 'orc'; hp = 48 + room.wave * 9 + avgLevel * 5; speed = 4.8 + Math.random() * 1.0; hitRadius = 1.6; damage = 14 + room.wave * 2.0;
+                        } else if (room.wave >= 4 && r < 0.82) {
+                            type = 'skitterer'; hp = 18 + room.wave * 5; speed = 9.0 + Math.random() * 1.5; hitRadius = 0.9; damage = 8 + room.wave * 1.5;
                         }
 
                         room.enemies.set(eid, {
