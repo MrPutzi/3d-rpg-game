@@ -1264,6 +1264,92 @@
             .panel { background: rgba(8, 15, 28, .96); }
         }
 
+    /* RPG UI SYSTEM — consistent panels, typography, cards and navigation */
+        :root { --rpg-bg:#0b1220; --rpg-panel:#111e31; --rpg-card:#19283e; --rpg-stroke:#344962; --rpg-text:#f1f5f9; --rpg-muted:#a7b8ce; --rpg-accent:#38bdf8; --rpg-radius:14px; }
+        #shop-screen, #talents-screen, #quests-screen, #leaderboard-screen,
+        #skill-screen, #boon-draft-screen {
+            background: radial-gradient(ellipse at 50% 0%, rgba(24,53,78,.97), rgba(6,13,25,.98) 70%);
+            gap: 10px; padding: max(20px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));
+            scrollbar-color: #526981 transparent;
+        }
+        #shop-screen > h1, #talents-screen h1, #quests-screen > h1,
+        #leaderboard-screen > h1, #skill-screen > h1, #boon-draft-screen > h1 {
+            font-size: clamp(1.35rem,3.3vw,1.85rem) !important; font-weight:800;
+            letter-spacing:.025em; text-shadow:none !important; margin:0 0 2px !important;
+        }
+        #shop-screen > p, #quests-screen > p, #leaderboard-screen > p,
+        #skill-screen > p, #boon-draft-screen > p {
+            color:var(--rpg-muted) !important; line-height:1.45; font-size:.85rem !important;
+            max-width:740px; margin:0 0 8px !important;
+        }
+        .shop-tabs, .talent-class-tabs, .lb-toolbar, .lb-filters {
+            display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center;
+            border-radius:var(--rpg-radius); max-width:980px;
+        }
+        .shop-tab-btn, .lb-tab-btn, .talent-tab-btn {
+            border:1px solid var(--rpg-stroke); border-radius:10px; background:var(--rpg-panel);
+            color:var(--rpg-text); min-height:40px; padding:9px 14px; margin:0;
+            box-shadow:none; transition:background .16s,border-color .16s,transform .16s;
+        }
+        .shop-tab-btn.active, .lb-tab-btn.active, .talent-tab-btn.active {
+            background:#16496a; border-color:var(--rpg-accent); box-shadow:inset 0 0 0 1px rgba(56,189,248,.25);
+        }
+        .shop-summary-bar, .lb-container, .talent-tree-col {
+            background:rgba(15,27,44,.88); border:1px solid var(--rpg-stroke);
+            border-radius:var(--rpg-radius); box-shadow:0 12px 30px rgba(0,0,0,.2);
+        }
+        .shop-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,205px),1fr)); gap:12px;
+            max-width:980px; max-height:min(56vh,620px); padding:6px; }
+        .shop-card, .talent-node-card, .skill-card, .boon-card, .quest-card {
+            background:linear-gradient(155deg,var(--rpg-card),var(--rpg-panel)) !important;
+            border:1px solid var(--rpg-stroke); border-radius:var(--rpg-radius);
+            box-shadow:0 4px 14px rgba(0,0,0,.16); color:var(--rpg-text);
+            transition:transform .16s,border-color .16s,box-shadow .16s;
+        }
+        .shop-card { padding:14px; min-height:168px; gap:10px; }
+        .shop-card:hover, .talent-node-card:not(.locked):hover, .skill-card:hover {
+            transform:translateY(-2px); border-color:var(--rpg-accent) !important;
+            box-shadow:0 9px 24px rgba(4,12,25,.4);
+        }
+        .shop-card-title, .talent-node-title { color:var(--rpg-text); font-weight:750; }
+        .shop-card-desc, .talent-node-desc { color:var(--rpg-muted); line-height:1.45; }
+        .shop-card button, .talent-node-card button, .skill-card button {
+            border-radius:9px; min-height:38px; font-weight:700;
+        }
+        .shop-card button:disabled, .talent-node-card button:disabled { opacity:.55; cursor:not-allowed; }
+        .talent-node-card.locked { opacity:.6; filter:saturate(.65); }
+        .talent-node-card.maxed, .shop-card.maxed { border-color:#eab308 !important; }
+        .skill-grid, .boon-grid { gap:12px; max-width:960px; }
+        .skill-card { max-width:260px; padding:16px; text-align:left; }
+        #shop-search { min-height:40px; border:1px solid var(--rpg-stroke); border-radius:10px;
+            background:var(--rpg-panel); color:var(--rpg-text); padding:9px 12px; }
+        #shop-screen button:focus-visible, #talents-screen button:focus-visible,
+        #quests-screen button:focus-visible, #leaderboard-screen button:focus-visible {
+            outline:3px solid #fbbf24; outline-offset:2px;
+        }
+        /* Language is a utility, not a main menu feature. */
+        .lang-switcher-bar { display:inline-flex; gap:2px; align-items:center; padding:2px;
+            border:1px solid rgba(148,163,184,.2); background:rgba(7,14,26,.65);
+            border-radius:9px; }
+        .lang-switcher-bar .lang-btn { min-height:25px !important; min-width:30px;
+            padding:3px 5px !important; font-size:.68rem !important; line-height:1.1;
+            border:0; border-radius:6px; margin:0 !important; box-shadow:none !important;
+            background:transparent; color:#a7b8ce; }
+        .lang-switcher-bar .lang-btn.active { background:rgba(56,189,248,.16); color:#e0f2fe; }
+        #btn-hud-lang { min-height:28px !important; padding:4px 7px !important;
+            font-size:.67rem !important; opacity:.66; border-color:rgba(148,163,184,.25) !important;
+            box-shadow:none; }
+        #btn-hud-lang:hover, #btn-hud-lang:focus-visible { opacity:1; }
+        @media (max-width:700px) {
+            #shop-screen, #talents-screen, #quests-screen, #leaderboard-screen,
+            #skill-screen, #boon-draft-screen { padding-inline:10px; gap:8px; }
+            .shop-grid { grid-template-columns:repeat(auto-fill,minmax(min(100%,155px),1fr)); gap:8px; }
+            .shop-card { min-height:150px; padding:10px; }
+            .shop-tabs { width:100%; }
+            .shop-tab-btn { flex:1 1 130px; font-size:.77rem; }
+            .skill-card { max-width:none; }
+        }
+
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -1275,9 +1361,9 @@
             <!-- Language Switcher in Name Entry -->
             <div style="display: flex; justify-content: flex-end; margin-bottom: 8px;">
                 <div class="lang-switcher-bar">
-                    <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">🇬🇧 EN</button>
-                    <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 SK</button>
-                    <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 HU</button>
+                    <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">EN</button>
+                    <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">SK</button>
+                    <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">HU</button>
                 </div>
                 <button
                     id="btn-sprint-mobile"
@@ -1465,11 +1551,11 @@
         <!-- Header Language Bar & Identity Badge -->
         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 900px; margin-bottom: 4px;">
             <div style="font-size: 0.8rem; color: #94a3b8; display: flex; align-items: center; gap: 6px;">
-                <span>🌐 Language / Jazyk / Nyelv:</span>
+                <span title="Language / Jazyk / Nyelv" aria-hidden="true" style="font-size:.72rem;opacity:.65;">🌐</span>
                 <div class="lang-switcher-bar">
-                    <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">🇬🇧 English</button>
-                    <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 Slovenčina</button>
-                    <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 Magyar</button>
+                    <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">EN</button>
+                    <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">SK</button>
+                    <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">HU</button>
                 </div>
             </div>
 
@@ -2052,9 +2138,9 @@
         <div style="margin: 6px 0 14px 0; display: flex; align-items: center; gap: 8px;">
             <span style="font-size: 0.82rem; color: #94a3b8;">🌐 Language:</span>
             <div class="lang-switcher-bar">
-                <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">🇬🇧 EN</button>
-                <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">🇸🇰 SK</button>
-                <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">🇭🇺 HU</button>
+                <button class="lang-btn active" data-lang-btn="en" onclick="setGameLanguage('en')">EN</button>
+                <button class="lang-btn" data-lang-btn="sk" onclick="setGameLanguage('sk')">SK</button>
+                <button class="lang-btn" data-lang-btn="hu" onclick="setGameLanguage('hu')">HU</button>
             </div>
         </div>
 
