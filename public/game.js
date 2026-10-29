@@ -8730,8 +8730,19 @@ function updateClassSkills(dt) {
 class Projectile {
     constructor(pos, dir, isSpecial = false, customColor = null, customSpeed = null, customLife = null) {
         const color = customColor || CLASSES[PLAYER.class].color;
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: color }));
-        
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4),
+            new THREE.MeshBasicMaterial({ color: color, toneMapped: false }));
+        // Player projectiles get a soft additive halo; hostile shots retain their
+        // original appearance so teams can distinguish incoming fire.
+        this.shotHalo = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.65),
+            new THREE.MeshBasicMaterial({
+                color: color, transparent: true, opacity: 0.34,
+                blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+            }));
+        this.shotHalo.scale.setScalar(1.55);
+        this.mesh.add(this.shotHalo);
+        this.shotAge = 0;
+
         const r = EFFECTS.projRadius;
         if(PLAYER.class === 'Mage') this.mesh.scale.set(r, r, r);
         if(PLAYER.class === 'Archer') this.mesh.scale.set(0.25*r, 0.25*r, 1.6);
@@ -8751,6 +8762,9 @@ class Projectile {
     }
 
     update(dt) {
+        this.shotAge += dt;
+        this.shotHalo.visible = !this.isEnemyProjectile;
+        if (this.shotHalo.visible) this.shotHalo.scale.setScalar(1.55 + Math.sin(this.shotAge * 22) * 0.2);
         if (this.isEnemyProjectile) {
             this.mesh.position.addScaledVector(this.dir, this.speed * dt);
             this.mesh.rotation.y += dt * 10;
@@ -8960,7 +8974,13 @@ class Projectile {
             }
         }
     }
-    destroy() { scene.remove(this.mesh); }
+    destroy() {
+        scene.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        this.shotHalo.geometry.dispose();
+        this.shotHalo.material.dispose();
+    }
 }
 
 function attemptFire() {
