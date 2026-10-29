@@ -7825,7 +7825,18 @@ function updateClassSkills(dt) {
 class Projectile {
     constructor(pos, dir, isSpecial = false, customColor = null, customSpeed = null, customLife = null) {
         const color = customColor || CLASSES[PLAYER.class].color;
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: color }));
+        // Bright emissive core + translucent halo make every player shot
+        // readable against the dark terrain, including at a distance.
+        const coreMaterial = new THREE.MeshBasicMaterial({ color: color, toneMapped: false });
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), coreMaterial);
+        const haloMaterial = new THREE.MeshBasicMaterial({
+            color: color, transparent: true, opacity: 0.34,
+            blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+        });
+        this.shotHalo = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.65, 0.65), haloMaterial);
+        this.shotHalo.scale.setScalar(1.55);
+        this.mesh.add(this.shotHalo);
+        this.shotAge = 0;
         
         const r = EFFECTS.projRadius;
         if(PLAYER.class === 'Mage') this.mesh.scale.set(r, r, r);
@@ -7846,6 +7857,9 @@ class Projectile {
     }
 
     update(dt) {
+        this.shotAge += dt;
+        // Subtle glow pulse, while retaining the original hitbox and class silhouette.
+        this.shotHalo.scale.setScalar(1.55 + Math.sin(this.shotAge * 22) * 0.2);
         if (EFFECTS.homing > 0 && enemies.length > 0) {
             let closest = null; let minDist = 40;
             enemies.forEach(e => {
@@ -8015,7 +8029,13 @@ class Projectile {
             }
         }
     }
-    destroy() { scene.remove(this.mesh); }
+    destroy() {
+        scene.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        this.shotHalo.geometry.dispose();
+        this.shotHalo.material.dispose();
+    }
 }
 
 function attemptFire() {
