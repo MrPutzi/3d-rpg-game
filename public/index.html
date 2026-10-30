@@ -1,18 +1,49 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Realm of Ash — MMO RPG Alpha</title>
-<style>
-:root{color-scheme:dark;font-family:Inter,system-ui,sans-serif;--bg:#0c131b;--panel:#172430;--line:#324653;--gold:#eabf70}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#e5edf3}button,input{font:inherit}button{cursor:pointer;background:#263e4b;color:#eef6fb;border:1px solid #527081;border-radius:8px;padding:8px 11px}button:hover,button.active{background:#385d68;border-color:var(--gold)}button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;background:#101d27;border-bottom:1px solid var(--line)}h1{font-size:1.15rem;color:var(--gold);margin:0}h2{font-size:1rem;margin:0 0 10px;color:var(--gold)}small,.muted{color:#9fb0bb}
-main{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:12px;max-width:1500px;margin:auto;padding:12px}.world{position:relative;min-width:0;background:#0b1b19;border:1px solid #39534b;border-radius:12px;overflow:hidden}canvas{display:block;width:100%;height:auto;image-rendering:pixelated;touch-action:manipulation}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px}.sidebar{display:grid;gap:12px;align-content:start}.skills{display:grid;grid-template-columns:1fr 1fr;gap:6px}.skill{background:#223341;border:1px solid #3b5160;border-radius:8px;padding:8px;font-size:.83rem}.skill strong{float:right;color:var(--gold)}.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.hint{font-size:.78rem;color:#a7b9bf;margin-top:8px}.chat{display:grid;grid-template-rows:1fr auto;height:185px}.messages{overflow:auto;font-size:.82rem;line-height:1.55;min-height:0}.messages div{overflow-wrap:anywhere}.chat form{display:flex;gap:5px;margin-top:8px}.chat input,.login input{background:#0d1b24;color:#fff;border:1px solid #415d6a;border-radius:7px;padding:8px;min-width:0;flex:1}.login{position:absolute;inset:0;background:rgba(6,15,22,.88);display:flex;align-items:center;justify-content:center;z-index:2}.login .panel{max-width:350px;width:90%;text-align:center}.login form{display:flex;gap:7px;margin-top:12px}.stats{display:flex;justify-content:space-between;font-size:.82rem;margin:7px 0}.hp{height:9px;background:#5a2931;border-radius:5px;overflow:hidden}.hp>div{background:#dc5b5b;height:100%;width:100%}.mobile{display:none;gap:4px;justify-content:center;flex-wrap:wrap;padding:8px;background:#152630}.mobile button{min-width:58px;min-height:48px}
-@media(max-width:850px){main{grid-template-columns:1fr}.sidebar{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}.mobile{display:flex}}@media(max-width:500px){header{padding:9px}header small{font-size:.68rem}main{padding:6px;gap:7px}.panel{padding:10px}}
-</style></head>
-<body><header><h1>⚔ REALM OF ASH <small>ALPHA</small></h1><small id="status">Connecting…</small></header>
-<main><section><div class="world"><canvas id="game" width="1024" height="768" aria-label="Game world"></canvas><div id="login" class="login"><div class="panel"><h2>Enter the Realm</h2><p class="muted">Explore, fight goblins and train your skills together.</p><form id="join"><input id="name" maxlength="18" placeholder="Character name" required><button>Play</button></form><p class="hint">WASD / arrow keys to move · click a goblin to attack · click a tree or rock to gather</p></div></div></div><div class="mobile"><button data-dir="0,-1">▲</button><button data-dir="-1,0">◀</button><button data-dir="0,1">▼</button><button data-dir="1,0">▶</button></div></section>
-<aside class="sidebar"><div class="panel"><h2>Character</h2><div class="stats"><span id="char-name">Adventurer</span><span id="health">20 / 20 HP</span></div><div class="hp"><div id="hp-fill"></div></div><div class="actions"><button id="melee" class="active">⚔ Melee</button><button id="ranged">🏹 Ranged</button></div><p class="hint">Melee trains Attack + Strength. Ranged trains Ranged. Getting hit trains Defence.</p></div>
-<div class="panel"><h2>Skills</h2><div class="skills" id="skills"></div><p class="hint">Level 1–99 · XP earned on the server.</p></div>
-<div class="panel"><h2>Inventory</h2><div id="inventory" class="stats">🪙 0 gold · 🪵 0 logs · ⛏ 0 ore</div><p class="hint">Gather trees and rocks. Loot gold from goblins.</p></div>
-<div class="panel"><h2>World chat</h2><div class="chat"><div class="messages" id="messages" aria-live="polite"></div><form id="chat-form"><input id="chat-input" maxlength="120" placeholder="Say something…" autocomplete="off"><button>Send</button></form></div></div></aside></main>
-<script type="module" src="/mmo-client.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MiniScape MMO</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #1e1e1e; color: #ffff00; font-family: monospace; display: flex; justify-content: center; align-items: center; user-select: none; }
+    #game-container { display: flex; border: 4px solid #5a5245; background: #3e3529; max-width: 100%; }
+    canvas { background: #4b692f; cursor: crosshair; width: min(800px, 100%); height: auto; display: block; touch-action: manipulation; }
+    #sidebar { width: 220px; flex-shrink: 0; padding: 12px; display: flex; flex-direction: column; gap: 15px; border-left: 4px solid #5a5245; }
+    .panel { background: #2c251d; padding: 10px; border: 2px solid #5a5245; }
+    h3 { margin: 0 0 8px; color: #ff981f; font-size: 14px; text-transform: uppercase; }
+    .skill-row { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 4px; font-size: 12px; }
+    button { width: 100%; padding: 8px; margin-bottom: 5px; background: #5a5245; color: white; border: 2px solid #3e3529; cursor: pointer; font-family: monospace; font-weight: bold; }
+    button.active { background: #8b261d; border-color: #ff981f; }
+    button:focus-visible { outline: 2px solid #ffff00; outline-offset: 2px; }
+    .hint { font-size: 11px; color: #ccc; line-height: 1.5; }
+    #connection { font-size: 11px; color: #b4e6af; }
+    @media (max-width: 1050px) {
+      body { align-items: flex-start; }
+      #game-container { flex-direction: column; width: min(100%, 800px); }
+      #sidebar { width: 100%; border-left: 0; border-top: 4px solid #5a5245; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="game-container">
+    <canvas id="gameCanvas" width="800" height="600" aria-label="MiniScape herný svet"></canvas>
+    <aside id="sidebar">
+      <section class="panel">
+        <h3>Bojový štýl (XP)</h3>
+        <button id="btn-attack" class="active" type="button">Meč: Attack (Presnosť)</button>
+        <button id="btn-strength" type="button">Meč: Strength (Sila)</button>
+        <button id="btn-ranging" type="button">Luk: Ranging (Diaľka)</button>
+      </section>
+      <section class="panel"><h3>Skilly</h3><div id="skills-list"></div></section>
+      <section class="panel hint">
+        <div id="connection" role="status">Pripájam sa…</div>
+        <p>• Klikni na zem pre pohyb.<br>• Klikni na červeného Goblina pre útok.<br>• Hra beží na 600 ms tickoch ako klasické RS.</p>
+        <p>• Skilly sa zatiaľ ukladajú iba počas pripojenia. Databázu doplníme neskôr.</p>
+      </section>
+    </aside>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/client.js"></script>
+</body>
+</html>
