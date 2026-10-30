@@ -1,11 +1,11 @@
 services:
   - type: web
-    name: realm-of-ash-mmo
+    name: miniscape-mmo
     runtime: node
     plan: free
     buildCommand: npm install
     startCommand: npm start
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
