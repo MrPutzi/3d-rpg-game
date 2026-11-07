@@ -1,49 +1,35 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MiniScape MMO</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #1e1e1e; color: #ffff00; font-family: monospace; display: flex; justify-content: center; align-items: center; user-select: none; }
-    #game-container { display: flex; border: 4px solid #5a5245; background: #3e3529; max-width: 100%; }
-    canvas { background: #4b692f; cursor: crosshair; width: min(800px, 100%); height: auto; display: block; touch-action: manipulation; }
-    #sidebar { width: 220px; flex-shrink: 0; padding: 12px; display: flex; flex-direction: column; gap: 15px; border-left: 4px solid #5a5245; }
-    .panel { background: #2c251d; padding: 10px; border: 2px solid #5a5245; }
-    h3 { margin: 0 0 8px; color: #ff981f; font-size: 14px; text-transform: uppercase; }
-    .skill-row { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 4px; font-size: 12px; }
-    button { width: 100%; padding: 8px; margin-bottom: 5px; background: #5a5245; color: white; border: 2px solid #3e3529; cursor: pointer; font-family: monospace; font-weight: bold; }
-    button.active { background: #8b261d; border-color: #ff981f; }
-    button:focus-visible { outline: 2px solid #ffff00; outline-offset: 2px; }
-    .hint { font-size: 11px; color: #ccc; line-height: 1.5; }
-    #connection { font-size: 11px; color: #b4e6af; }
-    @media (max-width: 1050px) {
-      body { align-items: flex-start; }
-      #game-container { flex-direction: column; width: min(100%, 800px); }
-      #sidebar { width: 100%; border-left: 0; border-top: 4px solid #5a5245; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
-    }
-  </style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MiniScape · Živý svet</title>
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main id="game-container">
-    <canvas id="gameCanvas" width="800" height="600" aria-label="MiniScape herný svet"></canvas>
-    <aside id="sidebar">
-      <section class="panel">
-        <h3>Bojový štýl (XP)</h3>
-        <button id="btn-attack" class="active" type="button">Meč: Attack (Presnosť)</button>
-        <button id="btn-strength" type="button">Meč: Strength (Sila)</button>
-        <button id="btn-ranging" type="button">Luk: Ranging (Diaľka)</button>
-      </section>
-      <section class="panel"><h3>Skilly</h3><div id="skills-list"></div></section>
-      <section class="panel hint">
-        <div id="connection" role="status">Pripájam sa…</div>
-        <p>• Klikni na zem pre pohyb.<br>• Klikni na červeného Goblina pre útok.<br>• Hra beží na 600 ms tickoch ako klasické RS.</p>
-        <p>• Skilly sa zatiaľ ukladajú iba počas pripojenia. Databázu doplníme neskôr.</p>
-      </section>
+  <header><a class="brand" href="/">MINI<span>SCAPE</span></a><span id="connection" role="status">Pripájam sa…</span><button id="logout" hidden>Odhlásiť</button></header>
+  <section id="login-panel" class="login panel" hidden>
+    <p class="eyebrow">TVOJ PRÍBEH POKRAČUJE</p><h1>Vráť sa do sveta.</h1><p>Postava, skúsenosti aj korisť zostanú s tebou.</p>
+    <form id="auth-form">
+      <label>Meno postavy<input id="username" name="username" autocomplete="username" pattern="[A-Za-z0-9_]{3,20}" minlength="3" maxlength="20" required></label>
+      <label>Heslo<input id="password" name="password" type="password" autocomplete="current-password" minlength="10" maxlength="128" required></label>
+      <p class="hint">Meno: 3–20 písmen, číslic alebo _. Heslo: aspoň 10 znakov.</p>
+      <div class="actions"><button name="mode" value="login" type="submit">Prihlásiť sa</button><button name="mode" value="register" type="submit" class="secondary">Vytvoriť postavu</button></div>
+    </form><p id="auth-error" role="alert"></p>
+  </section>
+  <main id="game" hidden>
+    <section class="world panel">
+      <div class="world-title"><div><p class="eyebrow">POHRANIČIE</p><h1>Goblinia lúka</h1></div><span id="online">0 hráčov</span></div>
+      <div class="canvas-wrap"><canvas id="gameCanvas" width="800" height="600" aria-label="Herný svet. Klikni alebo ťukni na zem pre pohyb a na goblina pre útok."></canvas><div id="death" hidden role="status"></div></div>
+      <p class="hint">Klikni na zem pre pohyb · Ťukni na goblina pre útok · Korisť získava hráč s najvyšším poškodením.</p>
+      <p id="message" role="status" aria-live="polite">Vitaj v MiniScape.</p>
+      <button id="reconnect" hidden>Obnoviť pripojenie</button>
+    </section>
+    <aside>
+      <section class="panel"><p class="eyebrow">TVOJA POSTAVA</p><h2 id="character-name">Dobrodruh</h2><div class="health-label"><span>Zdravie</span><strong id="hp-text"></strong></div><progress id="hp" max="10" value="10" aria-label="Zdravie"></progress><p id="target" class="hint">Bez cieľa</p><div class="styles"><button data-style="attack">Presnosť</button><button data-style="strength">Sila</button><button data-style="ranging">Luk</button></div></section>
+      <section class="panel"><div class="section-title"><h2>Inventár</h2><span id="capacity"></span></div><p id="equipment" class="hint"></p><div id="inventory"></div><div id="pending"></div></section>
+      <section class="panel"><h2>Schopnosti</h2><div id="skills-list"></div></section>
+      <section class="panel"><h2>Denník</h2><ol id="log" aria-live="polite"></ol></section>
     </aside>
   </main>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/client.js"></script>
-</body>
-</html>
+  <script src="/socket.io/socket.io.js"></script><script src="/client.js"></script>
+</body></html>

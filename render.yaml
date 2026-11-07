@@ -3,9 +3,13 @@ services:
     name: miniscape-mmo
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
     envVars:
+      - key: NODE_VERSION
+        value: 24
       - key: NODE_ENV
         value: production
+      - key: DATABASE_URL
+        sync: false
