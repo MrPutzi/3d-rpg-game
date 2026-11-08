@@ -219,6 +219,7 @@ setInterval(() => {
       }
     }
 
+    const previousX=p.x, previousY=p.y;
     const dx = p.targetX - p.x, dy = p.targetY - p.y;
     const distance = Math.hypot(dx, dy);
     if (distance > CONFIG.MOVE_SPEED) {
@@ -230,8 +231,8 @@ setInterval(() => {
     }
     // Prevent walking through the solid village buildings.
     if(VILLAGE.buildings.some(b=>p.x>b.x-12&&p.x<b.x+b.w+12&&p.y>b.y-12&&p.y<b.y+b.h+12)){
-      p.x=clamp(p.x,20,CONFIG.MAP_SIZE-20);
-      p.y=clamp(p.y,20,CONFIG.MAP_SIZE-20);
+      p.x=previousX;
+      p.y=previousY;
       p.targetX=p.x;p.targetY=p.y;
     }
   }
