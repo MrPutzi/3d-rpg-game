@@ -1,106 +1,318 @@
 'use strict';
 const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
-let world={players:{},npcs:{},nodes:{},projectiles:[],size:2400},catalog={},entered=false;
-let camera={x:0,y:0},scale=1,view={w:1000,h:720},lastFrame=performance.now();
-const names={welcome:'First Steps: Speak with the Elder',goblin_hunt:'Goblin Menace: Defeat 3 Goblins'};
-const icons={attack:'⚔️',strength:'💪',defence:'🛡️',ranging:'🏹',hitpoints:'❤️',woodcutting:'🪓',mining:'⛏️',fishing:'🎣'};
-const colors={tree:'#2f8650',oak:'#3a7844',copper:'#b87947',iron:'#8299a1',shrimp:'#5da9d7',trout:'#4c88bf'};
-const activeName=()=>$('character-name').value;
-socket.on('connect',()=>{$('connection').textContent='● Connected';if(entered){entered=false;$('login-overlay').hidden=false;}});
-socket.on('disconnect',()=>{$('connection').textContent='● Reconnecting…';});
-socket.on('catalog',data=>{catalog=data.items||{};});
-socket.on('serverMessage',text=>{$('notice').textContent=String(text).slice(0,180);if(!entered)$('login-error').textContent=String(text).slice(0,120);});
-socket.on('loginSuccess',()=>{entered=true;$('login-overlay').hidden=true;$('login-error').textContent='';});
-$('login-form').onsubmit=e=>{e.preventDefault();if(socket.connected)socket.emit('login',{name:activeName()});else $('login-error').textContent='Server is not connected yet.';};
-socket.on('state',data=>{if(!data||!data.players)return;world=data;updateUI();});
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.tab-pane').forEach(x=>x.hidden=x.id!=='pane-'+b.dataset.tab);});
-for(const style of ['attack','strength','ranging'])$('btn-'+style).onclick=()=>socket.emit('setStyle',style);
-function row(container,left,right,action){
- const r=document.createElement('div');r.className='item';const l=document.createElement('span');l.textContent=left;r.append(l);
- if(action){const b=document.createElement('button');b.textContent=right;b.onclick=action;r.append(b);}
- else {const v=document.createElement('span');v.textContent=right;r.append(v);}
- container.append(r);
+let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
+let items={},shops={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
+let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
+let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
+const SIZE=2400;
+const iconFor={attack:'⚔️',strength:'💪',defence:'🛡️',ranging:'🏹',hitpoints:'❤️',woodcutting:'🪓',mining:'⛏️',fishing:'🎣'};
+const zoneName=p=>p.x<850&&p.y<850?'Oakvale Village':p.x>1650?'Eastern Wilds':p.y>1450?'Southern Frontier':'Oakvale Outskirts';
+const iconNode={tree:'🌳',oak:'🌲',copper:'🟠',iron:'🪨',shrimp:'🐟',trout:'🎣'};
+const styleNames={
+ accurate:['Accurate','Attack XP'],aggressive:['Aggressive','Strength XP'],defensive:['Defensive','Defence XP'],
+ controlled:['Controlled','Shared XP'],range_accurate:['Accurate','Ranged XP'],rapid:['Rapid','Faster attacks'],longrange:['Longrange','Ranged + Defence XP']
+};
+const names={welcome:'First Steps — Speak with the Elder',goblin_hunt:'Goblin Menace — Defeat 3 Goblins'};
+function notify(t){$('notice').textContent=String(t).slice(0,220);}
+function emit(action,data){if(socket.connected&&entered)socket.emit(action,data);}
+function named(id){return items[id]?.name||id||'None';}
+function gear(){return items[profile?.equipment.weapon]||{name:'Unarmed',icon:'👊',type:'crush',speed:4,styles:['accurate','aggressive','defensive']};}
+function elem(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
+function detail(title,lines){
+ $('detail-title').textContent=title;const box=$('detail-content');box.replaceChildren();
+ for(const line of lines){const p=elem('p','shop-description',line);box.append(p);}
+ $('detail-backdrop').hidden=false;
 }
-function updateUI(){
- const p=world.players[socket.id];if(!p||!entered)return;
- $('player-name').textContent=p.name;$('health').textContent=p.hp+' / '+p.maxHp;$('hp-bar').style.width=(100*p.hp/p.maxHp)+'%';
- $('gold').textContent=p.gold;$('weapon').textContent=catalog[p.equipment.weapon]?.name||'None';
- $('offhand').textContent=catalog[p.equipment.offhand]?.name||'None';
- $('online').textContent=Object.keys(world.players).length+' players online';
- $('coords').textContent=Math.floor(p.x)+', '+Math.floor(p.y);
- $('zone').textContent=p.x<850&&p.y<850?'Oakvale Village':p.x>1600?'Eastern Wilds':p.y>1500?'Southern Frontier':'Oakvale Outskirts';
- for(const style of ['attack','strength','ranging'])$('btn-'+style).classList.toggle('active',p.combatStyle===style);
- const skills=$('skills-list');skills.replaceChildren();
- for(const [id,s] of Object.entries(p.skills)){const r=document.createElement('div');r.className='skill-row';r.textContent=(icons[id]||'✦')+' '+id[0].toUpperCase()+id.slice(1);const v=document.createElement('span');v.textContent='Lv '+s.level+' · '+s.xp+' XP';r.append(v);skills.append(r);}
- const inv=$('inventory');inv.replaceChildren();
- for(const id of p.inventory){const item=catalog[id];if(!item)continue;row(inv,item.name,item.slot==='food'?'Eat':item.slot==='material'?'Resource':'Equip',item.slot==='material'?null:()=>socket.emit(item.slot==='food'?'useItem':'equip',id));}
- if(!p.inventory.length)inv.textContent='Your inventory is empty.';
- const equip=$('equipment');equip.replaceChildren();row(equip,'Weapon',catalog[p.equipment.weapon]?.name||'None');row(equip,'Offhand',catalog[p.equipment.offhand]?.name||'None');
- const quests=$('quests');quests.replaceChildren();for(const [id,q] of Object.entries(p.quests)){const el=document.createElement('div');el.className='quest';const title=document.createElement('strong');title.textContent=names[id]||id;el.append(title);const info=document.createElement('div');info.className='muted';info.textContent=q.status==='complete'?'✓ Completed':q.status==='locked'?'Locked':'In progress · '+q.progress+'/'+q.goal;el.append(info);quests.append(el);}
+function examineItem(id){
+ const i=items[id];if(!i)return;
+ const bonus=['attackBonus','strengthBonus','defenceBonus','rangedStrength'].filter(k=>i[k]!==undefined).map(k=>k.replace('Bonus','')+': +'+i[k]).join(' · ');
+ detail(i.icon+' '+i.name,[i.category.toUpperCase()+(i.slot?' · '+i.slot:''),i.type?'Attack type: '+i.type:'',i.speed?'Attack speed: '+i.speed+' game ticks ('+(i.speed*.6).toFixed(1)+'s)':'',
+ i.skill?'Requires '+i.skill+' level '+i.level:'',i.twoHanded?'Two-handed weapon — shield unavailable':'',bonus,'Price: '+i.price+' coins'].filter(Boolean));
 }
-function resize(){const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);view.w=r.width;view.h=r.height;ctx.setTransform(dpr,0,0,dpr,0,0);}
-new ResizeObserver(resize).observe(canvas);resize();
-function worldPoint(e){const r=canvas.getBoundingClientRect();return{x:(e.clientX-r.left-view.w/2)/scale+camera.x,y:(e.clientY-r.top-view.h/2)/scale+camera.y};}
-canvas.addEventListener('pointerdown',e=>{
- if(!entered||!socket.connected)return;const pt=worldPoint(e);
- const villagers=world.village?.villagers||[];
- for(const v of villagers)if(Math.hypot(v.x-pt.x,v.y-pt.y)<26){socket.emit('interact',v.id);return;}
- for(const n of Object.values(world.npcs))if(n.hp>0&&Math.hypot(n.x-pt.x,n.y-pt.y)<24){socket.emit('attack',n.id);return;}
- for(const n of Object.values(world.nodes))if(Math.hypot(n.x-pt.x,n.y-pt.y)<24){socket.emit('gather',n.id);return;}
- socket.emit('move',pt);
+function contextMenu(title,options,x,y){
+ const menu=$('context-menu');menu.replaceChildren();
+ const head=elem('div','context-head',title);menu.append(head);
+ for(const option of options){
+  const b=elem('button','',option.label);b.type='button';b.onclick=e=>{e.preventDefault();e.stopPropagation();menu.hidden=true;option.action();};menu.append(b);
+ }
+ menu.hidden=false;
+ menu.style.left=Math.max(5,Math.min(x,innerWidth-menu.offsetWidth-8))+'px';
+ menu.style.top=Math.max(5,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';
+}
+function itemMenu(entry,event){
+ const item=items[entry.id];if(!item)return;
+ const options=[];
+ if(['weapon','offhand','ammo'].includes(item.slot)){
+  if(profile?.equipment[item.slot]===entry.id)options.push({label:'Unequip '+item.name,action:()=>emit('unequip',item.slot)});
+  options.push({label:'Equip '+item.name,action:()=>emit('equip',entry.id)});
+ }
+ if(item.category==='food')options.push({label:'Eat '+item.name,action:()=>emit('useItem',entry.id)});
+ options.push({label:'Drop 1 × '+item.name,action:()=>emit('dropItem',entry.id)});
+ options.push({label:'Examine '+item.name,action:()=>examineItem(entry.id)});
+ options.push({label:'Cancel',action:()=>{}});
+ contextMenu(item.name,options,event.clientX,event.clientY);
+}
+socket.on('connect',()=>{
+ $('connection').textContent='● Connected';
+ if(entered){entered=false;profile=null;$('login-overlay').hidden=false;closeBuilding();}
 });
+socket.on('disconnect',()=>{$('connection').textContent='● Reconnecting…';});
+socket.on('catalog',data=>{items=data.items||{};shops=data.shops||{};village=data.village||village;});
+socket.on('serverMessage',text=>{notify(text);if(!entered)$('login-error').textContent=String(text).slice(0,100);});
+socket.on('loginSuccess',()=>{entered=true;$('login-overlay').hidden=true;$('login-error').textContent='';});
+$('login-form').onsubmit=e=>{e.preventDefault();if(socket.connected)socket.emit('login',{name:$('character-name').value});else $('login-error').textContent='Server is not connected.';};
+socket.on('profile',data=>{profile=data;updateUI();if(modalId&&profile.openBuilding===modalId)renderBuilding();else if(modalId&&profile.openBuilding!==modalId)closeBuilding();});
+socket.on('state',data=>{if(data?.players)world=data;const p=world.players[socket.id];if(p){$('coords').textContent=Math.round(p.x)+', '+Math.round(p.y);$('zone').textContent=zoneName(p);$('online').textContent=Object.keys(world.players).length+' players online';}});
+socket.on('buildingOpen',data=>{modalId=data.id;shopTab='buy';renderBuilding();$('building-backdrop').hidden=false;});
+function closeBuilding(){modalId=null;$('building-backdrop').hidden=true;}
+$('close-building').onclick=closeBuilding;$('close-detail').onclick=()=>$('detail-backdrop').hidden=true;
+document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('pointerdown',e=>{if(e.target===b)b.hidden=true;if(b.id==='building-backdrop'&&b.hidden)modalId=null;}));
+document.addEventListener('pointerdown',e=>{if(!$('context-menu').contains(e.target))$('context-menu').hidden=true;});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;closeBuilding();}});
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
+ document.querySelectorAll('.tab-pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
+});
+function updateUI(){
+ if(!profile||!entered)return;
+ $('player-name').textContent=profile.name;
+ $('health').textContent=profile.hp+' / '+profile.maxHp;
+ $('hp-bar').style.width=(profile.hp/profile.maxHp*100)+'%';
+ $('gold').textContent=profile.gold;
+ const w=gear();$('weapon-name').textContent=w.name;$('weapon-icon').textContent=w.icon;
+ $('weapon-info').textContent=(w.type||'crush').toUpperCase()+' · '+(w.speed||4)+' ticks';
+ const s=profile.skills;
+ const combatLvl=Math.floor(.25*(s.defence.level+s.hitpoints.level+Math.floor(s.attack.level/2))+
+ Math.max((s.attack.level+s.strength.level)*.325,s.ranging.level*.4875));
+ $('combat-level').textContent=combatLvl;
+ const styles=$('combat-styles');styles.replaceChildren();
+ for(const id of w.styles||[]){
+  const b=elem('button',profile.combatStyle===id?'active':'');
+  const details=styleNames[id]||[id,''];
+  b.textContent=details[0];b.title=details[1];b.onclick=()=>emit('setStyle',id);styles.append(b);
+ }
+ const inv=$('inventory');inv.replaceChildren();$('bag-count').textContent=profile.inventory.length+' / 28';
+ for(let i=0;i<28;i++){
+  const entry=profile.inventory[i],cell=elem('div','item-slot'+(entry?' filled':''));
+  if(entry&&items[entry.id]){
+   const item=items[entry.id];cell.dataset.tooltip=item.name+(entry.qty>1?' × '+entry.qty:'');
+   cell.title=item.name;cell.tabIndex=0;cell.setAttribute('role','button');cell.setAttribute('aria-label',item.name);
+   if(Object.values(profile.equipment).includes(entry.id))cell.classList.add('equipped');
+   cell.append(elem('span','glyph',item.icon||'📦'));
+   if(entry.qty>1)cell.append(elem('span','qty',entry.qty>=1000?Math.floor(entry.qty/1000)+'k':String(entry.qty)));
+   cell.addEventListener('click',()=>{if(['weapon','offhand','ammo'].includes(item.slot))emit('equip',entry.id);else if(item.category==='food')emit('useItem',entry.id);else examineItem(entry.id);});
+   cell.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();itemMenu(entry,e);});
+   cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();cell.click();}if(e.key==='ContextMenu'){e.preventDefault();itemMenu(entry,{clientX:innerWidth/2,clientY:innerHeight/2});}});
+   attachLongPress(cell,e=>itemMenu(entry,e));
+  }
+  inv.append(cell);
+ }
+ const skills=$('skills-list');skills.replaceChildren();
+ for(const [id,stat] of Object.entries(profile.skills)){
+  const row=elem('div','skill',(iconFor[id]||'✦')+' '+id[0].toUpperCase()+id.slice(1));
+  row.append(elem('strong','', 'Lv '+stat.level+' · '+Math.floor(stat.xp)+' XP'));skills.append(row);
+ }
+ const equipment=$('equipment');equipment.replaceChildren();
+ for(const [slot,id] of Object.entries(profile.equipment)){
+  const row=elem('div','gear-row');const info=elem('div');
+  info.append(elem('strong','',slot.toUpperCase()));info.append(elem('small','',named(id)));
+  row.append(info);
+  if(id){const b=elem('button','','Unequip');b.onclick=()=>emit('unequip',slot);row.append(b);}
+  equipment.append(row);
+ }
+ let attack=0,strength=0,defence=0;
+ for(const id of Object.values(profile.equipment)){const i=items[id];attack+=i?.attackBonus||0;strength+=(i?.strengthBonus||0)+(i?.rangedStrength||0);defence+=i?.defenceBonus||0;}
+ $('equipment-bonuses').textContent='Attack +'+attack+' · Strength +'+strength+' · Defence +'+defence;
+ const quests=$('quests');quests.replaceChildren();
+ for(const [id,q] of Object.entries(profile.quests)){
+  const row=elem('div','quest-row');const el=elem('div');
+  el.append(elem('strong','',names[id]||id));
+  el.append(elem('small','',q.status==='complete'?'✓ Complete':q.status==='locked'?'Locked':q.progress+' / '+q.goal));
+  row.append(el);quests.append(row);
+ }
+}
+function shopEntry(id){
+ const item=items[id],row=elem('div','shop-entry');
+ row.append(elem('span','shop-icon',item?.icon||'📦'));
+ const info=elem('div');info.append(elem('strong','',item.name));info.append(elem('small','',item.price+' coins'+(item.level?' · lvl '+item.level:'')));row.append(info);
+ const buy=elem('button','','Buy');buy.onclick=()=>emit('buy',{id,qty:1});row.append(buy);
+ row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
+  {label:'Buy 1',action:()=>emit('buy',{id,qty:1})},{label:'Buy 5',action:()=>emit('buy',{id,qty:5})},
+  {label:'Buy 10',action:()=>emit('buy',{id,qty:10})},{label:'Examine',action:()=>examineItem(id)}
+ ],e.clientX,e.clientY);});
+ return row;
+}
+function renderBuilding(){
+ if(!modalId||!profile)return;
+ const b=village.buildings.find(x=>x.id===modalId);if(!b)return;
+ $('building-title').textContent=(b.icon||'🏠')+' '+b.name;
+ const box=$('building-content');box.replaceChildren();
+ if(shops[modalId]){
+  box.append(elem('p','shop-description',shops[modalId].greeting));
+  const actions=elem('div','modal-actions');
+  for(const tab of ['buy','sell']){
+   const button=elem('button',shopTab===tab?'active':'',tab==='buy'?'🛒 Shop':'🪙 Sell items');
+   button.onclick=()=>{shopTab=tab;renderBuilding();};actions.append(button);
+  }
+  box.append(actions);const list=elem('div','shop-list');
+  if(shopTab==='buy')for(const id of shops[modalId].items)list.append(shopEntry(id));
+  else for(const entry of profile.inventory){
+   const item=items[entry.id],row=elem('div','shop-entry');
+   row.append(elem('span','shop-icon',item.icon));const info=elem('div');
+   info.append(elem('strong','',item.name));info.append(elem('small','',Math.max(1,Math.floor(item.price/2))+' coins each · '+entry.qty+' owned'));row.append(info);
+   const sell=elem('button','','Sell 1');sell.onclick=()=>emit('sell',{id:item.id,qty:1});row.append(sell);list.append(row);
+   row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
+    {label:'Sell 1',action:()=>emit('sell',{id:item.id,qty:1})},{label:'Sell 5',action:()=>emit('sell',{id:item.id,qty:5})},
+    {label:'Sell 10',action:()=>emit('sell',{id:item.id,qty:10})},{label:'Examine',action:()=>examineItem(item.id)}
+   ],e.clientX,e.clientY);});
+  }
+  if(!list.children.length)list.append(elem('div','empty','No items.'));box.append(list);
+  if(modalId==='tavern'){const b=elem('button','','🛏 Rest and restore health · 10 coins');b.style.marginTop='15px';b.onclick=()=>emit('rest');box.append(b);}
+ }else if(modalId==='bank'){
+  box.append(elem('p','shop-description','Deposit or withdraw items. Items are stored in memory until you disconnect.'));
+  const cols=elem('div','bank-list');
+  for(const [title,arr,event] of [['Backpack',profile.inventory,'bankDeposit'],['Bank',profile.bank,'bankWithdraw']]){
+   const col=elem('div','bank-column');col.append(elem('h3','',title));
+   if(!arr.length)col.append(elem('p','muted','Empty'));
+   for(const entry of arr){
+    const r=elem('div','bank-row');
+    r.append(elem('span','',(items[entry.id]?.icon||'📦')+' '+named(entry.id)+' ×'+entry.qty));
+    const b=elem('button','',event==='bankDeposit'?'Deposit':'Withdraw');b.onclick=()=>emit(event,{id:entry.id,qty:1});r.append(b);
+    r.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(named(entry.id),[1,5,10,50].map(q=>({label:(event==='bankDeposit'?'Deposit ':'Withdraw ')+q,action:()=>emit(event,{id:entry.id,qty:q})})),e.clientX,e.clientY);});col.append(r);
+   }
+   cols.append(col);
+  }
+  box.append(cols);
+ }else if(modalId==='guild'){
+  box.append(elem('p','shop-description','Adventurers Guild — contracts, training notes and progress.'));
+  for(const [id,q] of Object.entries(profile.quests)){
+   box.append(elem('div','quest-row',(names[id]||id)+' · '+(q.status==='complete'?'Complete':q.status==='locked'?'Locked':q.progress+'/'+q.goal)));
+  }
+  box.append(elem('p','shop-description','Train Attack, Strength, Defence and Ranged by fighting. Woodcutting, Mining and Fishing require the correct tools and skill levels.'));
+  box.append(elem('p','shop-description','Quest rewards are claimed from the Village Elder beside the fountain.'));
+ }
+ box.append(elem('div','foot-tag','Press Esc to close · Right click a shop item for more actions'));
+}
+function attachLongPress(el,handler){
+ let timer=0,startX=0,startY=0;
+ el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;startX=e.clientX;startY=e.clientY;clearTimeout(timer);timer=setTimeout(()=>{timer=0;handler({clientX:startX,clientY:startY});},480);});
+ for(const ev of ['pointerup','pointercancel','pointerleave','pointermove'])el.addEventListener(ev,e=>{if(ev==='pointermove'&&Math.hypot(e.clientX-startX,e.clientY-startY)<14)return;clearTimeout(timer);timer=0;});
+}
+function resize(){
+ const r=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);
+ canvas.width=Math.max(1,Math.round(r.width*dpr));canvas.height=Math.max(1,Math.round(r.height*dpr));
+ viewport={w:r.width,h:r.height,dpr};
+}
+new ResizeObserver(resize).observe(canvas);resize();
+function pointFromEvent(e){const rect=canvas.getBoundingClientRect();return{x:e.clientX-rect.left-viewport.w/2+camera.x,y:e.clientY-rect.top-viewport.h/2+camera.y};}
+function hitAt(pt){
+ const ground=Object.values(world.groundItems||{}).find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<20);if(ground)return{kind:'loot',object:ground};
+ const npc=Object.values(world.npcs||{}).find(n=>n.hp>0&&Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(npc)return{kind:'enemy',object:npc};
+ const villager=village.villagers.find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(villager)return{kind:'npc',object:villager};
+ const node=Object.values(world.nodes||{}).find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<24);if(node)return{kind:'node',object:node};
+ const building=village.buildings.find(b=>pt.x>=b.x&&pt.x<b.x+b.w&&pt.y>=b.y&&pt.y<b.y+b.h);if(building)return{kind:'building',object:building};
+ return{kind:'ground',object:pt};
+}
+function clickAction(hit){
+ const o=hit.object;
+ if(hit.kind==='loot')emit('pickup',o.id);
+ else if(hit.kind==='enemy')emit('attack',o.id);
+ else if(hit.kind==='npc')emit('interact',o.id);
+ else if(hit.kind==='node')emit('gather',o.id);
+ else if(hit.kind==='building'){emit('visitBuilding',o.id);notify('Walking to '+o.name+'…');}
+ else {marker={x:o.x,y:o.y,expires:Date.now()+2300};emit('move',o);}
+}
+function hitMenu(hit,e){
+ const o=hit.object,walk=pos=>emit('move',pos);let title='',options=[];
+ const examine=()=>{};
+ if(hit.kind==='enemy'){
+  title=o.name+' (level '+o.level+')';
+  options=[{label:'⚔ Attack '+o.name,action:()=>emit('attack',o.id)},
+   {label:'Walk here',action:()=>walk(o)},{label:'Examine '+o.name,action:()=>detail(o.name,['Combat level: '+o.level,'Hitpoints: '+o.hp+'/'+o.maxHp,'Defence: '+o.defence,'Damage on retaliation: up to '+o.damage])}];
+ }else if(hit.kind==='npc'){
+  title=o.name;options=[{label:'Talk to '+o.name,action:()=>emit('interact',o.id)},
+  {label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>detail(o.name,[o.id==='elder'?'The village quest giver.':'A watchful guardian of Oakvale.'])}];
+ }else if(hit.kind==='building'){
+  title=o.name;options=[{label:'Enter '+o.name,action:()=>emit('visitBuilding',o.id)},{label:'Walk to entrance',action:()=>walk(o.door)},
+  {label:'Examine',action:()=>detail(o.name,[o.id==='bank'?'Deposit or withdraw your items.':o.id==='guild'?'Quest journal and training information.':'Trade, relax or browse the shop.'])}];
+ }else if(hit.kind==='node'){
+  title=o.name;const action=o.skill==='woodcutting'?'Chop':o.skill==='mining'?'Mine':'Fish';
+  options=[{label:action+' '+o.name,action:()=>emit('gather',o.id)},{label:'Walk here',action:()=>walk(o)},
+   {label:'Examine',action:()=>detail(o.name,['Skill: '+o.skill,'Required level: '+o.level,'XP: '+o.xp,'Resource: '+named(o.item)])}];
+ }else if(hit.kind==='loot'){
+  title=named(o.item);options=[{label:'Take '+named(o.item),action:()=>emit('pickup',o.id)},{label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>examineItem(o.item)}];
+ }else{
+  title='Ground · '+Math.round(o.x)+', '+Math.round(o.y);
+  options=[{label:'Walk here',action:()=>clickAction(hit)},
+   {label:'Mark location',action:()=>{marker={x:o.x,y:o.y,expires:Date.now()+9000};notify('Marked '+Math.round(o.x)+', '+Math.round(o.y));}},
+   {label:'Examine terrain',action:()=>detail('Terrain',['World coordinates: '+Math.round(o.x)+', '+Math.round(o.y),'Region: '+zoneName(o)])}];
+ }
+ options.push({label:'Cancel',action:()=>{}});
+ contextMenu(title,options,e.clientX,e.clientY);
+}
+canvas.addEventListener('pointerdown',e=>{
+ if(e.button!==0||!entered||!socket.connected||!$('building-backdrop').hidden||!$('detail-backdrop').hidden)return;
+ clickAction(hitAt(pointFromEvent(e)));
+});
+canvas.addEventListener('contextmenu',e=>{e.preventDefault();if(!entered)return;hitMenu(hitAt(pointFromEvent(e)),e);});
+attachLongPress(canvas,e=>{if(entered)hitMenu(hitAt(pointFromEvent(e)),e);});
+const inView=(x,y,pad=80)=>Math.abs(x-camera.x)<viewport.w/2+pad&&Math.abs(y-camera.y)<viewport.h/2+pad;
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h);}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
-function label(text,x,y,color='#fff',size=12){ctx.font='600 '+size+'px system-ui';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#10202c';ctx.strokeText(text,x,y);ctx.fillStyle=color;ctx.fillText(text,x,y);}
-function drawWorld(){
- const size=world.size||2400;rect(0,0,size,size,'#2c5943');
- const minX=Math.max(0,Math.floor((camera.x-view.w/scale/2)/64)*64),maxX=Math.min(size,camera.x+view.w/scale/2+64);
- const minY=Math.max(0,Math.floor((camera.y-view.h/scale/2)/64)*64),maxY=Math.min(size,camera.y+view.h/scale/2+64);
+function label(t,x,y,color='#fff',size=12){ctx.font='700 '+size+'px system-ui';ctx.textAlign='center';ctx.lineWidth=3;ctx.strokeStyle='#102028';ctx.strokeText(t,x,y);ctx.fillStyle=color;ctx.fillText(t,x,y);}
+function draw(){
+ const size=SIZE;rect(0,0,size,size,'#2e5a42');
+ const minX=Math.max(0,Math.floor((camera.x-viewport.w/2-60)/64)*64),maxX=Math.min(size,camera.x+viewport.w/2+70);
+ const minY=Math.max(0,Math.floor((camera.y-viewport.h/2-60)/64)*64),maxY=Math.min(size,camera.y+viewport.h/2+70);
  for(let x=minX;x<maxX;x+=64)for(let y=minY;y<maxY;y+=64){
   const seed=(Math.floor(x/64)*37+Math.floor(y/64)*71)%11;
-  rect(x,y,64,64,seed<4?'#2d5d46':'#305e47');
-  if(seed===1){circle(x+15,y+21,3,'#4a8a5e');circle(x+36,y+40,2,'#76a96b');}
+  rect(x,y,64,64,seed<4?'#315c43':'#2b5742');
+  if(seed===1){circle(x+15,y+21,3,'#4e8b5a');circle(x+36,y+40,2,'#7eaa73');}
  }
- rect(70,1500,1150,760,'#315c62');rect(90,1530,1090,700,'#3d8092');
- const village=world.village;if(village){
-  for(const road of village.roads)rect(road.x,road.y,road.w,road.h,'#ad926a');
-  for(const b of village.buildings){
-   rect(b.x+6,b.y+10,b.w,b.h,'#172d2c88');rect(b.x,b.y,b.w,b.h,'#77513d');rect(b.x+7,b.y+7,b.w-14,b.h-14,'#b98157');
-   rect(b.x+b.w/2-13,b.y+b.h-22,26,22,'#49372d');label(b.label,b.x+b.w/2,b.y+31,'#ffe6b6',14);
-  }
-  circle(village.fountain.x,village.fountain.y,31,'#9baab2');circle(village.fountain.x,village.fountain.y,24,'#55a8c7');
-  for(const v of village.villagers){circle(v.x,v.y,13,'#d9ad70');label('◆ '+v.name,v.x,v.y-22,'#ffdc9d',12);}
+ rect(70,1500,1150,760,'#355e62');rect(95,1520,1090,700,'#3c869b');
+ for(const road of village.roads)rect(road.x,road.y,road.w,road.h,'#aa8e66');
+ for(const b of village.buildings){
+  if(!inView(b.x+b.w/2,b.y+b.h/2,150))continue;
+  rect(b.x+8,b.y+11,b.w,b.h,'#182a27aa');rect(b.x,b.y,b.w,b.h,'#77513d');
+  rect(b.x+7,b.y+8,b.w-14,b.h-17,'#bd8a60');rect(b.x+12,b.y+13,b.w-24,10,'#dfb178');
+  rect(b.x+b.w/2-14,b.y+b.h-19,28,19,'#533629');
+  label((b.icon||'🏠')+' '+b.label,b.x+b.w/2,b.y+33,'#ffdfae',13);
  }
+ const f=village.fountain;if(inView(f.x,f.y)){circle(f.x,f.y,31,'#a7b8bd');circle(f.x,f.y,24,'#5bb1d5');}
+ for(const v of village.villagers){if(!inView(v.x,v.y))continue;circle(v.x,v.y+8,13,'#102f2b66');circle(v.x,v.y,13,'#dfb079');label('◆ '+v.name,v.x,v.y-23,'#ffdea4');}
  for(const n of Object.values(world.nodes||{})){
-  const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
-  if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,19,'#6d5038');circle(n.x,n.y-8,n.kind==='oak'?22:17,colors[n.kind]);circle(n.x-7,n.y-15,8,'#58a66a');}
-  else if(n.kind==='copper'||n.kind==='iron'){circle(n.x,n.y,17,'#556b6c');circle(n.x-4,n.y-5,11,colors[n.kind]);}
-  else{circle(n.x,n.y,16,colors[n.kind]);label('≈',n.x,n.y+5,'#e3faff',17);}
+  if(!inView(n.x,n.y))continue;const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
+  if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,20,'#74513a');circle(n.x,n.y-8,n.kind==='oak'?22:18,n.kind==='oak'?'#357844':'#308751');circle(n.x-6,n.y-14,7,'#5ea86a');}
+  else if(n.kind==='copper'||n.kind==='iron'){circle(n.x,n.y,18,'#637478');circle(n.x-3,n.y-5,12,n.kind==='copper'?'#c88750':'#8aa2b0');}
+  else{circle(n.x,n.y,16,'#5da7cf');label('≈',n.x,n.y+6,'#e1faff',17);}
   ctx.globalAlpha=1;
  }
+ for(const g of Object.values(world.groundItems||{})){if(!inView(g.x,g.y))continue;circle(g.x,g.y,12,'#d2a85c');label(items[g.item]?.icon||'📦',g.x,g.y+5,'#fff',16);}
  for(const n of Object.values(world.npcs||{})){
-  if(n.hp<=0)continue;circle(n.x,n.y+9,16,'#12271d66');circle(n.x,n.y,15,n.color);
-  circle(n.x-5,n.y-4,2,'#1d2d26');circle(n.x+5,n.y-4,2,'#1d2d26');
-  label(n.name+' · Lv '+n.level,n.x,n.y-26,n.level>=15?'#ffc3a9':'#fff2ce',12);
-  rect(n.x-18,n.y+20,36,5,'#633b42');rect(n.x-18,n.y+20,36*n.hp/n.maxHp,5,'#83d48d');
+  if(!n.hp||!inView(n.x,n.y))continue;
+  circle(n.x,n.y+10,17,'#13251c77');circle(n.x,n.y,15,n.color);
+  circle(n.x-5,n.y-4,2,'#172720');circle(n.x+5,n.y-4,2,'#172720');
+  label(n.name+' · Lv '+n.level,n.x,n.y-26,n.level>=15?'#ffbba3':'#f8eacb');
+  rect(n.x-18,n.y+20,36,5,'#633b42');rect(n.x-18,n.y+20,36*n.hp/n.maxHp,5,'#85d291');
  }
  for(const [id,p] of Object.entries(world.players||{})){
-  circle(p.x,p.y+9,16,'#14222a77');circle(p.x,p.y,14,id===socket.id?'#f1d08e':'#83b9e3');
-  rect(p.x-4,p.y-1,8,12,p.combatStyle==='ranging'?'#8cda9b':'#dbe8ef');
-  label(p.name,p.x,p.y-23,id===socket.id?'#ffe2a5':'#e5f6ff',13);
+  if(!inView(p.x,p.y))continue;
+  circle(p.x,p.y+9,16,'#152c2b88');circle(p.x,p.y,14,id===socket.id?'#f3d390':'#81b9e0');
+  rect(p.x-4,p.y-2,8,12,p.weapon?.includes('bow')?'#9edba8':'#e6eff4');
+  label(p.name,p.x,p.y-24,id===socket.id?'#ffe5ae':'#e7f3ff',13);
  }
  for(const e of world.projectiles||[]){
-  ctx.strokeStyle=e.style==='ranging'?'#e9ed8a':'#ffb48d';ctx.lineWidth=3;
+  ctx.strokeStyle=e.style==='ranged'?'#e9ee8a':'#ffb08c';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(e.fromX,e.fromY);ctx.lineTo(e.x,e.y);ctx.stroke();
-  label(String(e.damage),e.x,e.y-31,'#ffdd95',14);
+  label(String(e.damage),e.x,e.y-30,'#ffda99',15);
  }
+ if(marker&&Date.now()<marker.expires){ctx.strokeStyle='#ffe1a1';ctx.lineWidth=3;ctx.beginPath();ctx.arc(marker.x,marker.y,16,0,Math.PI*2);ctx.stroke();}
 }
-function frame(now){
+function frame(){
  requestAnimationFrame(frame);
- const me=world.players[socket.id];
- if(me){camera.x+=(me.x-camera.x)*.16;camera.y+=(me.y-camera.y)*.16;}else if(!camera.x){camera={x:380,y:380};}
- const dpr=canvas.width/view.w||1;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,view.w,view.h);
- ctx.save();ctx.translate(view.w/2,view.h/2);ctx.scale(scale,scale);ctx.translate(-camera.x,-camera.y);drawWorld();ctx.restore();
+ const me=world.players[socket.id];if(me){camera.x+=(me.x-camera.x)*.17;camera.y+=(me.y-camera.y)*.17;}
+ ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);ctx.clearRect(0,0,viewport.w,viewport.h);
+ ctx.save();ctx.translate(viewport.w/2,viewport.h/2);ctx.translate(-camera.x,-camera.y);draw();ctx.restore();
 }
 requestAnimationFrame(frame);
