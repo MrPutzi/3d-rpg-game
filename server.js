@@ -12,7 +12,7 @@ for(const d of ENEMY_TEMPLATES)for(let i=0;i<d.count;i++){
  const id=d.kind+'_'+i;
  enemies[id]={id,kind:d.kind,name:d.name,level:d.level,
  x:d.region[0]+(i*83+31)%(d.region[2]-d.region[0]),y:d.region[1]+(i*109+43)%(d.region[3]-d.region[1]),
- hp:d.hp,maxHp:d.hp,damage:d.damage,defence:d.defence,weakness:d.weakness,color:d.color,respawnAt:0,lastHit:0};
+ hp:d.hp,maxHp:d.hp,damage:d.damage,defence:d.defence,weakness:d.weakness,aggressive:d.aggressive,color:d.color,targetPlayer:null,respawnAt:0,lastHit:0};
 }
 for(const d of RESOURCE_TEMPLATES)for(let i=0;i<d.count;i++){
  const id=d.kind+'_'+i;
@@ -107,10 +107,10 @@ function actionDone(p,now){
   }
   const outcome=combatRoll(p,n);
   if(w.ammo){removeItem(p.inventory,p.equipment.ammo,1);ensureEquipped(p);}p.nextAttack=now+attackDelayMs(p);
-  const actual=Math.min(n.hp,outcome.hit);n.hp-=actual;awardCombatXp(p,actual);
+  const actual=Math.min(n.hp,outcome.hit);n.hp-=actual;n.targetPlayer=p.id;awardCombatXp(p,actual);
   effects.push({x:n.x,y:n.y,damage:actual,style:w.type==='ranged'?'ranged':outcome.type,fromX:p.x,fromY:p.y});
   if(n.hp<=0){
-   n.respawnAt=now+6500;p.gold+=Math.max(2,n.level*2);
+   n.targetPlayer=null;n.respawnAt=now+6500;p.gold+=Math.max(2,n.level*2);
    if(n.kind==='goblin'&&p.quests.goblin_hunt.status==='active')p.quests.goblin_hunt.progress=Math.min(3,p.quests.goblin_hunt.progress+1);
    send(p,'Defeated '+n.name+' (level '+n.level+').');
    stop(p);
@@ -229,7 +229,7 @@ io.on('connection',socket=>{
 let lastSnapshot=0;
 setInterval(()=>{
  const now=Date.now();
- for(const n of Object.values(enemies))if(n.hp<=0&&now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;}
+ for(const n of Object.values(enemies))if(n.hp<=0&&now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;n.targetPlayer=null;}
  for(const [id,g] of Object.entries(groundItems))if(now>=g.expires)delete groundItems[id];
  for(const p of Object.values(players)){
   if(!p.loggedIn)continue;
@@ -247,7 +247,7 @@ setInterval(()=>{
   if(intent?.type==='building'||intent?.type==='talk'||intent?.type==='pickup')actionDone(p,now);
   if(p.path.length)stepMove(p);
   if(p.intent)actionDone(p,now);
-  for(const n of Object.values(enemies))if(n.hp>0&&reachable(p,n,48)&&now-n.lastHit>=2400){
+  for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
    n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-(p.equipment.offhand?1:0)));
    if(!p.hp){p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);
