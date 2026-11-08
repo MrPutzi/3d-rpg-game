@@ -86,6 +86,8 @@ function updateUI(){
  const combatLvl=Math.floor(.25*(s.defence.level+s.hitpoints.level+Math.floor(s.attack.level/2))+
  Math.max((s.attack.level+s.strength.level)*.325,s.ranging.level*.4875));
  $('combat-level').textContent=combatLvl;
+ $('auto-retaliate').textContent='Auto-retaliate: '+(profile.autoRetaliate?'ON':'OFF');
+ $('auto-retaliate').classList.toggle('active',!!profile.autoRetaliate);
  const styles=$('combat-styles');styles.replaceChildren();
  for(const id of w.styles||[]){
   const b=elem('button',profile.combatStyle===id?'active':'');
@@ -101,6 +103,9 @@ function updateUI(){
    if(Object.values(profile.equipment).includes(entry.id))cell.classList.add('equipped');
    cell.append(elem('span','glyph',item.icon||'📦'));
    if(entry.qty>1)cell.append(elem('span','qty',entry.qty>=1000?Math.floor(entry.qty/1000)+'k':String(entry.qty)));
+   cell.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')showItemTooltip(item.name,e);});
+   cell.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')showItemTooltip(item.name,e);});
+   cell.addEventListener('pointerleave',()=>{$('item-tooltip').hidden=true;});
    cell.addEventListener('click',()=>{if(['weapon','offhand','ammo'].includes(item.slot))emit('equip',entry.id);else if(item.category==='food')emit('useItem',entry.id);else examineItem(entry.id);});
    cell.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();itemMenu(entry,e);});
    cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();cell.click();}if(e.key==='ContextMenu'){e.preventDefault();itemMenu(entry,{clientX:innerWidth/2,clientY:innerHeight/2});}});
@@ -194,9 +199,16 @@ function renderBuilding(){
  }
  box.append(elem('div','foot-tag','Press Esc to close · Right click a shop item for more actions'));
 }
+function showItemTooltip(text,event){
+ const t=$('item-tooltip');t.textContent=text;t.hidden=false;
+ t.style.left=Math.max(4,Math.min(event.clientX+15,innerWidth-t.offsetWidth-5))+'px';
+ t.style.top=Math.max(4,Math.min(event.clientY+13,innerHeight-t.offsetHeight-5))+'px';
+}
+$('auto-retaliate').onclick=()=>{if(profile)emit('toggleRetaliate',!profile.autoRetaliate);};
 function attachLongPress(el,handler){
- let timer=0,startX=0,startY=0;
- el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;startX=e.clientX;startY=e.clientY;clearTimeout(timer);timer=setTimeout(()=>{timer=0;handler({clientX:startX,clientY:startY});},480);});
+ let timer=0,startX=0,startY=0,triggered=false;
+ el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;startX=e.clientX;startY=e.clientY;clearTimeout(timer);timer=setTimeout(()=>{timer=0;triggered=true;handler({clientX:startX,clientY:startY});},480);});
+ el.addEventListener('click',e=>{if(triggered){e.preventDefault();e.stopImmediatePropagation();triggered=false;}},true);
  for(const ev of ['pointerup','pointercancel','pointerleave','pointermove'])el.addEventListener(ev,e=>{if(ev==='pointermove'&&Math.hypot(e.clientX-startX,e.clientY-startY)<14)return;clearTimeout(timer);timer=0;});
 }
 function resize(){
@@ -251,12 +263,19 @@ function hitMenu(hit,e){
  options.push({label:'Cancel',action:()=>{}});
  contextMenu(title,options,e.clientX,e.clientY);
 }
+let touchGesture=null;
 canvas.addEventListener('pointerdown',e=>{
+ if(e.pointerType==='touch'){
+  touchGesture={x:e.clientX,y:e.clientY,long:false,timer:setTimeout(()=>{if(touchGesture){touchGesture.long=true;hitMenu(hitAt(pointFromEvent(e)),e);}},490)};return;
+ }
  if(e.button!==0||!entered||!socket.connected||!$('building-backdrop').hidden||!$('detail-backdrop').hidden)return;
  clickAction(hitAt(pointFromEvent(e)));
 });
+canvas.addEventListener('pointermove',e=>{if(touchGesture&&Math.hypot(e.clientX-touchGesture.x,e.clientY-touchGesture.y)>12){clearTimeout(touchGesture.timer);touchGesture=null;}});
+canvas.addEventListener('pointerup',e=>{if(!touchGesture||e.pointerType!=='touch')return;clearTimeout(touchGesture.timer);const g=touchGesture;touchGesture=null;if(!g.long&&entered&&socket.connected)clickAction(hitAt(pointFromEvent(e)));});
+canvas.addEventListener('pointercancel',()=>{if(touchGesture)clearTimeout(touchGesture.timer);touchGesture=null;});
 canvas.addEventListener('contextmenu',e=>{e.preventDefault();if(!entered)return;hitMenu(hitAt(pointFromEvent(e)),e);});
-attachLongPress(canvas,e=>{if(entered)hitMenu(hitAt(pointFromEvent(e)),e);});
+
 const inView=(x,y,pad=80)=>Math.abs(x-camera.x)<viewport.w/2+pad&&Math.abs(y-camera.y)<viewport.h/2+pad;
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h);}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
