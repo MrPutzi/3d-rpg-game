@@ -163,6 +163,7 @@ io.on('connection',socket=>{
   const n=nodes[id];if(reachable(p,n,65)){p.path=[];p.intent={type:'gather',id};p.openBuilding=null;}
   else navigate(p,n,{type:'gather',id});
  });
+ socket.on('toggleRetaliate',enabled=>{if(!p.loggedIn||typeof enabled!=='boolean')return;p.autoRetaliate=enabled;pushProfile(p);});
  socket.on('setStyle',style=>{
   if(!p.loggedIn||!safeId(style)||!allowedStyles(weaponOf(p)).includes(style))return;
   p.combatStyle=style;pushProfile(p);
@@ -249,6 +250,7 @@ setInterval(()=>{
   if(p.intent)actionDone(p,now);
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
    n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-(p.equipment.offhand?1:0)));
+   if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.path=[];}
    if(!p.hp){p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);
   }
