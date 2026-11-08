@@ -77,7 +77,7 @@ io.on('connection', socket => {
   GameState.players[socket.id] = {
     id: socket.id, name: 'Adventurer', loggedIn:false,
     x: SPAWN.x, y: SPAWN.y, targetX: SPAWN.x, targetY: SPAWN.y,
-    combatStyle: 'attack', targetNpc: null, inventory: ['bronze_sword','shortbow','bread'],
+    hp:20,maxHp:20,combatStyle: 'attack', targetNpc: null, inventory: ['bronze_sword','shortbow','bread'],
     equipment: {weapon:'bronze_sword',offhand:null}, gold:0,
     quests: {welcome:{status:'active',progress:0,goal:1},goblin_hunt:{status:'locked',progress:0,goal:3}},
     skills: {
@@ -121,7 +121,9 @@ io.on('connection', socket => {
     const p=GameState.players[socket.id];
     if(!p?.loggedIn||itemId!=='bread')return;
     const idx=p.inventory.indexOf('bread');if(idx<0)return;
-    p.inventory.splice(idx,1);socket.emit('serverMessage','You ate bread.');
+    if(p.hp>=p.maxHp){socket.emit('serverMessage','You already have full health.');return;}
+    p.inventory.splice(idx,1);p.hp=Math.min(p.maxHp,p.hp+5);
+    socket.emit('serverMessage','You ate bread and recovered 5 HP.');
   });
 
   socket.on('move', pos => {
@@ -157,6 +159,7 @@ setInterval(() => {
     if (npc.hp <= 0 && now >= npc.respawnTime) {
       npc.hp = npc.maxHp;
       npc.respawnTime = 0;
+      npc.lastRetaliation = 0;
     }
   }
 
@@ -172,6 +175,17 @@ setInterval(() => {
         if (distance <= range) {
           p.targetX = p.x;
           p.targetY = p.y;
+          // Goblins retaliate at a controlled cadence, never on client request.
+          if(distance<55 && (!npc.lastRetaliation || now-npc.lastRetaliation>=1800)){
+            npc.lastRetaliation=now;
+            p.hp=Math.max(0,p.hp-(1+Math.floor(Math.random()*3)));
+            if(p.hp===0){
+              p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;
+              p.targetX=p.x;p.targetY=p.y;p.targetNpc=null;
+              io.to(p.id).emit('serverMessage','You were defeated and respawned in Oakvale.');
+              continue;
+            }
+          }
           let maxHit = 2 + (ITEMS[p.equipment.weapon]?.power || 0);
           let hitChance;
           if (p.combatStyle === 'ranging') {
@@ -213,6 +227,12 @@ setInterval(() => {
     } else {
       p.x = p.targetX;
       p.y = p.targetY;
+    }
+    // Prevent walking through the solid village buildings.
+    if(VILLAGE.buildings.some(b=>p.x>b.x-12&&p.x<b.x+b.w+12&&p.y>b.y-12&&p.y<b.y+b.h+12)){
+      p.x=clamp(p.x,20,CONFIG.MAP_SIZE-20);
+      p.y=clamp(p.y,20,CONFIG.MAP_SIZE-20);
+      p.targetX=p.x;p.targetY=p.y;
     }
   }
 
