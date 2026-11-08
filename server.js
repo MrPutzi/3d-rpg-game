@@ -88,7 +88,7 @@ io.on('connection', socket => {
   socket.emit('serverMessage', 'Enter a character name to begin your adventure.');
   socket.on('login', payload => {
     const p=GameState.players[socket.id]; if(!p||p.loggedIn)return;
-    const name=typeof payload?.name==='string'?payload.name.trim().replace(/[^\\p{L}\\p{N} _-]/gu,'').slice(0,18):'';
+    const name=typeof payload?.name==='string'?payload.name.trim().replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,18):'';
     if(name.length<2){socket.emit('serverMessage','Name must be at least 2 characters.');return;}
     p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id});
     socket.emit('serverMessage','Welcome to Oakvale! Speak with the Village Elder.');
