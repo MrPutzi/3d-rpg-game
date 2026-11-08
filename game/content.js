@@ -50,10 +50,10 @@ item('fishing_rod',{name:'Fishing rod',icon:'🎣',category:'tool',skill:'fishin
 const VILLAGE={
  buildings:[
   {id:'tavern',x:175,y:170,w:150,h:120,name:'The Golden Tankard',label:'Tavern',door:{x:250,y:308},icon:'🍺'},
-  {id:'forge',x:410,y:155,w:160,h:135,name:'Oakvale Forge',label:'Forge',door:{x:490,y:306},icon:'⚒️'},
-  {id:'market',x:165,y:490,w:165,h:125,name:'Oakvale General Store',label:'Market',door:{x:247,y:475},icon:'🛒'},
+  {id:'forge',x:410,y:155,w:160,h:135,name:'Oakvale Forge',label:'Forge',door:{x:490,y:318},icon:'⚒️'},
+  {id:'market',x:165,y:490,w:165,h:125,name:'Oakvale General Store',label:'Market',door:{x:247,y:468},icon:'🛒'},
   {id:'guild',x:465,y:500,w:150,h:120,name:'Adventurers Guild',label:'Guild',door:{x:540,y:483},icon:'📜'},
-  {id:'bank',x:660,y:175,w:158,h:120,name:'Oakvale Bank',label:'Bank',door:{x:740,y:311},icon:'🏦'}
+  {id:'bank',x:660,y:175,w:158,h:120,name:'Oakvale Bank',label:'Bank',door:{x:740,y:320},icon:'🏦'}
  ],
  roads:[{x:0,y:352,w:900,h:65},{x:353,y:0,w:65,h:850},{x:220,y:295,w:35,h:60},{x:480,y:288,w:35,h:65},{x:730,y:295,w:35,h:60},{x:235,y:416,w:35,h:70},{x:530,y:416,w:35,h:70}],
  villagers:[{id:'elder',name:'Village Elder',x:490,y:385},{id:'guard',name:'Guard',x:635,y:385}],
@@ -65,11 +65,11 @@ const SHOPS={
  tavern:{name:'The Golden Tankard',greeting:'A warm fire and a hot meal.',items:['bread','trout_cooked']}
 };
 const ENEMY_TEMPLATES=[
- {kind:'rat',name:'Rat',level:1,hp:12,count:5,region:[680,850,870,1200],color:'#8c796d',damage:1,defence:2},
- {kind:'goblin',name:'Goblin',level:3,hp:30,count:9,region:[840,300,1280,830],color:'#88ad64',damage:3,defence:5},
- {kind:'wolf',name:'Wolf',level:8,hp:55,count:7,region:[1250,750,1720,1240],color:'#9e9a90',damage:5,defence:12},
- {kind:'skeleton',name:'Skeleton',level:15,hp:85,count:7,region:[1550,180,2150,690],color:'#d8d0b3',damage:8,defence:23},
- {kind:'orc',name:'Orc',level:24,hp:145,count:6,region:[1730,1250,2240,2070],color:'#6c996b',damage:12,defence:38}
+ {kind:'rat',name:'Rat',level:1,hp:12,count:5,region:[680,850,870,1200],color:'#8c796d',damage:1,defence:2,weakness:'stab'},
+ {kind:'goblin',name:'Goblin',level:3,hp:30,count:9,region:[840,300,1280,830],color:'#88ad64',damage:3,defence:5,weakness:'slash'},
+ {kind:'wolf',name:'Wolf',level:8,hp:55,count:7,region:[1250,750,1720,1240],color:'#9e9a90',damage:5,defence:12,weakness:'stab'},
+ {kind:'skeleton',name:'Skeleton',level:15,hp:85,count:7,region:[1550,180,2150,690],color:'#d8d0b3',damage:8,defence:23,weakness:'crush'},
+ {kind:'orc',name:'Orc',level:24,hp:145,count:6,region:[1730,1250,2240,2070],color:'#6c996b',damage:12,defence:38,weakness:'ranged'}
 ];
 const RESOURCE_TEMPLATES=[
  {kind:'tree',name:'Tree',skill:'woodcutting',item:'logs',level:1,xp:25,region:[150,800,950,1420],count:15,tool:'axe'},
