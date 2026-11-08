@@ -60,7 +60,7 @@ function combatRoll(p,target,rng=Math.random){
  const def=Math.max(1,(target.defence+8)*(64+(target.defenceBonus||0))*(1+weak));
  const chance=acc>def?1-(def+2)/(2*(acc+1)):acc/(2*(def+1));
  const strengthBonus=(w.strengthBonus||0)+(ranged?(ammo?.rangedStrength||0):0);
- const maxHit=Math.max(1,Math.floor(.5+(strLevel+8)*(64+strengthBonus)/640));
+ const maxHit=Math.max(2,Math.floor(1+(strLevel+8)*(64+strengthBonus)/430));
  const hit=rng()<clamp(chance,.04,.97)?Math.floor(rng()*(maxHit+1)):0;
  return{hit,accuracy:chance,maxHit,type:w.type,range:ranged};
 }
