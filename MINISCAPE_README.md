@@ -1,56 +1,73 @@
-# MiniScape MMO
+# MiniScape — Oakvale Frontier
 
-A minimal multiplayer, old-school skill-based RPG with an authoritative 600 ms game tick.
+A browser-based MMO RPG prototype with an authoritative Express + Socket.IO server and Canvas client. Its mechanics are **inspired by Old School RuneScape**, not a full recreation.
 
-## Start locally
+## Run locally
 
 Requires Node.js 20 or newer.
 
 ```bash
 npm install
+npm test
 npm start
 ```
 
-Visit http://localhost:3000 and open a second tab to test multiplayer.
+Open `http://localhost:3000`. Open a second tab to see shared-world multiplayer.
 
-## Deploy to Render
+## Controls
 
-Create a **Web Service** from this GitHub repository (or use the included `render.yaml` Blueprint).
-- Build command: `npm install`
-- Start command: `npm start`
+- **Left click world:** walk, attack an enemy, gather a resource, speak to a villager or enter a building.
+- **Right click world:** context menu for enemies, NPCs, buildings, nodes, dropped items and empty ground.
+- **Inventory:** 28 miniature icon slots; hover for item names; left click to equip/eat/examine, right click for all supported actions.
+- **Mobile:** tap to act; long press for context actions.
+- **Escape:** close the context menu or an open dialog.
+
+## Game buildings
+
+- **Forge:** browse and purchase tiered melee weapons and shields; sell inventory items.
+- **Market:** buy bows, arrows, bolts, food and gathering tools; sell items.
+- **Tavern:** buy food and recover health for 10 coins.
+- **Bank:** deposit/withdraw inventory items (in-memory, **not persistent**).
+- **Guild:** view quest progress and training guidance.
+- Click any building to walk to its entrance. The server verifies that the player is near enough to open/use it.
+
+## Weapons, combat and equipment
+
+- Bronze, Iron, Steel, Mithril, Adamant and Rune melee tiers; Dagger, Scimitar, Longsword, Battleaxe and Two-handed sword categories.
+- Bows, crossbow, arrows and bolts; ammunition is consumed for ranged attacks.
+- Weapon-specific OSRS-inspired attack speeds (4/5/6/7 600ms ticks) and combat options.
+- Melee styles: Accurate / Aggressive / Defensive / Controlled (when supported by weapon).
+- Ranged styles: Accurate / Rapid / Longrange.
+- Server-controlled level requirements, equipment restrictions, hit chance, max hit and XP distribution.
+- Accurate, Aggressive and Defensive earn Attack, Strength or Defence XP respectively. Controlled splits XP. Rapid speeds up ranged attacks, Longrange splits Ranged/Defence XP.
+- Auto-retaliate may be toggled on/off.
+
+## World gameplay
+
+- 2400×2400 world with follow camera, Oakvale town, tiered enemies, trees, ores and fishing spots.
+- Woodcutting/Mining/Fishing require the correct gathering tool, skill level and inventory space.
+- Pickup and drop ground items (temporary, expire after 3 minutes).
+- Three-goblin quest and village introduction. Gold, weapon shops and 28-slot inventory.
+- The game simulation and movement update every **100ms**, world state is broadcast every **200ms**. Combat cooldowns retain the classic **600ms OSRS tick** as a unit.
+
+## Architecture
+
+- `game/content.js`: item, tier, weapon, building, shop and world content definitions.
+- `game/rules.js`: XP curves, inventory operations, combat formulas, equipment and pathfinding.
+- `server.js`: authoritative world sessions, secure interactions, combat loop and Socket.IO.
+- `public/index.html`: modern UI, modals, context menu and canvas.
+- `public/client.js`: Canvas renderer, input and player interface.
+- `test/game.test.js`: game-rule regression tests; run `npm test`.
+
+## Render.com
+
+Deploy as a **Web Service** with:
+- Build: `npm install`
+- Start: `npm start`
 - Health check: `/health`
-- Render sets `PORT` automatically.
-- Socket.IO uses the same origin and HTTP server as the frontend.
+- Node.js 20+, same-origin Socket.IO.
+- See `render.yaml` for a ready-to-use blueprint.
 
-## Game controls
+## Limitations and next steps
 
-Click the ground to move, click a red goblin to attack. Choose Attack, Strength or Ranging to train that skill. HP XP is earned from damage. NPCs respawn five seconds after death.
-
-## Structure
-
-- `server.js` — authoritative game loop, player sessions, XP, combat, NPCs and Socket.IO
-- `public/index.html` — responsive old-school interface
-- `public/client.js` — HTML5 Canvas rendering and input
-- `render.yaml` — Render deployment
-
-## Important alpha limitations
-
-Progress is held in RAM and resets when a player disconnects or the service restarts. This is a **single-instance prototype**, not a scalable persistent MMO. There is no authentication, inventory, database, world collision, enemy AI, or anti-bot protection. The current level curve is deliberately simplified rather than RuneScape's actual XP formula. Render free services may sleep when idle.
-
-## Growth path
-
-Separate `server.js` into `config/`, `world/`, `combat/`, `skills/`, `network/` and `persistence/` modules. Add authenticated characters and PostgreSQL persistence before offering persistent progression; later add NPC AI, inventory/equipment, world regions, collision and tests.
-
-## World expansion (alpha)
-
-- A 2400 × 2400 pixel world with a camera that follows the player; the canvas fills most of the desktop viewport.
-- Tiered monsters: Rats (level 1), Goblins (3), Wolves (8), Skeletons (15), Orcs (24).
-- Gathering nodes: Trees (Woodcutting 1), Oak Trees (15), Copper Rocks (Mining 1), Iron Rocks (15), Shrimp Spots (Fishing 1), Trout Spots (20).
-- Click nodes to auto-approach; the authoritative server checks range, skill level, cooldown and 28-slot inventory capacity before granting items and XP.
-- Resources respawn after seven seconds; enemies respawn after six seconds.
-- Equipment determines melee/ranged combat; Attack and Strength training is selected with the combat buttons when a sword is equipped.
-- This is a skill-driven design inspired by RuneScape, **not** an exact recreation of its XP tables, combat formula, gathering success rates or assets.
-
-### Known limitations
-
-There is still no account database, item banking, gathering tools, pathfinding around obstacles, or permanent progress. World simulation runs in a single Node process. Avoid scaling to multiple Render instances before introducing shared authoritative state.
+This is an alpha: account login is only a **guest character name**. XP, quests, inventory, bank items and gold remain **in server memory** and reset on disconnect or restart. A persistent MMO needs PostgreSQL, authenticated accounts, reliable reconnect sessions, shared state before multiple instances, server-side rate limits, and combat / network load testing. Combat formulas and content are intentionally simplified and may differ from actual OSRS values. No original RuneScape art or proprietary game content is copied.
