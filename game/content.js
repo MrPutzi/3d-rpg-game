@@ -65,11 +65,11 @@ const SHOPS={
  tavern:{name:'The Golden Tankard',greeting:'A warm fire and a hot meal.',items:['bread','trout_cooked']}
 };
 const ENEMY_TEMPLATES=[
- {kind:'rat',name:'Rat',level:1,hp:12,count:5,region:[680,850,870,1200],color:'#8c796d',damage:1,defence:2,weakness:'stab'},
- {kind:'goblin',name:'Goblin',level:3,hp:30,count:9,region:[840,300,1280,830],color:'#88ad64',damage:3,defence:5,weakness:'slash'},
- {kind:'wolf',name:'Wolf',level:8,hp:55,count:7,region:[1250,750,1720,1240],color:'#9e9a90',damage:5,defence:12,weakness:'stab'},
- {kind:'skeleton',name:'Skeleton',level:15,hp:85,count:7,region:[1550,180,2150,690],color:'#d8d0b3',damage:8,defence:23,weakness:'crush'},
- {kind:'orc',name:'Orc',level:24,hp:145,count:6,region:[1730,1250,2240,2070],color:'#6c996b',damage:12,defence:38,weakness:'ranged'}
+ {kind:'rat',name:'Rat',level:1,hp:5,count:5,region:[680,850,870,1200],color:'#8c796d',damage:1,defence:1,weakness:'stab',aggressive:false},
+ {kind:'goblin',name:'Goblin',level:3,hp:10,count:9,region:[840,300,1280,830],color:'#88ad64',damage:1,defence:1,weakness:'slash',aggressive:false},
+ {kind:'wolf',name:'Wolf',level:8,hp:36,count:7,region:[1250,750,1720,1240],color:'#9e9a90',damage:4,defence:12,weakness:'stab',aggressive:true},
+ {kind:'skeleton',name:'Skeleton',level:15,hp:65,count:7,region:[1550,180,2150,690],color:'#d8d0b3',damage:7,defence:23,weakness:'crush',aggressive:true},
+ {kind:'orc',name:'Orc',level:24,hp:115,count:6,region:[1730,1250,2240,2070],color:'#6c996b',damage:10,defence:38,weakness:'ranged',aggressive:true}
 ];
 const RESOURCE_TEMPLATES=[
  {kind:'tree',name:'Tree',skill:'woodcutting',item:'logs',level:1,xp:25,region:[150,800,950,1420],count:15,tool:'axe'},
