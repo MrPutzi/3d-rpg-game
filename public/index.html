@@ -16,6 +16,15 @@
     button { width: 100%; padding: 8px; margin-bottom: 5px; background: #5a5245; color: white; border: 2px solid #3e3529; cursor: pointer; font-family: monospace; font-weight: bold; }
     button.active { background: #8b261d; border-color: #ff981f; }
     button:focus-visible { outline: 2px solid #ffff00; outline-offset: 2px; }
+    #login-overlay{position:fixed;inset:0;z-index:5;background:rgba(12,10,9,.94);display:grid;place-items:center;padding:20px}
+    #login-overlay .panel{width:min(360px,100%);text-align:center;border:3px solid #b58a4e;padding:24px}
+    #login-overlay input{width:100%;padding:12px;margin:12px 0;background:#181713;color:#fff;border:1px solid #b58a4e;font:inherit}
+    #login-overlay button{background:#68502c;border-color:#d9a85d}
+    #login-overlay[hidden]{display:none}
+    #notice{font-size:11px;color:#f4ce8b;min-height:25px}
+    .item{display:flex;justify-content:space-between;gap:6px;align-items:center;border-bottom:1px solid #574c3c;padding:5px 0;font-size:12px}
+    .item button{width:auto;margin:0;padding:4px 6px}
+    .quest{padding:6px 0;border-bottom:1px solid #574c3c;font-size:12px}
     .hint { font-size: 11px; color: #ccc; line-height: 1.5; }
     #connection { font-size: 11px; color: #b4e6af; }
     @media (max-width: 1050px) {
@@ -26,6 +35,7 @@
   </style>
 </head>
 <body>
+  <div id="login-overlay"><form class="panel" id="login-form"><h3>⚔ MiniScape MMO</h3><p class="hint">Vitaj v Oakvale. Vyber si meno svojej postavy.</p><input id="character-name" maxlength="18" minlength="2" placeholder="Meno postavy" autocomplete="nickname" required><button type="submit">Vstúpiť do sveta</button><p class="hint">Zatiaľ ide o hosťovský vstup bez hesla a ukladania progresu.</p></form></div>
   <main id="game-container">
     <canvas id="gameCanvas" width="800" height="600" aria-label="MiniScape herný svet"></canvas>
     <aside id="sidebar">
@@ -36,9 +46,12 @@
         <button id="btn-ranging" type="button">Luk: Ranging (Diaľka)</button>
       </section>
       <section class="panel"><h3>Skilly</h3><div id="skills-list"></div></section>
+      <section class="panel"><h3>Inventár · <span id="gold">0</span> zlata</h3><div id="inventory"></div></section>
+      <section class="panel"><h3>Výbava</h3><div id="equipment"></div></section>
+      <section class="panel"><h3>Úlohy</h3><div id="quests"></div></section>
       <section class="panel hint">
-        <div id="connection" role="status">Pripájam sa…</div>
-        <p>• Klikni na zem pre pohyb.<br>• Klikni na červeného Goblina pre útok.<br>• Hra beží na 600 ms tickoch ako klasické RS.</p>
+        <div id="connection" role="status">Pripájam sa…</div><div id="notice" aria-live="polite"></div>
+        <p>• Klikni na zem pre pohyb.<br>• Klikni na Goblina pre útok.<br>• Klikni na dedinčana pre rozhovor.<br>• Klikni na predmet pre nasadenie.<br>• Hra beží na 600 ms tickoch.</p>
         <p>• Skilly sa zatiaľ ukladajú iba počas pripojenia. Databázu doplníme neskôr.</p>
       </section>
     </aside>
