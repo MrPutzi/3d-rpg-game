@@ -1,62 +1,28 @@
-<!DOCTYPE html>
-<html lang="sk">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>MiniScape MMO</title>
-  <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: #1e1e1e; color: #ffff00; font-family: monospace; display: flex; justify-content: center; align-items: center; user-select: none; }
-    #game-container { display: flex; border: 4px solid #5a5245; background: #3e3529; max-width: 100%; }
-    canvas { background: #4b692f; cursor: crosshair; width: min(800px, 100%); height: auto; display: block; touch-action: manipulation; }
-    #sidebar { width: 220px; flex-shrink: 0; padding: 12px; display: flex; flex-direction: column; gap: 15px; border-left: 4px solid #5a5245; }
-    .panel { background: #2c251d; padding: 10px; border: 2px solid #5a5245; }
-    h3 { margin: 0 0 8px; color: #ff981f; font-size: 14px; text-transform: uppercase; }
-    .skill-row { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 4px; font-size: 12px; }
-    button { width: 100%; padding: 8px; margin-bottom: 5px; background: #5a5245; color: white; border: 2px solid #3e3529; cursor: pointer; font-family: monospace; font-weight: bold; }
-    button.active { background: #8b261d; border-color: #ff981f; }
-    button:focus-visible { outline: 2px solid #ffff00; outline-offset: 2px; }
-    #login-overlay{position:fixed;inset:0;z-index:5;background:rgba(12,10,9,.94);display:grid;place-items:center;padding:20px}
-    #login-overlay .panel{width:min(360px,100%);text-align:center;border:3px solid #b58a4e;padding:24px}
-    #login-overlay input{width:100%;padding:12px;margin:12px 0;background:#181713;color:#fff;border:1px solid #b58a4e;font:inherit}
-    #login-overlay button{background:#68502c;border-color:#d9a85d}
-    #login-overlay[hidden]{display:none}
-    #notice{font-size:11px;color:#f4ce8b;min-height:25px}
-    .item{display:flex;justify-content:space-between;gap:6px;align-items:center;border-bottom:1px solid #574c3c;padding:5px 0;font-size:12px}
-    .item button{width:auto;margin:0;padding:4px 6px}
-    .quest{padding:6px 0;border-bottom:1px solid #574c3c;font-size:12px}
-    .hint { font-size: 11px; color: #ccc; line-height: 1.5; }
-    #connection { font-size: 11px; color: #b4e6af; }
-    @media (max-width: 1050px) {
-      body { align-items: flex-start; }
-      #game-container { flex-direction: column; width: min(100%, 800px); }
-      #sidebar { width: 100%; border-left: 0; border-top: 4px solid #5a5245; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
-    }
-  </style>
-</head>
-<body>
-  <div id="login-overlay"><form class="panel" id="login-form"><h3>⚔ MiniScape MMO</h3><p class="hint">Vitaj v Oakvale. Vyber si meno svojej postavy.</p><input id="character-name" maxlength="18" minlength="2" placeholder="Meno postavy" autocomplete="nickname" required><button type="submit">Vstúpiť do sveta</button><p class="hint">Zatiaľ ide o hosťovský vstup bez hesla a ukladania progresu.</p></form></div>
-  <main id="game-container">
-    <canvas id="gameCanvas" width="800" height="600" aria-label="MiniScape herný svet"></canvas>
-    <aside id="sidebar">
-      <section class="panel">
-        <h3>Bojový štýl (XP)</h3>
-        <button id="btn-attack" class="active" type="button">Meč: Attack (Presnosť)</button>
-        <button id="btn-strength" type="button">Meč: Strength (Sila)</button>
-        <button id="btn-ranging" type="button">Luk: Ranging (Diaľka)</button>
-      </section>
-      <section class="panel"><h3>Skilly</h3><div id="skills-list"></div></section>
-      <section class="panel"><h3>Inventár · <span id="gold">0</span> zlata</h3><div id="inventory"></div></section>
-      <section class="panel"><h3>Výbava</h3><div id="equipment"></div></section>
-      <section class="panel"><h3>Úlohy</h3><div id="quests"></div></section>
-      <section class="panel hint">
-        <div id="connection" role="status">Pripájam sa…</div><div id="notice" aria-live="polite"></div>
-        <p>• Klikni na zem pre pohyb.<br>• Klikni na Goblina pre útok.<br>• Klikni na dedinčana pre rozhovor.<br>• Klikni na predmet pre nasadenie.<br>• Hra beží na 600 ms tickoch.</p>
-        <p>• Skilly sa zatiaľ ukladajú iba počas pripojenia. Databázu doplníme neskôr.</p>
-      </section>
-    </aside>
-  </main>
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/client.js"></script>
-</body>
-</html>
+<!doctype html><html lang="sk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MiniScape · The Oakvale Frontier</title><style>
+:root{color-scheme:dark;--bg:#0a1019;--panel:#121d2a;--edge:#2b3d4b;--gold:#e9c38a;--text:#edf3f4;--muted:#9caeb9}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -30%,#253748,#0a1019 65%);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}
+button,input{font:inherit}button{cursor:pointer;border:1px solid #3e5263;background:#253749;color:var(--text);border-radius:9px;padding:9px 11px}button:hover,button.active{background:#3d5c6e;border-color:var(--gold)}button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+header{height:62px;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:0 20px;background:#0e1924e8;border-bottom:1px solid var(--edge)}.brand{font-weight:850;letter-spacing:.1em;color:var(--gold);font-size:19px}.brand small{font-size:10px;letter-spacing:.15em;color:var(--muted);display:block}#connection{font-size:12px;color:#8cd6b2}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 315px;gap:12px;padding:12px;max-width:1800px;margin:auto;height:calc(100dvh - 62px);min-height:580px}
+.world{position:relative;min-width:0;min-height:0;overflow:hidden;border:1px solid #455765;border-radius:15px;background:#254a38;box-shadow:0 18px 55px #0008}canvas{width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+.hud{position:absolute;z-index:1;pointer-events:none;background:#0c1824c9;backdrop-filter:blur(12px);border:1px solid #4d6575;border-radius:11px;padding:10px 13px;box-shadow:0 5px 18px #0004}.top-left{top:15px;left:15px;min-width:190px}.top-right{top:15px;right:15px;text-align:right}.bottom-left{bottom:15px;left:15px;max-width:min(450px,70%)}.hud-title{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--gold);font-weight:800}.bar{height:8px;background:#51333b;border-radius:5px;overflow:hidden;margin:8px 0 5px}.bar div{height:100%;width:100%;background:linear-gradient(90deg,#b63b4b,#f07472)}#notice{color:#e9d9bc;font-size:12px;line-height:1.5;min-height:18px}
+.sidebar{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;scrollbar-color:#506678 transparent}.panel{border:1px solid var(--edge);border-radius:13px;background:linear-gradient(160deg,#172534,#111c28);padding:14px}.panel h2{margin:0 0 12px;font-size:12px;text-transform:uppercase;letter-spacing:.13em;color:var(--gold)}.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.tabs button{padding:10px 4px;font-size:17px}.tabs button.active{background:#39596b}.tab-pane[hidden],#login-overlay[hidden]{display:none!important}
+.skill-row,.quest,.item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 2px;border-bottom:1px solid #2c3c49;font-size:12px}.skill-row span:last-child{color:var(--gold)}.item button{padding:5px 8px;font-size:11px}.item span{flex:1}.quest{display:block;line-height:1.55}.quest strong{color:#e5c994}.muted{color:var(--muted)}.styles{display:grid;grid-template-columns:1fr 1fr;gap:7px}.styles button{font-size:12px}.styles #btn-ranging{grid-column:span 2}.stat{display:flex;justify-content:space-between;font-size:12px;margin-top:8px}.help{font-size:12px;line-height:1.6;color:var(--muted)}
+#login-overlay{position:fixed;inset:0;background:#070e16ee;z-index:10;display:grid;place-items:center;padding:18px;backdrop-filter:blur(15px)}.login-card{width:min(430px,100%);border:1px solid #8d7454;border-radius:20px;padding:34px;background:linear-gradient(160deg,#1d3140,#101b28);text-align:center;box-shadow:0 20px 90px #000b}.login-card h1{color:var(--gold);font-size:30px;margin:0}.login-card p{color:var(--muted);line-height:1.6}.login-card input{width:100%;border-radius:9px;border:1px solid #4e6574;background:#0d1b26;color:white;padding:13px;margin:12px 0}.login-card button{width:100%;padding:12px;background:#8a653e;border-color:#b9915e;font-weight:700}
+@media(max-width:920px){.layout{grid-template-columns:1fr;height:auto;min-height:0}.world{height:70dvh;min-height:440px}.sidebar{overflow:visible;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.sidebar>.panel:first-child{grid-column:span 2}}@media(max-width:580px){header{padding:0 12px}.brand{font-size:16px}.layout{padding:7px;gap:7px}.world{height:65dvh;min-height:380px}.sidebar{grid-template-columns:1fr}.sidebar>.panel:first-child{grid-column:auto}.hud{padding:7px}.top-right{display:none}.bottom-left{max-width:80%}}
+</style></head><body>
+<div id="login-overlay"><form class="login-card" id="login-form"><div style="font-size:42px">⚔️</div><h1>MINISCAPE</h1><p>THE OAKVALE FRONTIER<br>Vstúp do živého fantasy sveta. Bojuj, zbieraj suroviny a rozvíjaj svoju postavu.</p><input id="character-name" maxlength="18" minlength="2" placeholder="Meno postavy" required autocomplete="nickname"><button type="submit">VSTÚPIŤ DO SVETA</button><p style="font-size:11px">Hosťovský účet · progres zatiaľ nie je trvalo uložený</p><div id="login-error" style="color:#ffb1a7;font-size:12px"></div></form></div>
+<header><div class="brand">⚔ MINISCAPE <small>THE OAKVALE FRONTIER · ALPHA</small></div><span id="connection">● Pripájam…</span></header>
+<main class="layout"><section class="world"><canvas id="gameCanvas" aria-label="Herný svet"></canvas>
+<div class="hud top-left"><div class="hud-title" id="player-name">Adventurer</div><div class="stat"><span>❤️ Hitpoints</span><span id="health">20 / 20</span></div><div class="bar"><div id="hp-bar"></div></div><div class="stat"><span>🪙 Gold</span><strong id="gold">0</strong></div></div>
+<div class="hud top-right"><div class="hud-title" id="zone">Oakvale Village</div><div class="muted" id="coords">0, 0</div><div class="muted" id="online">0 players online</div></div>
+<div class="hud bottom-left"><div class="hud-title">ADVENTURE LOG</div><div id="notice">Klikni na nepriateľa alebo surovinu a postava sa k cieľu priblíži.</div></div>
+</section><aside class="sidebar"><section class="panel"><h2>Character & Combat</h2><div class="stat"><span>Weapon</span><strong id="weapon">Bronze Sword</strong></div><div class="stat"><span>Offhand</span><strong id="offhand">None</strong></div><div class="styles"><button id="btn-attack" class="active">⚔ Attack XP</button><button id="btn-strength">💪 Strength XP</button><button id="btn-ranging">🏹 Ranged XP (bow)</button></div></section>
+<section class="panel"><div class="tabs"><button class="active" data-tab="skills" title="Skills">✦</button><button data-tab="inventory" title="Inventory">🎒</button><button data-tab="equipment" title="Equipment">🛡</button><button data-tab="quests" title="Quests">📜</button></div>
+<div class="tab-pane" id="pane-skills"><h2 style="margin-top:14px">Skills</h2><div id="skills-list"></div></div>
+<div class="tab-pane" id="pane-inventory" hidden><h2 style="margin-top:14px">Inventory · 28 slots</h2><div id="inventory"></div></div>
+<div class="tab-pane" id="pane-equipment" hidden><h2 style="margin-top:14px">Equipment</h2><div id="equipment"></div></div>
+<div class="tab-pane" id="pane-quests" hidden><h2 style="margin-top:14px">Quest journal</h2><div id="quests"></div></div></section>
+<section class="panel"><h2>World guide</h2><div class="help">🖱 Kliknutím sa pohybuješ, útočíš a zbieraš suroviny.<br>🌳 Woodcutting: stromy na juhu.<br>⛏ Mining: bane na juhovýchode.<br>🎣 Fishing: rybárske miesta pri južnom jazere.<br>☠️ Čím ďalej na východ, tým silnejší nepriatelia.<br>⏱ Herný server: 600 ms tick.</div></section></aside></main>
+<script src="/socket.io/socket.io.js"></script><script src="/client.js"></script></body></html>
