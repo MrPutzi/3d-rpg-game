@@ -12,7 +12,7 @@ for(const d of ENEMY_TEMPLATES)for(let i=0;i<d.count;i++){
  const id=d.kind+'_'+i;
  enemies[id]={id,kind:d.kind,name:d.name,level:d.level,
  x:d.region[0]+(i*83+31)%(d.region[2]-d.region[0]),y:d.region[1]+(i*109+43)%(d.region[3]-d.region[1]),
- hp:d.hp,maxHp:d.hp,damage:d.damage,defence:d.defence,color:d.color,respawnAt:0,lastHit:0};
+ hp:d.hp,maxHp:d.hp,damage:d.damage,defence:d.defence,weakness:d.weakness,color:d.color,respawnAt:0,lastHit:0};
 }
 for(const d of RESOURCE_TEMPLATES)for(let i=0;i<d.count;i++){
  const id=d.kind+'_'+i;
@@ -104,9 +104,9 @@ function actionDone(p,now){
   if(w.ammo){
    const ammo=ITEMS[p.equipment.ammo];
    if(!ammo||ammo.ammo!==w.ammo||count(p.inventory,ammo.id)<1){send(p,'You have no compatible ammunition equipped.');stop(p);return;}
-   removeItem(p.inventory,ammo.id,1);ensureEquipped(p);
   }
-  const outcome=combatRoll(p,n);p.nextAttack=now+attackDelayMs(p);
+  const outcome=combatRoll(p,n);
+  if(w.ammo){removeItem(p.inventory,p.equipment.ammo,1);ensureEquipped(p);}p.nextAttack=now+attackDelayMs(p);
   const actual=Math.min(n.hp,outcome.hit);n.hp-=actual;awardCombatXp(p,actual);
   effects.push({x:n.x,y:n.y,damage:actual,style:w.type==='ranged'?'ranged':outcome.type,fromX:p.x,fromY:p.y});
   if(n.hp<=0){
@@ -132,7 +132,7 @@ app.get('/health',(_,res)=>res.json({ok:true,players:Object.keys(players).length
 io.on('connection',socket=>{
  if(Object.keys(players).length>=100){socket.emit('serverMessage','World is full.');socket.disconnect(true);return;}
  const p=newPlayer(socket.id);players[socket.id]=p;
- socket.emit('catalog',{items:ITEMS,shops:SHOPS,size:WORLD_SIZE,tickMs:TICK_MS});
+ socket.emit('catalog',{items:ITEMS,shops:SHOPS,village:VILLAGE,size:WORLD_SIZE,tickMs:TICK_MS});
  socket.on('login',data=>{
   if(p.loggedIn)return;const raw=typeof data?.name==='string'?data.name:'';
   const name=raw.trim().replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,18);
@@ -214,7 +214,7 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!bankReady(p)||!has(ITEMS,data?.id))return;
   const qty=Number(data.qty);if(![1,5,10,50].includes(qty))return;
   if(!removeItem(p.inventory,data.id,qty))return;
-  if(!addItem(p.bank,data.id,qty)){addItem(p.inventory,data.id,qty);send(p,'Bank is full.');return;}
+  if(!addItem(p.bank,data.id,qty,200)){addItem(p.inventory,data.id,qty);send(p,'Bank is full.');return;}
   ensureEquipped(p);pushProfile(p);
  });
  socket.on('bankWithdraw',data=>{
@@ -226,8 +226,9 @@ io.on('connection',socket=>{
  });
  socket.on('disconnect',()=>delete players[socket.id]);
 });
+let lastSnapshot=0;
 setInterval(()=>{
- const now=Date.now();effects=[];
+ const now=Date.now();
  for(const n of Object.values(enemies))if(n.hp<=0&&now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;}
  for(const [id,g] of Object.entries(groundItems))if(now>=g.expires)delete groundItems[id];
  for(const p of Object.values(players)){
@@ -255,6 +256,6 @@ setInterval(()=>{
  }
  const state={players:Object.fromEntries(Object.values(players).filter(p=>p.loggedIn).map(p=>[p.id,{id:p.id,name:p.name,x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,combatStyle:p.combatStyle,weapon:p.equipment.weapon}])),
  npcs:enemies,nodes,groundItems,projectiles:effects};
- io.emit('state',state);
-},STEP_MS*2);
+ if(now-lastSnapshot>=STATE_MS){io.emit('state',state);effects=[];lastSnapshot=now;}
+},STEP_MS);
 server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('MiniScape server online'));
