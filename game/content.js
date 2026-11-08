@@ -49,10 +49,10 @@ item('small_net',{name:'Small fishing net',icon:'🕸️',category:'tool',skill:
 item('fishing_rod',{name:'Fishing rod',icon:'🎣',category:'tool',skill:'fishing',level:5,price:40});
 const VILLAGE={
  buildings:[
-  {id:'tavern',x:175,y:170,w:150,h:120,name:'The Golden Tankard',label:'Tavern',door:{x:250,y:308},icon:'🍺'},
-  {id:'forge',x:410,y:155,w:160,h:135,name:'Oakvale Forge',label:'Forge',door:{x:490,y:318},icon:'⚒️'},
+  {id:'tavern',x:175,y:170,w:150,h:120,name:'The Golden Tankard',label:'Tavern',door:{x:250,y:330},icon:'🍺'},
+  {id:'forge',x:410,y:155,w:160,h:135,name:'Oakvale Forge',label:'Forge',door:{x:490,y:330},icon:'⚒️'},
   {id:'market',x:165,y:490,w:165,h:125,name:'Oakvale General Store',label:'Market',door:{x:247,y:468},icon:'🛒'},
-  {id:'guild',x:465,y:500,w:150,h:120,name:'Adventurers Guild',label:'Guild',door:{x:540,y:483},icon:'📜'},
+  {id:'guild',x:465,y:500,w:150,h:120,name:'Adventurers Guild',label:'Guild',door:{x:540,y:467},icon:'📜'},
   {id:'bank',x:660,y:175,w:158,h:120,name:'Oakvale Bank',label:'Bank',door:{x:740,y:320},icon:'🏦'}
  ],
  roads:[{x:0,y:352,w:900,h:65},{x:353,y:0,w:65,h:850},{x:220,y:295,w:35,h:60},{x:480,y:288,w:35,h:65},{x:730,y:295,w:35,h:60},{x:235,y:416,w:35,h:70},{x:530,y:416,w:35,h:70}],
