@@ -12,13 +12,13 @@ function addXp(p,key,amount){const s=p.skills[key];if(!s||!Number.isFinite(amoun
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 function count(inv,id){return inv.reduce((sum,e)=>sum+(e.id===id?e.qty:0),0);}
-function addItem(inv,id,qty=1){
+function addItem(inv,id,qty=1,maxSlots=BAG_SLOTS){
  const item=ITEMS[id];if(!item||!Number.isSafeInteger(qty)||qty<1)return false;
  if(item.stackable){const existing=inv.find(e=>e.id===id);
   if(existing){if(existing.qty+qty>999999)return false;existing.qty+=qty;return true;}
-  if(inv.length>=BAG_SLOTS)return false;inv.push({id,qty});return true;
+  if(inv.length>=maxSlots)return false;inv.push({id,qty});return true;
  }
- if(inv.length+qty>BAG_SLOTS)return false;
+ if(inv.length+qty>maxSlots)return false;
  for(let i=0;i<qty;i++)inv.push({id,qty:1});return true;
 }
 function removeItem(inv,id,qty=1){
@@ -26,7 +26,8 @@ function removeItem(inv,id,qty=1){
  for(let i=inv.length-1;i>=0&&qty>0;i--)if(inv[i].id===id){const consumed=Math.min(qty,inv[i].qty);inv[i].qty-=consumed;qty-=consumed;if(inv[i].qty===0)inv.splice(i,1);}
  return true;
 }
-function weaponOf(p){return ITEMS[p.equipment.weapon]||ITEMS.bronze_dagger;}
+const UNARMED={id:'unarmed',name:'Unarmed',type:'crush',speed:4,attackBonus:0,strengthBonus:0,styles:['accurate','aggressive','defensive']};
+function weaponOf(p){return ITEMS[p.equipment.weapon]||UNARMED;}
 function allowedStyles(weapon){return weapon?.styles||['accurate','aggressive','defensive'];}
 function styleFor(weapon,desired){return allowedStyles(weapon).includes(desired)?desired:allowedStyles(weapon)[0];}
 function canEquip(p,item){
@@ -55,7 +56,8 @@ function combatRoll(p,target,rng=Math.random){
  const strLevel=(ranged?p.skills.ranging.level:p.skills.strength.level)+(style==='aggressive'?3:0);
  const ammo=ITEMS[p.equipment.ammo];
  const acc=Math.max(1,(atkLevel+8)*(64+(w.attackBonus||0)));
- const def=Math.max(1,(target.defence+8)*(64+(target.defenceBonus||0)));
+ const weak=(target.weakness===w.type)?-.25:0;
+ const def=Math.max(1,(target.defence+8)*(64+(target.defenceBonus||0))*(1+weak));
  const chance=acc>def?1-(def+2)/(2*(acc+1)):acc/(2*(def+1));
  const strengthBonus=(w.strengthBonus||0)+(ranged?(ammo?.rangedStrength||0):0);
  const maxHit=Math.max(1,Math.floor(.5+(strLevel+8)*(64+strengthBonus)/640));
@@ -76,7 +78,7 @@ function cellAt(x,y){return [clamp(Math.floor(x/CELL),0,GRIDSIZE-1),clamp(Math.f
 function openCell(x,y){const point={x:x*CELL+CELL/2,y:y*CELL+CELL/2};return !collides(point);}
 function makePath(from,to){
  const [sx,sy]=cellAt(from.x,from.y),[gx,gy]=cellAt(to.x,to.y);
- if(!openCell(gx,gy))return [];
+ if(!openCell(gx,gy)||collides(to))return [];
  const start=sy*GRIDSIZE+sx,goal=gy*GRIDSIZE+gx;
  if(start===goal)return [{x:clamp(to.x,16,WORLD_SIZE-16),y:clamp(to.y,16,WORLD_SIZE-16)}];
  const previous=new Int32Array(GRIDSIZE*GRIDSIZE).fill(-1),queue=new Int32Array(GRIDSIZE*GRIDSIZE);
