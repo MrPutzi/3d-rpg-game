@@ -4,7 +4,8 @@ const {Server}=require('socket.io');
 const {TICK_MS,WORLD_SIZE,BAG_SLOTS,ITEMS,VILLAGE,SHOPS,ENEMY_TEMPLATES,RESOURCE_TEMPLATES}=require('./game/content');
 const {xpForLevel,skill,addXp,dist,clamp,count,addItem,removeItem,weaponOf,allowedStyles,equip,attackDelayMs,attackRange,combatRoll,awardCombatXp,collides,makePath}=require('./game/rules');
 const {SKILLS,RECIPES,QUESTS,REGIONS,rollDrops}=require('./game/progression');
-const {stationLocation,questProgress,turnInQuest,processRecipe}=require('./game/activities');
+const {stationLocation,questProgress,turnInQuest}=require('./game/activities');
+const Production=require('./game/production');
 const Economy=require('./game/economy');
 const {accountStore}=require('./game/accounts');
 const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
@@ -31,7 +32,7 @@ const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
  return {id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
- bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills};
+ bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
 function storedProfile(p){return{x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
@@ -43,7 +44,7 @@ function hydrate(p,account){
   if(Object.hasOwn(d,field))fresh[field]=d[field];
  }
  for(const k of SKILLS)fresh.skills[k]=fresh.skills[k]||skill(k==='hitpoints'?xpForLevel(10):0);
- for(const [id,def] of Object.entries(QUESTS))fresh.quests[id]=fresh.quests[id]||{status:def.after?'locked':'active',progress:0,goal:def.goal};
+ for(const [id,def] of Object.entries(QUESTS))fresh.quests[id]=fresh.quests[id]||{status:def.after&&fresh.quests[def.after]?.status!=='complete'?'locked':'active',progress:0,goal:def.goal};
  fresh.equipment={...newPlayer(p.id).equipment,...fresh.equipment};
  fresh.x=Number.isFinite(fresh.x)?clamp(fresh.x,30,WORLD_SIZE-30):SPAWN.x;
  fresh.y=Number.isFinite(fresh.y)?clamp(fresh.y,30,WORLD_SIZE-30):SPAWN.y;
@@ -68,12 +69,12 @@ function newPlayer(id){
  skills:Object.fromEntries(SKILLS.map(k=>[k,skill(k==='hitpoints'?xpForLevel(10):0)])),
  combatStyle:'accurate',autoRetaliate:false,path:[],intent:null,nextAttack:0,openBuilding:null,slayerKills:0};
 }
-function stop(p){p.path=[];p.intent=null;}
+function stop(p){p.path=[];p.intent=null;if(Production.cancel(p))pushProfile(p);}
 function navigate(p,point,intent=null){
  const dest={x:clamp(point.x,18,WORLD_SIZE-18),y:clamp(point.y,18,WORLD_SIZE-18)};
  const path=makePath(p,dest);
  if(!path.length&&dist(p,dest)>24){send(p,'That location is unreachable.');return false;}
- p.path=path;p.intent=intent;p.openBuilding=null;return true;
+ Production.cancel(p);p.path=path;p.intent=intent;p.openBuilding=null;pushProfile(p);return true;
 }
 function reachable(p,entity,radius=85){return dist(p,entity)<=radius;}
 function buildingById(id){return VILLAGE.buildings.find(b=>b.id===id);}
@@ -94,10 +95,10 @@ function handleElder(p,id){
  const npc=VILLAGE.villagers.find(v=>v.id===id);if(!npc||!reachable(p,npc,90))return;
  const messages={guard:'Guard: Beware of the Eastern Wilds; bring armour and provisions.',
  forester:'Thorin: Chop five logs and return for a reward.',
- fisher:'Mara: Catch three raw shrimp from the lake, then speak to me.',
+ fisher:'Mara: Catch three shrimp at Moonwater Lake. After your first catch, cook three at the Oakvale tavern and bring the meals for our frontier patrol.',
  ranger:'Captain Rusk: Defeat two wolves to keep the frontier safe.'};
  if(id==='elder'&&p.quests.welcome.status==='active')questProgress(p,'talk','elder',1);
- const eligible=id==='elder'?['welcome','goblin_hunt']:id==='forester'?['forest_supplies']:id==='fisher'?['first_catch']:id==='ranger'?['wilds_patrol']:[];
+ const eligible=id==='elder'?['welcome','goblin_hunt']:id==='forester'?['forest_supplies']:id==='fisher'?['first_catch','cooked_supplies']:id==='ranger'?['wilds_patrol']:[];
  for(const questId of eligible){
   const outcome=turnInQuest(p,questId,id);
   if(outcome){send(p,outcome.message);pushProfile(p);return;}
@@ -253,14 +254,17 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
- socket.on('craft',id=>{
-  if(!p.loggedIn||!safeId(id))return;
-  const result=processRecipe(p,id,Date.now());
+ socket.on('craft',data=>{
+  if(!p.loggedIn)return;
+  const id=typeof data==='string'?data:data?.id,qty=typeof data==='string'?1:data?.qty;
+  const result=Production.start(p,id,qty,Date.now());
   send(p,result.message);if(result.ok)pushProfile(p);
  });
+ socket.on('cancelProduction',()=>{if(p.loggedIn&&Production.cancel(p)){send(p,'Production cancelled. Completed items are kept.');pushProfile(p);}});
  socket.on('castSpell',id=>{
   if(!p.loggedIn||!has(enemies,id))return;
   const n=enemies[id],now=Date.now();
+  if(Production.cancel(p))pushProfile(p);
   if(n.hp<=0||!reachable(p,n,210)||now<p.nextAttack)return;
   if(count(p.inventory,'air_rune')<1||count(p.inventory,'mind_rune')<1){send(p,'You need an Air rune and a Mind rune.');return;}
   removeItem(p.inventory,'air_rune',1);removeItem(p.inventory,'mind_rune',1);
@@ -383,8 +387,10 @@ setInterval(()=>{
   if(intent?.type==='building'||intent?.type==='talk'||intent?.type==='pickup')actionDone(p,now);
   if(p.path.length)stepMove(p);
   if(p.intent)actionDone(p,now);
+  const productionResult=Production.advance(p,now);
+  if(productionResult){send(p,productionResult.message);ensureEquipped(p);pushProfile(p);}
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
-   n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6)));
+   Production.cancel(p);n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6)));
    if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.path=[];}
    if(!p.hp){p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);

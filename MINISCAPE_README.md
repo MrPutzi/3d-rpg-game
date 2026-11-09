@@ -74,3 +74,25 @@ The `render.yaml` blueprint keeps database provisioning manual to avoid silently
 ## Known limitations and future development
 
 This is still an **alpha**, not a production MMO. Local account storage and Render Free Postgres are not durable long-term options. Shared economy stocks, drops and monsters live in one process. Add DB-backed transactions/locks for player trading, multi-server replication, production-grade IP limits, automated load tests, robust item identifiers and operational backups before large-scale deployment. Quests, maps, skills and monsters should keep growing incrementally; do not claim exact OSRS mechanical parity.
+
+## Timed production and frontier meals
+
+Training recipes now run as server-owned batches of 1–28 actions, each taking at least
+1.8 seconds. Ingredients, outputs and XP change together only when an action finishes.
+Repeated start requests cannot overlap jobs. Movement, another action, incoming damage,
+leaving a station or explicit cancellation interrupts the batch; completed items remain.
+There is no catch-up reward burst after a server stall. Inventory space, level, ingredients
+and station access are checked again at completion. The Skills tab shows materials,
+outputs, batch counts, progress and cancellation. Production jobs themselves are transient:
+disconnecting never grants unfinished work; completed progression uses the existing account
+save policy (20-second autosave and disconnect save, not crash-proof per-action persistence).
+
+After Mara's First Catch quest, Meals for the Frontier asks for three shrimp cooked at
+Oakvale's tavern. Return three cooked shrimp to Mara for a one-time 20-coin reward; delivered
+meals are removed. Existing accounts whose First Catch is complete unlock this new task on
+login without changing their previous quests. This links Moonwater fishing, Cooking, food
+consumption and the frontier provisioning story. No database migration is required.
+
+Next priorities: robust per-action persistence across shared economy mutations; fair
+multiplayer kill credit; richer recipe tools and station animations. The old account/UI
+rewrite PR #7 is not part of this change: phase 2 already supplied the current account system.

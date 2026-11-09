@@ -49,6 +49,15 @@ test('registered player can create account, restore session, and see expanded ca
   assert.ok(profile.skills.slayer);
   assert.equal(Object.keys(profile.equipment).length,11);
   assert.equal(profile.gold,130);
+  let changed=event(sock,'profile');sock.emit('craft',{id:'pickpocket',qty:2});
+  const queued=await changed;assert.equal(queued.gold,130);assert.equal(queued.production.remaining,2);
+  const denied=event(sock,'serverMessage');sock.emit('craft',{id:'pickpocket',qty:2});
+  assert.match(await denied,/Already producing/);
+  changed=event(sock,'profile');sock.emit('cancelProduction');
+  assert.equal((await changed).production,null);
+  changed=event(sock,'profile');sock.emit('craft',{id:'pickpocket',qty:1});await changed;
+  const completed=await event(sock,'profile');assert.equal(completed.gold,134);assert.equal(completed.production,null);
+
   sock.disconnect();
   await new Promise(resolve=>setTimeout(resolve,250));
   sock=await connected(url);
@@ -58,7 +67,7 @@ test('registered player can create account, restore session, and see expanded ca
   const resumed=await loggedIn;
   const saved=await resumedProfile;
   assert.equal(resumed.username,'TestKnight_98');
-  assert.equal(saved.gold,130);
+  assert.equal(saved.gold,134);
   assert.equal(saved.skills.fishing.level,1);
   // Invalid tokens are tested on a separate unauthenticated socket.
   sock.disconnect();

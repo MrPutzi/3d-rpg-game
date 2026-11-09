@@ -174,19 +174,33 @@ function updateUI(){
  for(const id of Object.values(profile.equipment)){const i=items[id];attack+=i?.attackBonus||0;strength+=(i?.strengthBonus||0)+(i?.rangedStrength||0);defence+=i?.defenceBonus||0;}
  $('equipment-bonuses').textContent='Attack +'+attack+' · Strength +'+strength+' · Defence +'+defence;
  const activity=$('recipes');activity.replaceChildren();
+ const active=profile.production;
+ $('production-status').textContent=active?namedRecipe(active.id)+' · '+active.completed+'/'+active.total+' complete':'Choose a recipe. Each action takes 1.8 seconds.';
+ $('cancel-production').hidden=!active;
+ $('production-progress').hidden=!active;
  for(const [id,recipe] of Object.entries(recipes)){
   const row=elem('div','recipe-row');
-  const txt=elem('span','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level);
-  txt.title='Station: '+recipe.station+' · XP '+recipe.xp+' · Needs '+Object.entries(recipe.inputs||{}).map(([k,v])=>named(k)+' ×'+v).join(', ');
-  const b=elem('button','', 'Train');b.title=txt.title;
-  b.disabled=(profile.skills[recipe.skill]?.level||1)<recipe.level;
-  b.onclick=()=>emit('craft',id);row.append(txt,b);activity.append(row);
+  const info=elem('div','recipe-info');
+  info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
+  const inputs=Object.entries(recipe.inputs||{}),outputs=Object.entries(recipe.outputs||{});
+  const owned=k=>profile.inventory.reduce((n,e)=>n+(e.id===k?e.qty:0),0);
+  info.append(elem('small','',inputs.length?inputs.map(([k,v])=>named(k)+' '+owned(k)+'/'+v).join(' · '):'No ingredients'));
+  info.append(elem('small','', '→ '+(outputs.map(([k,v])=>named(k)+' ×'+v).join(', ')||'Training')+' · '+recipe.xp+' XP · '+recipe.station));
+  const missing=inputs.some(([k,v])=>owned(k)<v);
+  const reason=active?'Batch in progress':(profile.skills[recipe.skill]?.level||0)<recipe.level?'Level too low':missing?'Missing ingredients':'';
+  const controls=elem('div','recipe-controls');
+  for(const qty of [1,5,28]){
+   const b=elem('button','',qty===28?'Make 28':'Make '+qty);b.disabled=!!reason;b.title=reason||'Stops if ingredients run out or you move.';
+   b.onclick=()=>emit('craft',{id,qty});controls.append(b);
+  }
+  if(reason)info.append(elem('small','',reason));
+  row.append(info,controls);activity.append(row);
  }
  const quests=$('quests');quests.replaceChildren();
  for(const [id,q] of Object.entries(profile.quests)){
   const row=elem('div','quest-row');const el=elem('div');
   el.append(elem('strong','',questsCatalog[id]?.name||names[id]||id));
-  el.append(elem('small','',q.status==='complete'?'✓ Complete':q.status==='locked'?'Locked':q.progress+' / '+q.goal));
+  el.append(elem('small','',q.status==='complete'?'✓ Complete':q.status==='locked'?'Locked':q.progress+' / '+q.goal+(questsCatalog[id]?.deliverItems?' · Bring meals to Mara':'')));
   row.append(el);quests.append(row);
  }
 }
@@ -410,7 +424,13 @@ function draw(){
  if(marker&&Date.now()<marker.expires){ctx.strokeStyle='#ffe1a1';ctx.lineWidth=3;ctx.beginPath();ctx.arc(marker.x,marker.y,16,0,Math.PI*2);ctx.stroke();}
 }
 let frameCount=0;
+$('cancel-production').onclick=()=>emit('cancelProduction');
+function namedRecipe(id){return recipes[id]?.name||id;}
+let profileReceivedAt=Date.now();
+socket.on('profile',()=>{profileReceivedAt=Date.now();});
 function frame(){
+ const job=profile?.production;
+ if(job){const estimated=profile.serverNow+(Date.now()-profileReceivedAt);$('production-progress').value=Math.max(0,Math.min(1,(estimated-job.startedAt)/(job.endsAt-job.startedAt)));}
  requestAnimationFrame(frame);
  const me=world.players[socket.id];if(me){camera.x+=(me.x-camera.x)*.17;camera.y+=(me.y-camera.y)*.17;}
  ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);ctx.clearRect(0,0,viewport.w,viewport.h);
