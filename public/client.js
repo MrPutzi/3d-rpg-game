@@ -216,6 +216,7 @@ function updateUI(){
   if(guidance)el.append(elem('small','','Return to '+guidance.giverName));
   if(def)el.append(elem('small','','Reward: '+(def.rewardGold||0)+' coins'+Object.entries(def.rewardItems||{}).map(([item,qty])=>' · '+named(item)+' ×'+qty).join('')));
   if(q.status==='active'){
+   if(guidance?.target){el.append(elem('small','',guidance.target.label));const show=elem('button','','Show objective');show.onclick=()=>{trackedQuest=id;updateUI();openMap();};el.append(show);}
    const track=elem('button','',trackedQuest===id?'Untrack':'Track');track.onclick=()=>{trackedQuest=trackedQuest===id?null:id;updateUI();};el.append(track);
    if(guidance?.giver){const go=elem('button','','Go to '+guidance.giverName);go.onclick=()=>emit('interact',guidance.giver);el.append(go);}
   }
@@ -494,6 +495,13 @@ function drawAtlas(canvas){
  for(const n of village.villagers){
   context.fillStyle='#fae190';context.beginPath();context.arc(n.x*ratioX,n.y*ratioY,canvas.id==='world-map'?4:2.1,0,Math.PI*2);context.fill();
  }
+ const target=profile?.questJournal?.[trackedQuest]?.target;
+ if(target){
+  context.strokeStyle='#64fff1';context.fillStyle='#64fff122';context.lineWidth=2;
+  if(target.bounds){const b=target.bounds;context.fillRect(b.x*ratioX,b.y*ratioY,b.w*ratioX,b.h*ratioY);context.strokeRect(b.x*ratioX,b.y*ratioY,b.w*ratioX,b.h*ratioY);}
+  context.beginPath();context.arc(target.x*ratioX,target.y*ratioY,canvas.id==='world-map'?9:5,0,Math.PI*2);context.stroke();
+  if(canvas.id==='world-map'){context.fillStyle='#64fff1';context.font='bold 12px sans-serif';context.textAlign='left';context.fillText('Quest target',Math.min(canvas.width-85,target.x*ratioX+12),Math.max(14,target.y*ratioY-12));}
+ }
  const me=world.players?.[socket.id];
  if(me){
   context.fillStyle='#f9d078';context.beginPath();
@@ -505,7 +513,7 @@ function drawAtlas(canvas){
   }
  }
 }
-function openMap(){if(!entered)return;$('map-backdrop').hidden=false;drawAtlas($('world-map'));}
+function openMap(){if(!entered)return;updateQuestMapLabel();$('map-backdrop').hidden=false;drawAtlas($('world-map'));}
 $('minimap').onclick=openMap;$('open-world-map').onclick=openMap;
 $('close-map').onclick=()=>{$('map-backdrop').hidden=true;};
 $('world-map').addEventListener('click',e=>{
@@ -567,3 +575,6 @@ setInterval(()=>{$('save-progress').disabled=!socket.connected||Date.now()<saveB
 socket.on('disconnect',()=>{$('save-status').textContent=registeredSave?'Disconnected — save status unknown':'Guest progress is temporary';});
 
 socket.on('loginSuccess',()=>{trackedQuest=null;$('tracked-quest').hidden=true;});
+
+function updateQuestMapLabel(){const target=profile?.questJournal?.[trackedQuest]?.target;$('quest-map-label').textContent=target?(questsCatalog[trackedQuest]?.name||'Quest')+' — '+target.label:'Track a quest to highlight its objective.';}
+socket.on('profile',updateQuestMapLabel);
