@@ -8,6 +8,7 @@ const {stationLocation,questProgress,turnInQuest}=require('./game/activities');
 const Production=require('./game/production');
 const Encounters=require('./game/encounters');
 const Food=require('./game/food');
+const Loot=require('./game/loot');
 const Economy=require('./game/economy');
 const {accountStore}=require('./game/accounts');
 const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
@@ -117,9 +118,8 @@ function actionDone(p,now){
  }else if(action.type==='pickup'){
   const g=groundItems[action.id];if(!g){stop(p);return;}
   if(reachable(p,g,48)){
-   if(g.ownerId&&g.ownerId!==p.id&&now<g.privateUntil){send(p,'Loot is reserved for another player.');stop(p);return;}
-   if(addItem(p.inventory,g.item,g.qty)){delete groundItems[g.id];send(p,'Picked up '+ITEMS[g.item].name+'.');pushProfile(p);}
-   else send(p,'Your inventory is full.');
+   const result=Loot.take(p,groundItems,action.id,now,reachable);send(p,result.message);
+   if(result.ok)pushProfile(p);
    stop(p);
   }
  }else if(action.type==='gather'){
@@ -401,7 +401,10 @@ setInterval(()=>{
  npcs:enemies,nodes,groundItems,projectiles:effects};
  if(now-lastSnapshot>=STATE_MS){
   io.emit('state',state);
-  for(const p of Object.values(players))if(p.loggedIn)io.to(p.id).emit('combatTarget',Encounters.target(enemies[p.selectedEnemyId],p,players,now));
+  for(const p of Object.values(players))if(p.loggedIn){
+   io.to(p.id).emit('combatTarget',Encounters.target(enemies[p.selectedEnemyId],p,players,now));
+   io.to(p.id).emit('nearbyLoot',Loot.nearby(p,groundItems,now));
+  }
   effects=[];lastSnapshot=now;
  }
 },STEP_MS);
