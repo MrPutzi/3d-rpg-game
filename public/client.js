@@ -7,7 +7,7 @@ let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
 let SIZE=3600,authMode='signin';
 const iconFor={attack:'⚔️',strength:'💪',defence:'🛡️',ranging:'🏹',hitpoints:'❤️',woodcutting:'🪓',mining:'⛏️',fishing:'🎣'};
-const zoneName=p=>regions.find(r=>p.x>=r.x&&p.x<r.x+r.w&&p.y>=r.y&&p.y<r.y+r.h)?.name||'The Frontier';
+const zoneName=p=>[...regions].reverse().find(r=>p.x>=r.x&&p.x<r.x+r.w&&p.y>=r.y&&p.y<r.y+r.h)?.name||'The Frontier';
 const iconNode={tree:'🌳',oak:'🌲',copper:'🟠',iron:'🪨',shrimp:'🐟',trout:'🎣'};
 const styleNames={
  accurate:['Accurate','Attack XP'],aggressive:['Aggressive','Strength XP'],defensive:['Defensive','Defence XP'],
@@ -96,13 +96,18 @@ $('guest-button').onclick=()=>{
  socket.emit('guestLogin',{name:$('character-name').value.trim()||'Guest'});
 };
 socket.on('profile',data=>{profile=data;updateUI();if(modalId&&profile.openBuilding===modalId)renderBuilding();else if(modalId&&profile.openBuilding!==modalId)closeBuilding();});
-socket.on('state',data=>{if(data?.players)world=data;const p=world.players[socket.id];if(p){$('coords').textContent=Math.round(p.x)+', '+Math.round(p.y);$('zone').textContent=zoneName(p);$('online').textContent=Object.keys(world.players).length+' players online';}});
+socket.on('state',data=>{
+ if(data?.players)world=data;
+ const p=world.players[socket.id];
+ if(p){$('coords').textContent=Math.round(p.x)+', '+Math.round(p.y);
+ $('zone').textContent=zoneName(p);$('online').textContent=Object.keys(world.players).length+' players online';}
+});
 socket.on('buildingOpen',data=>{modalId=data.id;shopTab='buy';renderBuilding();$('building-backdrop').hidden=false;});
 function closeBuilding(){modalId=null;$('building-backdrop').hidden=true;}
 $('close-building').onclick=closeBuilding;$('close-detail').onclick=()=>$('detail-backdrop').hidden=true;
 document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('pointerdown',e=>{if(e.target===b)b.hidden=true;if(b.id==='building-backdrop'&&b.hidden)modalId=null;}));
 document.addEventListener('pointerdown',e=>{if(!$('context-menu').contains(e.target))$('context-menu').hidden=true;});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;closeBuilding();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;$('map-backdrop').hidden=true;closeBuilding();}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
  document.querySelectorAll('.tab-pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
@@ -344,6 +349,10 @@ function draw(){
   rect(x,y,64,64,seed<4?'#315c43':'#2b5742');
   if(seed===1){circle(x+15,y+21,3,'#4e8b5a');circle(x+36,y+40,2,'#7eaa73');}
  }
+ for(const region of regions){
+  if(!inView(region.x+region.w/2,region.y+region.h/2,Math.max(region.w,region.h)))continue;
+  ctx.globalAlpha=.12;rect(region.x,region.y,region.w,region.h,region.color);ctx.globalAlpha=1;
+ }
  rect(70,1500,1150,760,'#355e62');rect(95,1520,1090,700,'#3c869b');
  for(const road of village.roads)rect(road.x,road.y,road.w,road.h,'#aa8e66');
  for(const b of village.buildings){
@@ -383,10 +392,64 @@ function draw(){
  }
  if(marker&&Date.now()<marker.expires){ctx.strokeStyle='#ffe1a1';ctx.lineWidth=3;ctx.beginPath();ctx.arc(marker.x,marker.y,16,0,Math.PI*2);ctx.stroke();}
 }
+let frameCount=0;
 function frame(){
  requestAnimationFrame(frame);
  const me=world.players[socket.id];if(me){camera.x+=(me.x-camera.x)*.17;camera.y+=(me.y-camera.y)*.17;}
  ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);ctx.clearRect(0,0,viewport.w,viewport.h);
  ctx.save();ctx.translate(viewport.w/2,viewport.h/2);ctx.translate(-camera.x,-camera.y);draw();ctx.restore();
+ if(frameCount++%6===0)drawAtlas($('minimap'));
+ if(!$('map-backdrop').hidden&&frameCount%12===0)drawAtlas($('world-map'));
+
 }
+
+function drawAtlas(canvas){
+ const context=canvas.getContext('2d'),w=canvas.width,h=canvas.height,ratioX=w/SIZE,ratioY=h/SIZE;
+ context.clearRect(0,0,w,h);
+ context.fillStyle='#244c37';context.fillRect(0,0,w,h);
+ for(const region of regions){
+  context.fillStyle=region.color||'#547d64';
+  context.globalAlpha=.75;context.fillRect(region.x*ratioX,region.y*ratioY,region.w*ratioX,region.h*ratioY);
+  context.globalAlpha=1;
+  if(canvas.id==='world-map'){
+   context.font='bold 12px system-ui';context.fillStyle='#f4e7cb';
+   context.textAlign='center';context.fillText(region.name,(region.x+region.w/2)*ratioX,(region.y+region.h/2)*ratioY);
+  }
+ }
+ for(const b of village.buildings){context.fillStyle='#e6c58a';context.fillRect(b.x*ratioX,b.y*ratioY,Math.max(3,b.w*ratioX),Math.max(3,b.h*ratioY));}
+ for(const n of Object.values(world.nodes||{})){
+  if(canvas.id!=='world-map')break;
+  context.fillStyle=n.skill==='fishing'?'#82d7f7':n.skill==='mining'?'#c7b39a':'#66b976';
+  context.fillRect(n.x*ratioX,n.y*ratioY,2.4,2.4);
+ }
+ for(const n of Object.values(world.npcs||{})){
+  if(!n.hp)continue;context.fillStyle='#f08b80';context.beginPath();
+  context.arc(n.x*ratioX,n.y*ratioY,canvas.id==='world-map'?3:1.3,0,Math.PI*2);context.fill();
+ }
+ for(const n of village.villagers){
+  context.fillStyle='#fae190';context.beginPath();context.arc(n.x*ratioX,n.y*ratioY,canvas.id==='world-map'?4:2.1,0,Math.PI*2);context.fill();
+ }
+ const me=world.players?.[socket.id];
+ if(me){
+  context.fillStyle='#f9d078';context.beginPath();
+  context.arc(me.x*ratioX,me.y*ratioY,canvas.id==='world-map'?8:5,0,Math.PI*2);context.fill();
+  context.strokeStyle='#0d2530';context.lineWidth=1.5;context.stroke();
+  if(canvas.id==='minimap'){
+   const left=Math.max(0,(camera.x-viewport.w/2)*ratioX),top=Math.max(0,(camera.y-viewport.h/2)*ratioY);
+   context.strokeStyle='#fcfcfcbb';context.lineWidth=.7;context.strokeRect(left,top,viewport.w*ratioX,viewport.h*ratioY);
+  }
+ }
+}
+function openMap(){if(!entered)return;$('map-backdrop').hidden=false;drawAtlas($('world-map'));}
+$('minimap').onclick=openMap;$('open-world-map').onclick=openMap;
+$('close-map').onclick=()=>{$('map-backdrop').hidden=true;};
+$('world-map').addEventListener('click',e=>{
+ if(!entered)return;
+ const rect=e.currentTarget.getBoundingClientRect();
+ const x=clampNumber((e.clientX-rect.left)/rect.width*SIZE,20,SIZE-20);
+ const y=clampNumber((e.clientY-rect.top)/rect.height*SIZE,20,SIZE-20);
+ emit('move',{x,y});marker={x,y,expires:Date.now()+4500};$('map-backdrop').hidden=true;
+});
+const clampNumber=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+
 requestAnimationFrame(frame);
