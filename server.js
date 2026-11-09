@@ -101,12 +101,12 @@ function ensureEquipped(p){
 }
 function handleElder(p,id){
  const npc=VILLAGE.villagers.find(v=>v.id===id);if(!npc||!reachable(p,npc,90))return;
- const messages={guard:'Guard: Beware of the Eastern Wilds; bring armour and provisions.',
+ const messages={guard:'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
  forester:'Thorin: Chop five logs and return for a reward.',
  fisher:'Mara: Catch three shrimp at Moonwater Lake. After your first catch, cook three at the Oakvale tavern and bring the meals for our frontier patrol.',
  ranger:'Captain Rusk: Defeat two wolves to keep the frontier safe.'};
  if(id==='elder'&&p.quests.welcome.status==='active')questProgress(p,'talk','elder',1);
- const eligible=id==='elder'?['welcome','goblin_hunt']:id==='forester'?['forest_supplies']:id==='fisher'?['first_catch','cooked_supplies']:id==='ranger'?['wilds_patrol']:[];
+ const eligible=Object.keys(QUESTS).filter(key=>QUESTS[key].giver===id);
  for(const questId of eligible){
   const outcome=turnInQuest(p,questId,id);
   if(outcome){send(p,outcome.message);pushProfile(p);return;}
