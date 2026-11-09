@@ -58,8 +58,7 @@ test('registered player can create account, restore session, and see expanded ca
   changed=event(sock,'profile');sock.emit('craft',{id:'pickpocket',qty:1});await changed;
   const completed=await event(sock,'profile');assert.equal(completed.gold,134);assert.equal(completed.production,null);
 
-  sock.disconnect();
-  await new Promise(resolve=>setTimeout(resolve,250));
+  const old=sock;const replaced=event(old,'sessionReplaced');
   sock=await connected(url);
   const loggedIn=event(sock,'loginSuccess');
   const resumedProfile=event(sock,'profile');
@@ -67,7 +66,12 @@ test('registered player can create account, restore session, and see expanded ca
   const resumed=await loggedIn;
   const saved=await resumedProfile;
   assert.equal(resumed.username,'TestKnight_98');
+  await replaced;assert.equal(old.connected,false);
   assert.equal(saved.gold,134);
+  const confirmed=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Save acknowledgement missing')),3000);const listener=value=>{if(value.state==='saved'){clearTimeout(timer);sock.off('saveStatus',listener);resolve(value);}};sock.on('saveStatus',listener);});
+  for(let i=0;i<20;i++)sock.emit('saveProgress');
+  assert.ok((await confirmed).at>0);
+  const disk=JSON.parse(fs.readFileSync(path.join(dir,'profiles.json'),'utf8'));assert.equal(disk.accounts[0].profile.gold,134);
   assert.equal(saved.skills.fishing.level,1);
   // Invalid tokens are tested on a separate unauthenticated socket.
   sock.disconnect();

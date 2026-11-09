@@ -542,3 +542,17 @@ socket.on('nearbyLoot',drops=>{
  }
 });
 socket.on('disconnect',()=>{lootRows.clear();$('nearby-loot').replaceChildren(elem('p','helper','Reconnect to see nearby drops.'));});
+
+let registeredSave=false,saveButtonUntil=0;
+socket.on('loginSuccess',data=>{
+ registeredSave=!!data.registered;$('save-progress').hidden=!registeredSave;
+ $('save-status').textContent=registeredSave?'Autosave every 20s':'Guest progress is temporary';
+ saveButtonUntil=0;$('save-progress').disabled=false;
+});
+socket.on('saveStatus',data=>{
+ if(!registeredSave)return;
+ $('save-status').textContent=data.state==='saved'?'Snapshot saved at '+new Date(data.at).toLocaleTimeString():data.state==='error'?'Save failed — retry; stay connected':'Saving snapshot…';
+});
+$('save-progress').onclick=()=>{if(!registeredSave||!socket.connected)return;saveButtonUntil=Date.now()+5000;$('save-progress').disabled=true;emit('saveProgress');};
+setInterval(()=>{$('save-progress').disabled=!socket.connected||Date.now()<saveButtonUntil;},250);
+socket.on('disconnect',()=>{$('save-status').textContent=registeredSave?'Disconnected — save status unknown':'Guest progress is temporary';});
