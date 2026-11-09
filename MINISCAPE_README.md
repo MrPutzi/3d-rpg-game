@@ -137,3 +137,15 @@ Inventory/context-menu eating uses the same server rules. This connects Cooking,
 Mara's food quest, tavern supplies and frontier combat without changing prices,
 healing amounts or quest requirements. Multiplayer tests cover spammed eating,
 spell delay, independent player timers and existing shared kill rewards.
+
+
+### Nearby loot
+
+A server-filtered panel lists up to 20 nearest drops within 160 world units,
+including overlapping drops, quantities, distance, reservation and expiry.
+Selecting one uses existing navigation; the server rechecks reachability,
+ownership, expiry and inventory capacity when the player arrives. Transfer and
+removal are synchronous so only one contender can win. Expired drops cannot be
+picked up between cleanup ticks. Full bags preserve the entire drop; existing
+stacks can accept stackable loot. No currency, drop probabilities or account
+schema change. Ground loot remains ephemeral across server restarts.

@@ -517,3 +517,21 @@ function updateFoodButton(){
 }
 $('quick-eat').onclick=()=>{const entry=quickFood();if(entry&&!$('quick-eat').disabled)emit('useItem',entry.id);};
 setInterval(updateFoodButton,100);
+
+// Stable rows keep focus and clicks intact across server snapshots.
+const lootRows=new Map();
+socket.on('nearbyLoot',drops=>{
+ const box=$('nearby-loot'),ids=new Set(drops.map(g=>g.id));
+ for(const [id,row] of lootRows)if(!ids.has(id)){row.remove();lootRows.delete(id);}
+ if(!drops.length){if(!box.querySelector('p'))box.append(elem('p','helper','No nearby drops.'));return;}
+ box.querySelector('p')?.remove();
+ for(const g of drops){
+  let row=lootRows.get(g.id);
+  if(!row){row=elem('button');row.style.cssText='display:block;width:100%;text-align:left;margin:5px 0;font-size:11px';row.onclick=()=>emit('pickup',g.id);lootRows.set(g.id,row);box.append(row);}
+  row.disabled=g.access==='reserved';
+  const access=g.access==='reserved'?'Reserved '+Math.ceil(g.unlockIn/1000)+'s':g.access==='yours'?'Yours':'Public';
+  row.textContent=named(g.item)+' ×'+g.qty+' · '+access+' · '+g.distance+'u · expires '+Math.ceil(g.expiresIn/1000)+'s';
+  row.title='Walk to and take this drop. Inventory space and ownership are checked by the server.';
+ }
+});
+socket.on('disconnect',()=>{lootRows.clear();$('nearby-loot').replaceChildren(elem('p','helper','Reconnect to see nearby drops.'));});

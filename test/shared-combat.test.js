@@ -41,6 +41,8 @@ test('magic assist and melee finish share gold, quest progress, private loot and
   await Promise.all([pa,pb]);
   const lootState=await until(mage,'state',v=>Object.values(v.groundItems).length>0);
   assert.ok(Object.values(lootState.groundItems).every(g=>g.ownerId===warrior.id));
+  const nearby=await until(mage,'nearbyLoot',rows=>rows.some(g=>g.access==='reserved'));
+  assert.ok(nearby.every(g=>g.qty>0&&g.expiresIn>0));
   const locked=until(mage,'serverMessage',v=>/another player|belongs|reserved|protected/i.test(v));
   mage.emit('pickup',Object.values(lootState.groundItems)[0].id);await locked;
   for(const s of sockets)s.disconnect();
