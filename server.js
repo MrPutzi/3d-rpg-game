@@ -10,9 +10,10 @@ const Encounters=require('./game/encounters');
 const Food=require('./game/food');
 const Loot=require('./game/loot');
 const Bank=require('./game/bank');
+const {serialQueue}=require('./game/serial');
 const Economy=require('./game/economy');
 const {accountStore}=require('./game/accounts');
-const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
+const accountDb=accountStore(),activeAccounts=new Map(),saving=serialQueue(),authQueue=serialQueue();
 const PAPER_SLOTS=['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'];
 const app=express();app.disable('x-powered-by');app.use(express.static(path.join(__dirname,'public')));
 const server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:4096});
@@ -62,8 +63,11 @@ function hydrate(p,account){
 function persist(p){
  if(!p.accountId)return Promise.resolve();
  const id=p.accountId,snapshot=structuredClone(storedProfile(p));
- const next=(saving.get(id)||Promise.resolve()).catch(()=>{}).then(()=>accountDb.save(id,snapshot));
- saving.set(id,next);next.catch(e=>console.error('Profile save failed',e.message));return next;
+ io.to(p.id).emit('saveStatus',{state:'saving'});
+ const next=saving.run(id,()=>accountDb.save(id,snapshot));
+ next.then(()=>io.to(p.id).emit('saveStatus',{state:'saved',at:Date.now()}),e=>{
+  console.error('Profile save failed',e.message);io.to(p.id).emit('saveStatus',{state:'error'});
+ });return next;
 }
 function newPlayer(id){
  const inventory=[];for(const [item,qty] of [['bronze_scimitar',1],['shortbow',1],['bronze_arrow',120],['bronze_axe',1],['bronze_pickaxe',1],['small_net',1],['bread',2]])addItem(inventory,item,qty);
@@ -187,11 +191,12 @@ io.on('connection',socket=>{
  if(Object.keys(players).length>=100){socket.emit('serverMessage','World is full.');socket.disconnect(true);return;}
  const p=newPlayer(socket.id);players[socket.id]=p;
  socket.emit('catalog',{items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
- let authAttempts=0,authWindow=Date.now();
+ let authAttempts=0,authWindow=Date.now(),authBusy=false,nextManualSave=0;
  async function authenticate(operation,data){
-  if(p.loggedIn)return;
+  if(p.loggedIn||authBusy)return;
   if(Date.now()-authWindow>60000){authAttempts=0;authWindow=Date.now();}
   if(++authAttempts>12){send(p,'Too many login attempts. Try again in a minute.');return;}
+  authBusy=true;
   try{
    let result;
    if(operation==='register'){const username=String(data?.username||'').trim();
@@ -202,31 +207,45 @@ io.on('connection',socket=>{
     if(!account){socket.emit('authFailed','Session expired. Please log in again.');return;}
     result={account,token:data.token};
    }else return;
-   const previous=activeAccounts.get(result.account.id);
-   if(previous&&previous!==p.id){io.to(previous).emit('sessionReplaced');io.sockets.sockets.get(previous)?.disconnect(true);}
-   hydrate(p,result.account);p.sessionToken=result.token;
-   activeAccounts.set(p.accountId,p.id);
-   socket.emit('loginSuccess',{id:p.id,username:p.name,token:result.token,registered:true});
-   send(p,'Welcome to Oakvale, '+p.name+'! Your progress is linked to your account.');
-   pushProfile(p);
-  }catch(err){socket.emit('authFailed',err.message||'Authentication failed.');}
+   await authQueue.run(result.account.id,async()=>{
+    if(!socket.connected||p.loggedIn)return;
+    const previous=activeAccounts.get(result.account.id);
+    if(previous&&previous!==p.id){io.to(previous).emit('sessionReplaced');io.sockets.sockets.get(previous)?.disconnect(true);}
+    // Disconnect enqueues the old snapshot before loading this session's profile.
+    await saving.wait(result.account.id);
+    const current=await accountDb.resume(result.token);
+    if(!current)throw Error('Session expired. Please log in again.');
+    if(!socket.connected)return;
+    hydrate(p,current);p.sessionToken=result.token;
+    activeAccounts.set(p.accountId,p.id);
+    socket.emit('loginSuccess',{id:p.id,username:p.name,token:result.token,registered:true});
+    send(p,'Welcome to Oakvale, '+p.name+'! Your progress is linked to your account.');
+    pushProfile(p);
+   });
+  }catch(err){socket.emit('authFailed',err.message||'Authentication failed.');}finally{authBusy=false;}
  }
  socket.on('register',data=>{authenticate('register',data).catch(e=>console.error('Registration failed',e.message));});
  socket.on('signIn',data=>{authenticate('signIn',data).catch(e=>console.error('Sign-in failed',e.message));});
  socket.on('resumeSession',data=>{authenticate('resume',data).catch(e=>console.error('Resume failed',e.message));});
  socket.on('guestLogin',data=>{
-  if(p.loggedIn)return;
+  if(p.loggedIn||authBusy)return;
   const raw=typeof data?.name==='string'?data.name:'';
   const name=raw.trim().replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,18);
   if(name.length<2){send(p,'Guest name must be at least two characters.');return;}
   p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id,username:name,guest:true});
   send(p,'Guest mode: progress will not be saved.');pushProfile(p);
  });
+ socket.on('saveProgress',()=>{
+  if(!p.loggedIn||!p.accountId||Date.now()<nextManualSave)return;
+  nextManualSave=Date.now()+5000;persist(p).catch(()=>{});
+ });
  socket.on('logout',async()=>{
   if(!p.loggedIn)return;
-  await persist(p);if(p.sessionToken)await accountDb.logout(p.sessionToken);
-  if(p.accountId)activeAccounts.delete(p.accountId);
-  socket.emit('loggedOut');socket.disconnect(true);
+  try{
+   await persist(p);if(p.sessionToken)await accountDb.logout(p.sessionToken);
+   if(p.accountId&&activeAccounts.get(p.accountId)===p.id)activeAccounts.delete(p.accountId);
+   socket.emit('loggedOut');socket.disconnect(true);
+  }catch{send(p,'Could not save progress. Stay connected and retry.');}
  });
  socket.on('move',pos=>{
   if(!p.loggedIn||!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))return;

@@ -163,3 +163,20 @@ Registered accounts retain existing autosave/disconnect persistence; guests are
 temporary. This is in-memory transaction safety, not crash-safe database commits.
 No migration or economy/quest balance changes are needed. Bulk banking supports
 resource gathering, production batches and supplies for the existing frontier quests.
+
+
+### Save checkpoints and session handoff
+
+Registered characters can request a snapshot save from the HUD (at most once
+per five seconds); guests cannot. Saving/saved/error feedback is emitted after
+the storage operation settles, with a timestamp for the saved snapshot. Later
+changes still depend on the next autosave/checkpoint. Local-file mode still
+requires persistent storage; this does not make ephemeral Render disks durable.
+
+Account handoffs are serialized: a replacement session disconnects the previous
+one, waits for its queued save, and reloads the profile before entering the world.
+Parallel authentication on one socket is rejected. Save queues are per account,
+release completed entries and permit retries after errors. Logout failures keep
+the client connected and report the failure. No schema or migration changes.
+This protects bank contents, skill/quest progress and gold across session changes;
+it does not provide per-action crash-safe economic transactions.
