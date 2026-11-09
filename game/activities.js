@@ -27,18 +27,19 @@ function activateAvailable(p,finished){
 }
 function turnInQuest(p,id,npcId){
  const def=QUESTS[id],q=p.quests[id];if(!def||!q||q.status!=='active'||q.progress<q.goal)return null;
- const giver={welcome:'elder',goblin_hunt:'elder',forest_supplies:'forester',first_catch:'fisher',wilds_patrol:'ranger'}[id];
+ const giver=def.giver||{welcome:'elder',goblin_hunt:'elder',forest_supplies:'forester',first_catch:'fisher',wilds_patrol:'ranger'}[id];
  if(giver!==npcId)return null;
  const future=p.inventory.map(x=>({...x}));
+ for(const [item,qty] of Object.entries(def.deliverItems||{}))if(!removeItem(future,item,qty))return {ok:false,message:'Bring '+qty+' '+ITEMS[item].name+' to claim this reward.'};
  for(const [item,qty] of Object.entries(def.rewardItems||{}))if(!addItem(future,item,qty))return {ok:false,message:'Free inventory slots before claiming your reward.'};
  p.inventory=future;p.gold+=def.rewardGold||0;q.status='complete';activateAvailable(p,id);
  return {ok:true,message:'Quest completed: '+def.name+' · +'+(def.rewardGold||0)+' coins!'};
 }
 function processRecipe(p,id,now=Date.now()){
- const rec=RECIPES[id];if(!rec)return {ok:false,message:'Unknown activity.'};
+ const rec=typeof id==='string'&&Object.hasOwn(RECIPES,id)?RECIPES[id]:null;if(!rec)return {ok:false,message:'Unknown activity.'};
  if(p.nextSkillAction&&now<p.nextSkillAction)return {ok:false,message:'Wait for the next action tick.'};
  if(!stationReady(p,rec.station))return {ok:false,message:'Visit the required station or region first.'};
- if(p.skills[rec.skill]?.level<rec.level)return {ok:false,message:'Requires '+rec.skill+' level '+rec.level+'.'};
+ if(!p.skills[rec.skill]||p.skills[rec.skill].level<rec.level)return {ok:false,message:'Requires '+rec.skill+' level '+rec.level+'.'};
  if(rec.requiresSlayerKills&&p.slayerKills<rec.requiresSlayerKills)return {ok:false,message:'Defeat '+rec.requiresSlayerKills+' creatures for the Slayer task first.'};
  for(const [item,qty] of Object.entries(rec.inputs))if(count(p.inventory,item)<qty)return {ok:false,message:'Missing '+ITEMS[item]?.name+'.'};
  const candidate=p.inventory.map(e=>({...e}));
@@ -47,6 +48,7 @@ function processRecipe(p,id,now=Date.now()){
  p.inventory=candidate;p.gold+=rec.gold||0;
  addXp(p,rec.skill,rec.xp);
  p.nextSkillAction=now+1800;
+ questProgress(p,'craft',id,1);
  if(rec.requiresSlayerKills)p.slayerKills-=rec.requiresSlayerKills;
  return{ok:true,message:rec.name+' · +'+rec.xp+' '+rec.skill+' XP'+(rec.gold?' · +'+rec.gold+' coins':'')};
 }
