@@ -253,6 +253,31 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
+ socket.on('craft',id=>{
+  if(!p.loggedIn||!safeId(id))return;
+  const result=processRecipe(p,id,Date.now());
+  send(p,result.message);if(result.ok)pushProfile(p);
+ });
+ socket.on('castSpell',id=>{
+  if(!p.loggedIn||!has(enemies,id))return;
+  const n=enemies[id],now=Date.now();
+  if(n.hp<=0||!reachable(p,n,210)||now<p.nextAttack)return;
+  if(count(p.inventory,'air_rune')<1||count(p.inventory,'mind_rune')<1){send(p,'You need an Air rune and a Mind rune.');return;}
+  removeItem(p.inventory,'air_rune',1);removeItem(p.inventory,'mind_rune',1);
+  const damage=Math.min(n.hp,Math.floor(Math.random()*5));
+  n.hp-=damage;n.targetPlayer=p.id;p.nextAttack=now+TICK_MS*4;
+  addXp(p,'magic',6+damage*2);if(damage)addXp(p,'hitpoints',damage*4/3);
+  effects.push({x:n.x,y:n.y,damage,style:'magic',fromX:p.x,fromY:p.y});
+  if(n.hp===0){
+   n.respawnAt=now+6500;questProgress(p,'kill',n.kind,1);p.gold+=n.level*2;
+   for(const drop of rollDrops(n.kind)){
+    if(!ITEMS[drop.id])continue;
+    const lootId=crypto.randomUUID();
+    groundItems[lootId]={id:lootId,item:drop.id,qty:drop.qty,x:n.x,y:n.y,ownerId:p.id,privateUntil:now+15000,expires:now+180000};
+   }
+  }
+  pushProfile(p);
+ });
  socket.on('unequip',slot=>{
   if(!p.loggedIn||!PAPER_SLOTS.includes(slot))return;
   p.equipment[slot]=null;if(slot==='weapon'){p.combatStyle='accurate';stop(p);}pushProfile(p);
@@ -306,12 +331,41 @@ io.on('connection',socket=>{
   if(!addItem(p.inventory,data.id,qty)){send(p,'Inventory full.');return;}
   removeItem(p.bank,data.id,qty);pushProfile(p);
  });
- socket.on('disconnect',()=>delete players[socket.id]);
+ socket.on('disconnect',()=>{
+  if(p.accountId){
+   if(activeAccounts.get(p.accountId)===p.id)activeAccounts.delete(p.accountId);
+   persist(p);
+  }
+  delete players[socket.id];
+ });
 });
-let lastSnapshot=0;
+let lastSnapshot=0,lastRestock=0,lastSave=0;
 setInterval(()=>{
  const now=Date.now();
- for(const n of Object.values(enemies))if(n.hp<=0&&now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;n.targetPlayer=null;}
+ for(const n of Object.values(enemies)){
+  if(n.hp<=0){
+   if(now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;n.targetPlayer=null;n.x=n.homeX;n.y=n.homeY;}
+   continue;
+  }
+  if(!n.nextWander||now>=n.nextWander){
+   n.nextWander=now+1500+Math.random()*5000;
+   const theta=Math.random()*Math.PI*2,rad=Math.sqrt(Math.random())*n.territoryRadius;
+   n.wanderX=clamp(n.homeX+Math.cos(theta)*rad,20,WORLD_SIZE-20);
+   n.wanderY=clamp(n.homeY+Math.sin(theta)*rad,20,WORLD_SIZE-20);
+  }
+  const target=n.targetPlayer?players[n.targetPlayer]:null;
+  const chase=target?.loggedIn&&dist(target,n)<150&&dist(target,{x:n.homeX,y:n.homeY})<n.territoryRadius+80;
+  const destination=chase?target:{x:n.wanderX||n.homeX,y:n.wanderY||n.homeY};
+  const dx=destination.x-n.x,dy=destination.y-n.y,d=Math.hypot(dx,dy);
+  const speed=chase?2.8:1.2;
+  if(d>3){
+   const next={x:n.x+dx/d*Math.min(speed,d),y:n.y+dy/d*Math.min(speed,d)};
+   if(dist(next,{x:n.homeX,y:n.homeY})<=n.territoryRadius+80&&!collides(next)){n.x=next.x;n.y=next.y;}
+  }
+  if(!chase&&n.targetPlayer)n.targetPlayer=null;
+ }
+ if(now-lastRestock>=60000){Economy.restock();lastRestock=now;}
+ if(now-lastSave>=20000){for(const p of Object.values(players))if(p.loggedIn)persist(p);lastSave=now;}
  for(const [id,g] of Object.entries(groundItems))if(now>=g.expires)delete groundItems[id];
  for(const p of Object.values(players)){
   if(!p.loggedIn)continue;
@@ -341,4 +395,6 @@ setInterval(()=>{
  npcs:enemies,nodes,groundItems,projectiles:effects};
  if(now-lastSnapshot>=STATE_MS){io.emit('state',state);effects=[];lastSnapshot=now;}
 },STEP_MS);
-server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('MiniScape server online'));
+accountDb.init().then(()=>{
+ server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('MiniScape online · account mode: '+accountDb.mode));
+}).catch(err=>{console.error('Account database failed to initialize:',err);process.exitCode=1;});
