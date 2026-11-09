@@ -15,24 +15,59 @@ header{height:58px;display:flex;align-items:center;justify-content:space-between
 #context-menu{position:fixed;z-index:100;width:min(265px,90vw);background:#111e2af7;border:1px solid #b39764;box-shadow:0 13px 40px #000b;border-radius:10px;padding:5px;max-height:75vh;overflow-y:auto}#context-menu .context-head{padding:7px 9px;color:#f6d597;font-size:11px;font-weight:800;border-bottom:1px solid #3d5260}#context-menu button{width:100%;display:block;text-align:left;border:0;background:transparent;padding:9px 10px;margin-top:2px;font-size:12px}#context-menu button:hover{background:#314a5b;color:#ffdf9b}
 .modal-backdrop{position:fixed;inset:0;z-index:55;background:#040b11c9;display:grid;place-items:center;padding:16px;backdrop-filter:blur(6px)}.modal{width:min(700px,100%);max-height:85dvh;overflow:auto;background:linear-gradient(145deg,#1a2d3c,#0e1a27);border:1px solid #9d835d;border-radius:16px;box-shadow:0 20px 80px #000c}.modal-header{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#192b3afa;border-bottom:1px solid #506373;padding:16px 19px;z-index:1}.modal-header h2{margin:0;color:var(--gold);font-size:20px}.modal-header button{padding:7px 10px}.modal-content{padding:17px 20px}.shop-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.shop-entry{display:flex;align-items:center;gap:10px;background:#1a2c39;border:1px solid #3c5464;padding:9px;border-radius:10px}.shop-entry .shop-icon{font-size:27px;width:36px;text-align:center}.shop-entry strong{display:block;font-size:12px}.shop-entry small{color:var(--muted)}.shop-entry button{margin-left:auto;font-size:11px;padding:7px}.shop-entry button:disabled{opacity:.45}.shop-description{color:var(--muted);line-height:1.6}.modal-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.bank-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}.bank-column h3{color:var(--gold)}.bank-row{font-size:12px}.bank-row button{font-size:10px;padding:5px}.empty{text-align:center;color:var(--muted);padding:20px}.foot-tag{font-size:11px;color:var(--muted);margin-top:10px}
 @media(max-width:950px){body{overflow:auto}.layout{height:auto;min-height:0;grid-template-columns:1fr}.world{height:70dvh;min-height:420px}.sidebar{overflow:visible}.sheet{min-height:330px}}@media(max-width:620px){header{padding:0 11px}.brand{font-size:16px}.layout{padding:6px;gap:7px}.world{height:64dvh;min-height:350px}.zone-hud{display:none}.log-hud{width:85%}.hud{padding:7px}.panel{padding:11px}.shop-list,.bank-list{grid-template-columns:1fr}}
-#item-tooltip{position:fixed;z-index:120;pointer-events:none;padding:7px 10px;color:#ffe3aa;background:#07121bf2;border:1px solid #aa8655;border-radius:8px;box-shadow:0 10px 20px #0009;font-size:12px;white-space:nowrap}</style></head><body>
-<div id="login-overlay"><form class="login-card" id="login-form"><div style="font-size:43px">⚔️</div><h1>MINISCAPE</h1><p>OAKVALE FRONTIER<br>Dobrodružstvo začína za mestskými hradbami.</p><input id="character-name" placeholder="Meno postavy" maxlength="18" minlength="2" autocomplete="nickname" required><button>VSTÚPIŤ DO SVETA</button><p style="font-size:11px">Hosťovská postava · progres sa zatiaľ neukladá</p><div id="login-error" role="status" style="color:#ffc2b8"></div></form></div>
+#item-tooltip{position:fixed;z-index:120;pointer-events:none;padding:7px 10px;color:#ffe3aa;background:#07121bf2;border:1px solid #aa8655;border-radius:8px;box-shadow:0 10px 20px #0009;font-size:12px;white-space:nowrap}
+.auth-modes{display:flex;gap:8px;margin:12px 0}.auth-modes button{background:#263e4b;flex:1}.auth-modes button.active{background:#8d6741;border-color:#efc581}
+.auth-alt{border-top:1px solid #415463;padding-top:12px;margin-top:14px}
+#minimap{display:block;width:170px;height:150px;cursor:pointer;border:1px solid #758c93;border-radius:7px;pointer-events:auto;background:#163628;margin:6px 0}
+.zone-hud{pointer-events:auto;min-width:192px}.map-button{display:block;width:100%;padding:6px 9px;font-size:11px;pointer-events:auto}
+.paper-doll{display:grid;grid-template-columns:repeat(5,48px);grid-template-rows:repeat(5,48px);justify-content:center;gap:4px;position:relative;padding:5px 0 12px}
+.paper-avatar{grid-column:2 / 5;grid-row:2 / 5;display:grid;place-items:center;font-size:70px;opacity:.23;pointer-events:none}
+.paper-slot{min-width:0;z-index:1;display:grid;place-items:center;font-size:24px;padding:3px;border:1px solid #506475;border-radius:9px;background:#253846;cursor:pointer}
+.paper-slot small{position:absolute;font-size:8px;transform:translateY(20px);color:#b7c2c6}
+.paper-slot:hover{border-color:#eac482}
+.paper-slot.empty{opacity:.72}
+.paper-slot[data-slot=head]{grid-area:1 / 3}
+.paper-slot[data-slot=cape]{grid-area:2 / 1}
+.paper-slot[data-slot=neck]{grid-area:2 / 3}
+.paper-slot[data-slot=ammo]{grid-area:2 / 5}
+.paper-slot[data-slot=weapon]{grid-area:3 / 1}
+.paper-slot[data-slot=body]{grid-area:3 / 3}
+.paper-slot[data-slot=offhand]{grid-area:3 / 5}
+.paper-slot[data-slot=hands]{grid-area:4 / 1}
+.paper-slot[data-slot=legs]{grid-area:4 / 3}
+.paper-slot[data-slot=ring]{grid-area:4 / 5}
+.paper-slot[data-slot=feet]{grid-area:5 / 3}
+.recipe-row{display:flex;align-items:center;justify-content:space-between;gap:7px;border-bottom:1px solid #304351;padding:7px 0;font-size:11px}.recipe-row button{padding:5px 7px;font-size:10px}
+.recipe-row span{flex:1}.shop-coins{background:#2a3845;border:1px solid #786d51;color:#f8d58d;padding:10px;border-radius:8px;margin:10px 0;font-weight:800}
+#world-map{display:block;width:100%;max-height:70vh;aspect-ratio:1;background:#153427;border:1px solid #648075;border-radius:10px;cursor:crosshair}
+.map-info{font-size:11px;color:#aabcb9;margin:9px 0}
+@media(max-width:620px){#minimap{width:118px;height:105px}.zone-hud{min-width:130px}.paper-doll{grid-template-columns:repeat(5,45px);grid-template-rows:repeat(5,45px)}}
+</style></head><body>
+<div id="login-overlay"><div class="login-card"><div style="font-size:40px">⚔️</div><h1>MINISCAPE</h1>
+<p>OAKVALE FRONTIER<br>Vytvor si účet a zachovaj herný progres.</p>
+<div class="auth-modes"><button type="button" data-auth-mode="signin" class="active">Prihlásenie</button><button type="button" data-auth-mode="register">Registrácia</button></div>
+<form id="login-form"><input id="character-name" placeholder="Meno postavy (3–18 znakov)" maxlength="18" minlength="3" required autocomplete="username">
+<input id="password" type="password" placeholder="Heslo (min. 10 znakov)" minlength="10" maxlength="128" required autocomplete="current-password">
+<button id="submit-auth" type="submit">PRIHLÁSIŤ SA</button></form>
+<div class="auth-alt"><button type="button" id="guest-button">Pokračovať ako hosť</button><p style="font-size:11px">Hosťovský progres sa neukladá. Účty sa trvalo ukladajú iba pri nakonfigurovanom PostgreSQL.</p></div>
+<div id="login-error" role="status" style="color:#ffc2b8;font-size:12px"></div></div></div>
 <header><div class="brand">⚔ MINISCAPE <small>OAKVALE FRONTIER · ALPHA</small></div><span class="online" id="connection">● Pripájam…</span></header>
 <main class="layout">
 <section class="world" id="world"><canvas id="gameCanvas" aria-label="Svet hry"></canvas>
 <div class="hud player-hud"><div class="hud-heading" id="player-name">Adventurer</div><div class="stat"><span>❤️ Hitpoints</span><strong id="health">20 / 20</strong></div><div class="healthbar"><div id="hp-bar"></div></div><div class="stat"><span>🪙 Coins</span><strong id="gold">0</strong></div></div>
-<div class="hud zone-hud"><div class="hud-heading" id="zone">Oakvale</div><div class="muted" id="coords">380, 380</div><div class="muted" id="online">0 players</div></div>
+<div class="hud zone-hud"><div class="hud-heading" id="zone">Oakvale</div><div class="muted" id="coords">380, 380</div><div class="muted" id="online">0 players</div><canvas id="minimap" width="170" height="150" aria-label="Minimapa" title="Klikni pre otvorenie mapy"></canvas><button class="map-button" id="open-world-map">🗺 Otvoriť mapu</button></div>
 <div class="hud log-hud"><div class="hud-heading">Adventure log</div><div id="notice">Ľavý klik: akcia · pravý klik: všetky možnosti</div></div>
 </section>
 <aside class="sidebar"><section class="panel"><h2>Combat options</h2><div class="combat-header"><div id="weapon-icon" class="weapon-icon">⚔️</div><div><strong id="weapon-name">Bronze Scimitar</strong><small id="weapon-info">Slash · 4 ticks</small></div></div><div class="styles" id="combat-styles"></div><div class="stat"><button id="auto-retaliate" style="width:100%;font-size:11px">Auto-retaliate: OFF</button></div><div class="stat"><span>Combat level</span><strong id="combat-level">3</strong></div></section>
 <section class="panel sheet"><nav class="tabs" aria-label="Player tabs"><button data-tab="inventory" class="active" title="Inventár">🎒</button><button data-tab="skills" title="Skilly">✦</button><button data-tab="equipment" title="Výbava">🛡️</button><button data-tab="quests" title="Questy">📜</button></nav>
 <section class="tab-pane" id="pane-inventory"><div class="pane-title">Inventár · <span id="bag-count">0 / 28</span></div><div id="inventory" class="inventory"></div><p class="helper">Prejdi myšou nad predmet pre názov. Pravý klik otvorí možnosti.</p></section>
-<section class="tab-pane" id="pane-skills" hidden><div class="pane-title">Skills · Level 1–99</div><div id="skills-list"></div></section>
-<section class="tab-pane" id="pane-equipment" hidden><div class="pane-title">Equipment & bonuses</div><div id="equipment"></div><div id="equipment-bonuses" class="helper"></div></section>
+<section class="tab-pane" id="pane-skills" hidden><div class="pane-title">Skills · Level 1–99</div><div id="skills-list"></div><hr style="border-color:#344b58"><div class="pane-title">Training / Crafting</div><div id="recipes"></div></section>
+<section class="tab-pane" id="pane-equipment" hidden><div class="pane-title">Equipment & bonuses</div><div id="equipment" class="paper-doll"></div><div id="equipment-bonuses" class="helper"></div></section>
 <section class="tab-pane" id="pane-quests" hidden><div class="pane-title">Quest journal</div><div id="quests"></div></section>
 </section><section class="panel"><h2>Explorer's guide</h2><div class="helper">🏘 Klikni na budovu pre otvorenie jej obsahu.<br>🪓 Woodcutting · ⛏ Mining · 🎣 Fishing<br>🗡 Zbrane určujú dostupné štýly útoku.<br>⌛ Boj: 600 ms tick · plynulejší pohyb.<br>🖱 Pravý klik zobrazí kontextové menu.</div></section>
 </aside></main>
 <div id="context-menu" role="menu" hidden></div><div id="item-tooltip" hidden></div>
 <div class="modal-backdrop" id="building-backdrop" hidden><section class="modal" role="dialog" aria-modal="true" aria-labelledby="building-title"><div class="modal-header"><h2 id="building-title">Budova</h2><button id="close-building" aria-label="Zavrieť">✕</button></div><div class="modal-content" id="building-content"></div></section></div>
 <div class="modal-backdrop" id="detail-backdrop" hidden><section class="modal" style="max-width:440px" role="dialog" aria-modal="true" aria-labelledby="detail-title"><div class="modal-header"><h2 id="detail-title">Details</h2><button id="close-detail">✕</button></div><div id="detail-content" class="modal-content"></div></section></div>
+<div class="modal-backdrop" id="map-backdrop" hidden><section class="modal" style="width:min(900px,98vw)" role="dialog" aria-modal="true" aria-labelledby="map-title"><div class="modal-header"><h2 id="map-title">🗺 World Map</h2><button id="close-map" aria-label="Zavrieť mapu">✕</button></div><div class="modal-content"><canvas id="world-map" width="740" height="740" aria-label="Mapa sveta"></canvas><p class="map-info">Klikni na mapu pre nastavenie cieľa. Značky: <span style="color:#f3d38b">● hráč</span>, 🏠 budovy, ✦ NPC, červené body = nepriatelia.</p></div></section></div>
 <script src="/socket.io/socket.io.js"></script><script src="/client.js"></script></body></html>
