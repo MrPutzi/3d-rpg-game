@@ -1,10 +1,10 @@
 # MiniScape — Oakvale Frontier
 
-A browser-based MMO RPG prototype with an authoritative Express + Socket.IO server and Canvas client. Its mechanics are **inspired by Old School RuneScape**, not a full recreation.
+An expandable, server-authoritative browser MMO RPG **inspired by** Old School RuneScape, built with Express, Socket.IO and Canvas. It uses original content and code. It is **not** an official RuneScape product or a complete clone.
 
-## Run locally
+## Local setup
 
-Requires Node.js 20 or newer.
+Requires Node.js 20+.
 
 ```bash
 npm install
@@ -12,62 +12,65 @@ npm test
 npm start
 ```
 
-Open `http://localhost:3000`. Open a second tab to see shared-world multiplayer.
+Open http://localhost:3000. The default local account store is `.data/players.json` (gitignored). To use PostgreSQL, set `DATABASE_URL` before running the server.
 
-## Controls
+## Real user accounts
 
-- **Left click world:** walk, attack an enemy, gather a resource, speak to a villager or enter a building.
-- **Right click world:** context menu for enemies, NPCs, buildings, nodes, dropped items and empty ground.
-- **Inventory:** 28 miniature icon slots; hover for item names; left click to equip/eat/examine, right click for all supported actions.
-- **Mobile:** tap to act; long press for context actions.
-- **Escape:** close the context menu or an open dialog.
+- Registration with unique character name (3–18 letters/numbers, underscore or dash) and password (10–128 characters).
+- Passwords hashed with salted Node.js `scrypt`; session tokens are random and only hashed server-side.
+- User can sign in, resume a 7-day session, and sign out.
+- Server persists position, experience, skills, bank, inventory, equipment, quests, coins and Slayer progress every 20 seconds and on disconnect.
+- The same account cannot remain active in two simultaneous Socket.IO sessions.
+- Guest mode remains available for testing but never persists.
+- For production durability configure PostgreSQL. Without `DATABASE_URL`, accounts use an ordinary local JSON file. **Render Free web service files are ephemeral**, so registrations and progress will be lost after service recreation/redeploy.
 
-## Game buildings
+### Render.com PostgreSQL
 
-- **Forge:** browse and purchase tiered melee weapons and shields; sell inventory items.
-- **Market:** buy bows, arrows, bolts, food and gathering tools; sell items.
-- **Tavern:** buy food and recover health for 10 coins.
-- **Bank:** deposit/withdraw inventory items (in-memory, **not persistent**).
-- **Guild:** view quest progress and training guidance.
-- Click any building to walk to its entrance. The server verifies that the player is near enough to open/use it.
+1. Create a Render Postgres database in the **same region** as the web service (or use another trusted managed PostgreSQL provider).
+2. Open the Render Web Service → Environment, set `DATABASE_URL` to the database's **Internal Database URL**.
+3. Redeploy. The server creates `game_accounts` and `game_sessions` tables automatically at startup.
+4. Verify `/health` and test account registration, sign-out, return login, and saved progress.
+5. For a long-lived game use a **paid database or other durable managed PostgreSQL**. Render Free Postgres expires after 30 days. Do not rely on it for permanent player accounts.
 
-## Weapons, combat and equipment
+The `render.yaml` blueprint keeps database provisioning manual to avoid silently creating or billing for an extra service.
 
-- Bronze, Iron, Steel, Mithril, Adamant and Rune melee tiers; Dagger, Scimitar, Longsword, Battleaxe and Two-handed sword categories.
-- Bows, crossbow, arrows and bolts; ammunition is consumed for ranged attacks.
-- Weapon-specific OSRS-inspired attack speeds (4/5/6/7 600ms ticks) and combat options.
-- Melee styles: Accurate / Aggressive / Defensive / Controlled (when supported by weapon).
-- Ranged styles: Accurate / Rapid / Longrange.
-- Server-controlled level requirements, equipment restrictions, hit chance, max hit and XP distribution.
-- Accurate, Aggressive and Defensive earn Attack, Strength or Defence XP respectively. Controlled splits XP. Rapid speeds up ranged attacks, Longrange splits Ranged/Defence XP.
-- Auto-retaliate may be toggled on/off.
+## Map and world
 
-## World gameplay
+- 3600 × 3600 connected world with eight named regions and a frontier outpost.
+- Minimap and interactive full world map show player, settlements, enemies, resource nodes and training sites.
+- Click or long press / right click world objects for context actions; players automatically pathfind to interactions.
+- Mobile touch supports context long press.
+- Server simulates movement every 100 ms, broadcasts state every 200 ms, and uses 600 ms attack-tick units.
 
-- 2400×2400 world with follow camera, Oakvale town, tiered enemies, trees, ores and fishing spots.
-- Woodcutting/Mining/Fishing require the correct gathering tool, skill level and inventory space.
-- Pickup and drop ground items (temporary, expire after 3 minutes).
-- Three-goblin quest and village introduction. Gold, weapon shops and 28-slot inventory.
-- The game simulation and movement update every **100ms**, world state is broadcast every **200ms**. Combat cooldowns retain the classic **600ms OSRS tick** as a unit.
+## Combat and equipment
 
-## Architecture
+- 11-slot paper-doll equipment UI: head, cape, neck, weapon, body, shield, legs, gloves, boots, ring, ammunition.
+- Six metal melee tiers, five weapon categories and several ranged weapons.
+- Attack/Strength/Defence/Ranged XP styles, weapon speeds, level requirements, ammo consumption, and armour/attack bonuses.
+- Toggle auto-retaliate; enemy AI roams randomly within bounded home territories, with controlled aggression and respawn.
+- Every enemy kind has a weighted loot table including low-value and rare drops. Loot has a 15-second owner-only window, then becomes available to other players.
 
-- `game/content.js`: item, tier, weapon, building, shop and world content definitions.
-- `game/rules.js`: XP curves, inventory operations, combat formulas, equipment and pathfinding.
-- `server.js`: authoritative world sessions, secure interactions, combat loop and Socket.IO.
-- `public/index.html`: modern UI, modals, context menu and canvas.
-- `public/client.js`: Canvas renderer, input and player interface.
-- `test/game.test.js`: game-rule regression tests; run `npm test`.
+## Economy, quests and skill loops
 
-## Render.com
+- NPC shops have limited stock, bounded dynamic prices, a 45% resale rate (gold sink), and gradual restocking.
+- Shops visibly show your current coins; bank, forge, tavern, general store, Adventurers Guild, Newhaven Outpost all have their own UI.
+- Beginner quest chain: talk to Elder → Goblin Menace → Eastern Wilds Patrol; forest and fishing quests branch from Elder.
+- 23 skills initialized with server-defined XP progress and levels. Functional starter recipes/activities exist for Cooking, Firemaking, Smithing, Crafting, Fletching, Magic (Wind Strike), Prayer, Agility, Thieving, Runecrafting, Herblore, Farming, Construction, Hunter and Slayer.
+- Woodcutting, Mining and Fishing continue via world nodes; training sites are marked on world and minimap.
+- These are **starter mechanics**, not complete copies of OSRS skill content, item recipes, timers, animations or progression.
 
-Deploy as a **Web Service** with:
-- Build: `npm install`
-- Start: `npm start`
-- Health check: `/health`
-- Node.js 20+, same-origin Socket.IO.
-- See `render.yaml` for a ready-to-use blueprint.
+## Modular structure
 
-## Limitations and next steps
+- `game/content.js` — buildings, enemies, resource nodes, 11-slot equipment items and shops.
+- `game/progression.js` — skill list, recipes, quest definitions, region boundaries and drop tables.
+- `game/rules.js` — OSRS-style XP thresholds, combat calculations, inventory operations and BFS pathfinding.
+- `game/activities.js` — server-validated recipes, skill training and quest turn-in.
+- `game/economy.js` — stock, price quotes, shop purchases, sales and restocking.
+- `game/accounts.js` — user auth, hashed sessions, PostgreSQL/local persistence.
+- `server.js` — game orchestration, WebSocket events, AI, movement and profile saving.
+- `public/client.js` — Canvas world, map, minimap, equipment paper doll, UI interactions.
+- `public/index.html` — responsive interface, modals, authentication forms.
 
-This is an alpha: account login is only a **guest character name**. XP, quests, inventory, bank items and gold remain **in server memory** and reset on disconnect or restart. A persistent MMO needs PostgreSQL, authenticated accounts, reliable reconnect sessions, shared state before multiple instances, server-side rate limits, and combat / network load testing. Combat formulas and content are intentionally simplified and may differ from actual OSRS values. No original RuneScape art or proprietary game content is copied.
+## Known limitations and future development
+
+This is still an **alpha**, not a production MMO. Local account storage and Render Free Postgres are not durable long-term options. Shared economy stocks, drops and monsters live in one process. Add DB-backed transactions/locks for player trading, multi-server replication, production-grade IP limits, automated load tests, robust item identifiers and operational backups before large-scale deployment. Quests, maps, skills and monsters should keep growing incrementally; do not claim exact OSRS mechanical parity.
