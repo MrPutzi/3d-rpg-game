@@ -96,3 +96,26 @@ consumption and the frontier provisioning story. No database migration is requir
 Next priorities: robust per-action persistence across shared economy mutations; fair
 multiplayer kill credit; richer recipe tools and station animations. The old account/UI
 rewrite PR #7 is not part of this change: phase 2 already supplied the current account system.
+
+## Shared encounters and target feedback
+
+Melee, ranged and magic kills now use the same death/reward path. Actual damage is recorded
+server-side per enemy life; misses do not create claims. Nearby, living, connected players
+who hit in the last 30 seconds qualify with at least 10% of the enemy's maximum HP damage.
+The leading eligible contributor always qualifies, including when other participants have left.
+The existing coin budget (at least 2, otherwise twice enemy level) is split proportionally
+using deterministic integer rounding: more participants do not mint extra gold. Ties use
+session ID order. Combat XP still comes only from each player's own damage.
+
+Every qualifying participant receives matching quest kill credit (Goblin Menace / Eastern
+Wilds Patrol) and wolf Slayer credit regardless of attack type. The highest eligible damage
+contributor owns the single rolled drop set for 15 seconds; the normal public pickup/expiry
+rules then apply. Disconnected/distant/dead/stale participants are excluded. Reconnecting
+creates a new combat session and does not reclaim an old encounter. Each enemy settles once;
+respawn clears the ledger. NPC ledgers never enter public world snapshots.
+
+The Combat options panel shows the selected target's HP, your actual damage and current
+credit eligibility. Reward messages explain your coin share and drop ownership. Selection is
+server-confirmed for attacks, spells and auto-retaliation and clears when the target dies.
+These changes extend existing account-save behavior; crash-proof shared-world persistence,
+party membership and player trading remain future work. No schema migration is required.

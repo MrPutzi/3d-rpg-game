@@ -6,6 +6,7 @@ const {xpForLevel,skill,addXp,dist,clamp,count,addItem,removeItem,weaponOf,allow
 const {SKILLS,RECIPES,QUESTS,REGIONS,rollDrops}=require('./game/progression');
 const {stationLocation,questProgress,turnInQuest}=require('./game/activities');
 const Production=require('./game/production');
+const Encounters=require('./game/encounters');
 const Economy=require('./game/economy');
 const {accountStore}=require('./game/accounts');
 const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
@@ -144,26 +145,30 @@ function actionDone(p,now){
   }
   const outcome=combatRoll(p,n);
   if(w.ammo){removeItem(p.inventory,p.equipment.ammo,1);ensureEquipped(p);}p.nextAttack=now+attackDelayMs(p);
-  const actual=Math.min(n.hp,outcome.hit);n.hp-=actual;n.targetPlayer=p.id;awardCombatXp(p,actual);
+  const actual=Math.min(n.hp,outcome.hit);n.hp-=actual;Encounters.record(n,p,actual,now);n.targetPlayer=p.id;awardCombatXp(p,actual);
   effects.push({x:n.x,y:n.y,damage:actual,style:w.type==='ranged'?'ranged':outcome.type,fromX:p.x,fromY:p.y});
-  if(n.hp<=0){
-   n.targetPlayer=null;n.respawnAt=now+6500;p.gold+=Math.max(2,n.level*2);
-   questProgress(p,'kill',n.kind,1);
-   if(n.kind==='wolf')p.slayerKills++;
-   for(const drop of rollDrops(n.kind)){
-    if(!ITEMS[drop.id])continue;
-    const lootId=crypto.randomUUID();
-    groundItems[lootId]={id:lootId,item:drop.id,qty:drop.qty,
-     x:clamp(n.x+(Math.random()-.5)*25,20,WORLD_SIZE-20),
-     y:clamp(n.y+(Math.random()-.5)*25,20,WORLD_SIZE-20),
-     ownerId:p.id,privateUntil:now+15000,expires:now+180000};
-   }
-   
-   send(p,'Defeated '+n.name+' (level '+n.level+').');
-   stop(p);
-  }
+  if(n.hp<=0){finishEnemy(n,now);stop(p);}
   pushProfile(p);
  }
+}
+function finishEnemy(n,now){
+ const outcome=Encounters.settle(n,players,now);if(!outcome)return;
+ n.targetPlayer=null;n.respawnAt=now+6500;
+ for(const reward of outcome.rewards){
+  const p=players[reward.id];p.gold+=reward.gold;
+  questProgress(p,'kill',n.kind,1);
+  if(n.kind==='wolf')p.slayerKills++;
+  io.to(p.id).emit('combatReward',{name:n.name,gold:reward.gold,damage:reward.damage,lootOwner:outcome.ownerId===p.id});
+  pushProfile(p);
+ }
+ if(outcome.ownerId)for(const drop of rollDrops(n.kind)){
+  if(!ITEMS[drop.id])continue;
+  const id=crypto.randomUUID();
+  groundItems[id]={id,item:drop.id,qty:drop.qty,
+   x:clamp(n.x+(Math.random()-.5)*25,20,WORLD_SIZE-20),y:clamp(n.y+(Math.random()-.5)*25,20,WORLD_SIZE-20),
+   ownerId:outcome.ownerId,privateUntil:now+15000,expires:now+180000};
+ }
+ for(const p of Object.values(players))if(p.selectedEnemyId===n.id)p.selectedEnemyId=null;
 }
 function stepMove(p){
  if(!p.path.length)return;
@@ -237,7 +242,7 @@ io.on('connection',socket=>{
  });
  socket.on('attack',id=>{
   if(!p.loggedIn||!has(enemies,id)||enemies[id].hp<=0)return;
-  const n=enemies[id];if(reachable(p,n,attackRange(p))){p.path=[];p.intent={type:'attack',id};p.openBuilding=null;}
+  const n=enemies[id];p.selectedEnemyId=id;if(reachable(p,n,attackRange(p))){p.path=[];p.intent={type:'attack',id};p.openBuilding=null;}
   else navigate(p,n,{type:'attack',id});
  });
  socket.on('gather',id=>{
@@ -267,19 +272,13 @@ io.on('connection',socket=>{
   if(Production.cancel(p))pushProfile(p);
   if(n.hp<=0||!reachable(p,n,210)||now<p.nextAttack)return;
   if(count(p.inventory,'air_rune')<1||count(p.inventory,'mind_rune')<1){send(p,'You need an Air rune and a Mind rune.');return;}
+  p.selectedEnemyId=id;
   removeItem(p.inventory,'air_rune',1);removeItem(p.inventory,'mind_rune',1);
   const damage=Math.min(n.hp,Math.floor(Math.random()*5));
-  n.hp-=damage;n.targetPlayer=p.id;p.nextAttack=now+TICK_MS*4;
+  n.hp-=damage;Encounters.record(n,p,damage,now);n.targetPlayer=p.id;p.nextAttack=now+TICK_MS*4;
   addXp(p,'magic',6+damage*2);if(damage)addXp(p,'hitpoints',damage*4/3);
   effects.push({x:n.x,y:n.y,damage,style:'magic',fromX:p.x,fromY:p.y});
-  if(n.hp===0){
-   n.respawnAt=now+6500;questProgress(p,'kill',n.kind,1);p.gold+=n.level*2;
-   for(const drop of rollDrops(n.kind)){
-    if(!ITEMS[drop.id])continue;
-    const lootId=crypto.randomUUID();
-    groundItems[lootId]={id:lootId,item:drop.id,qty:drop.qty,x:n.x,y:n.y,ownerId:p.id,privateUntil:now+15000,expires:now+180000};
-   }
-  }
+  if(n.hp===0)finishEnemy(n,now);
   pushProfile(p);
  });
  socket.on('unequip',slot=>{
@@ -348,7 +347,7 @@ setInterval(()=>{
  const now=Date.now();
  for(const n of Object.values(enemies)){
   if(n.hp<=0){
-   if(now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;n.targetPlayer=null;n.x=n.homeX;n.y=n.homeY;}
+   if(now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;n.targetPlayer=null;n.x=n.homeX;n.y=n.homeY;Encounters.reset(n);}
    continue;
   }
   if(!n.nextWander||now>=n.nextWander){
@@ -391,15 +390,19 @@ setInterval(()=>{
   if(productionResult){send(p,productionResult.message);ensureEquipped(p);pushProfile(p);}
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
    Production.cancel(p);n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6)));
-   if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.path=[];}
-   if(!p.hp){p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
+   if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.selectedEnemyId=n.id;p.path=[];}
+   if(!p.hp){for(const enemy of Object.values(enemies))Encounters.forget(enemy,p.id);p.selectedEnemyId=null;p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);
   }
   if(p.openBuilding&&!reachable(p,buildingById(p.openBuilding)?.door||SPAWN,130)){p.openBuilding=null;pushProfile(p);}
  }
  const state={players:Object.fromEntries(Object.values(players).filter(p=>p.loggedIn).map(p=>[p.id,{id:p.id,name:p.name,x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,combatStyle:p.combatStyle,weapon:p.equipment.weapon}])),
  npcs:enemies,nodes,groundItems,projectiles:effects};
- if(now-lastSnapshot>=STATE_MS){io.emit('state',state);effects=[];lastSnapshot=now;}
+ if(now-lastSnapshot>=STATE_MS){
+  io.emit('state',state);
+  for(const p of Object.values(players))if(p.loggedIn)io.to(p.id).emit('combatTarget',Encounters.target(enemies[p.selectedEnemyId],p,players,now));
+  effects=[];lastSnapshot=now;
+ }
 },STEP_MS);
 accountDb.init().then(()=>{
  server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('MiniScape online · account mode: '+accountDb.mode));
