@@ -5,6 +5,7 @@ const SKILLS=['attack','strength','defence','ranging','hitpoints','woodcutting',
  'runecrafting','herblore','farming','construction','hunter','slayer'];
 const RECIPES={
  cook_shrimp:{name:'Cook shrimp',skill:'cooking',level:1,xp:30,inputs:{raw_shrimp:1},outputs:{cooked_shrimp:1},station:'tavern'},
+ cook_rabbit:{name:'Roast rabbit',skill:'cooking',level:1,xp:35,inputs:{raw_rabbit:1},outputs:{cooked_rabbit:1},station:'tavern'},
  cook_trout:{name:'Cook trout',skill:'cooking',level:15,xp:70,inputs:{raw_trout:1},outputs:{trout_cooked:1},station:'tavern'},
  firemaking_logs:{name:'Light logs',skill:'firemaking',level:1,xp:40,inputs:{logs:1},outputs:{},station:'any'},
  fletch_shafts:{name:'Make arrow shafts',skill:'fletching',level:1,xp:15,inputs:{logs:1},outputs:{arrow_shafts:15},station:'any'},
@@ -30,6 +31,7 @@ const QUESTS={
  cooked_supplies:{name:'Meals for the Frontier',giver:'fisher',type:'craft',target:'cook_shrimp',goal:3,deliverItems:{cooked_shrimp:3},rewardGold:20,after:'first_catch'},
  first_catch:{giver:'fisher',name:'The Fisherman’s Request',type:'gather',target:'raw_shrimp',goal:3,rewardGold:40,rewardItems:{vial_of_water:2},after:'welcome'},
  guard_supplies:{giver:'guard',name:'Points for the Patrol',type:'craft',target:'smith_arrowtips',goal:2,deliverItems:{bronze_arrowtips:30},rewardGold:25,rewardItems:{feathers:30},after:'goblin_hunt'},
+ patrol_provisions:{giver:'ranger',name:'Provisions for Newhaven',type:'craft',target:'cook_rabbit',goal:3,deliverItems:{cooked_rabbit:3},rewardGold:30,after:'wilds_patrol'},
  wilds_patrol:{giver:'ranger',name:'Eastern Wilds Patrol',type:'kill',target:'wolf',goal:2,rewardGold:110,rewardItems:{iron_arrow:25},after:'goblin_hunt'}
 };
 const DROPS={
