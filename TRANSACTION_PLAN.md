@@ -57,3 +57,9 @@ Two concurrent plans against one old snapshot can both succeed: the persistence
 layer MUST serialize/version-check them. Existing server code still has the crash
 bug and the failing regression stays enabled. No durable-store or UI completion
 is claimed. Next implement step 1 storage commits, then steps 2 and 3 above.
+
+### Atomic snapshot storage foundation
+
+`game/atomic-snapshot.js` now commits an entire JSON snapshot with a synced temporary file, atomic rename, and directory sync. Updates are serialized with a revision check; failed transformations or pre-rename I/O failures leave the previous snapshot intact. An uncertain post-rename failure requires reopening the store. Six tests cover joint profile/gold/stock recovery, stale concurrent writers, aborted transformations, failed rename/retry, and real SIGKILL immediately before/after rename.
+
+This is a single-owner local storage primitive, **not wired into accountStore or server handlers**. Do not open the account database with both writers. No existing data is migrated. Process-crash tests are not a power-loss or PostgreSQL durability certification. Production still needs all account/session/autosave writes routed through one transaction adapter, PostgreSQL transactions, gameplay serialization during pending commits and committed-result UI acknowledgements. The existing failing merchant-crash regression remains enabled and blocks merge.
