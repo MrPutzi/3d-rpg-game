@@ -239,7 +239,7 @@ function shopEntry(id){
  const stock=marketInfo[modalId]?.stock?.[id]??20;
  const actualPrice=marketInfo[modalId]?.prices?.[id]?.buy??item.price;
  buy.disabled=stock<=0||profile.gold<actualPrice;
- info.lastChild.textContent=actualPrice+' coins · stock '+stock+(item.level?' · lvl '+item.level:'');
+ info.lastChild.textContent=actualPrice+' coins · stock '+stock+(!shops[modalId].items.includes(id)?' · Player supplied':'')+(item.level?' · lvl '+item.level:'');
  row.append(buy);
  row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
   {label:'Buy 1',action:()=>emit('buy',{id,qty:1})},{label:'Buy 5',action:()=>emit('buy',{id,qty:5})},
@@ -261,7 +261,10 @@ function renderBuilding(){
    button.onclick=()=>{shopTab=tab;renderBuilding();};actions.append(button);
   }
   box.append(actions);const list=elem('div','shop-list');
-  if(shopTab==='buy')for(const id of shops[modalId].items)list.append(shopEntry(id));
+  if(shopTab==='buy'){
+   const resale=Object.entries(marketInfo[modalId]?.stock||{}).filter(([id,qty])=>qty>0&&items[id]&&!shops[modalId].items.includes(id)).map(([id])=>id);
+   for(const id of [...shops[modalId].items,...resale])list.append(shopEntry(id));
+  }
   else for(const entry of profile.inventory){
    const item=items[entry.id],row=elem('div','shop-entry');
    row.append(elem('span','shop-icon',item.icon));const info=elem('div');
