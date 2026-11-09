@@ -282,6 +282,8 @@ function hitAt(pt){
  const npc=Object.values(world.npcs||{}).find(n=>n.hp>0&&Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(npc)return{kind:'enemy',object:npc};
  const villager=village.villagers.find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(villager)return{kind:'npc',object:villager};
  const node=Object.values(world.nodes||{}).find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<24);if(node)return{kind:'node',object:node};
+ const found=Object.entries(stations).find(([id,p])=>Math.hypot(p.x-pt.x,p.y-pt.y)<30);
+ if(found)return{kind:'station',object:{id:found[0],x:found[1].x,y:found[1].y,name:found[0]}};
  const building=village.buildings.find(b=>pt.x>=b.x&&pt.x<b.x+b.w&&pt.y>=b.y&&pt.y<b.y+b.h);if(building)return{kind:'building',object:building};
  return{kind:'ground',object:pt};
 }
@@ -291,6 +293,7 @@ function clickAction(hit){
  else if(hit.kind==='enemy')emit('attack',o.id);
  else if(hit.kind==='npc')emit('interact',o.id);
  else if(hit.kind==='node')emit('gather',o.id);
+ else if(hit.kind==='station'){emit('move',{x:o.x,y:o.y});notify('Walking to '+o.name+' station.');}
  else if(hit.kind==='building'){emit('visitBuilding',o.id);notify('Walking to '+o.name+'…');}
  else {marker={x:o.x,y:o.y,expires:Date.now()+2300};emit('move',o);}
 }
@@ -312,6 +315,15 @@ function hitMenu(hit,e){
   title=o.name;const action=o.skill==='woodcutting'?'Chop':o.skill==='mining'?'Mine':'Fish';
   options=[{label:action+' '+o.name,action:()=>emit('gather',o.id)},{label:'Walk here',action:()=>walk(o)},
    {label:'Examine',action:()=>detail(o.name,['Skill: '+o.skill,'Required level: '+o.level,'XP: '+o.xp,'Resource: '+named(o.item)])}];
+ }else if(hit.kind==='station'){
+  title='Training: '+o.name;
+  options=[{label:'Walk to '+o.name,action:()=>walk(o)},
+   {label:'Open skill training',action:()=>{
+    const b=document.querySelector('[data-tab=skills]');if(b)b.click();
+    notify('Training location: '+o.name+'. Choose a recipe when you arrive.');
+   }},{label:'Examine',action:()=>detail('Training site',[
+    'Skill activities here: '+Object.values(recipes).filter(x=>x.station===o.name).map(x=>x.name).join(', ')
+   ])}];
  }else if(hit.kind==='loot'){
   title=named(o.item);options=[{label:'Take '+named(o.item),action:()=>emit('pickup',o.id)},{label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>examineItem(o.item)}];
  }else{
@@ -364,6 +376,11 @@ function draw(){
  }
  const f=village.fountain;if(inView(f.x,f.y)){circle(f.x,f.y,31,'#a7b8bd');circle(f.x,f.y,24,'#5bb1d5');}
  for(const v of village.villagers){if(!inView(v.x,v.y))continue;circle(v.x,v.y+8,13,'#102f2b66');circle(v.x,v.y,13,'#dfb079');label('◆ '+v.name,v.x,v.y-23,'#ffdea4');}
+ for(const [id,site] of Object.entries(stations)){
+  if(!inView(site.x,site.y))continue;
+  circle(site.x,site.y,17,'#927b50');label('✦',site.x,site.y+5,'#ffe4a3',17);
+  label(id.toUpperCase(),site.x,site.y-25,'#f3dbb3',11);
+ }
  for(const n of Object.values(world.nodes||{})){
   if(!inView(n.x,n.y))continue;const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
   if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,20,'#74513a');circle(n.x,n.y-8,n.kind==='oak'?22:18,n.kind==='oak'?'#357844':'#308751');circle(n.x-6,n.y-14,7,'#5ea86a');}
@@ -417,6 +434,10 @@ function drawAtlas(canvas){
   }
  }
  for(const b of village.buildings){context.fillStyle='#e6c58a';context.fillRect(b.x*ratioX,b.y*ratioY,Math.max(3,b.w*ratioX),Math.max(3,b.h*ratioY));}
+ for(const site of Object.values(stations)){
+  context.fillStyle='#f5d084';context.beginPath();
+  context.arc(site.x*ratioX,site.y*ratioY,canvas.id==='world-map'?5:2.5,0,Math.PI*2);context.fill();
+ }
  for(const n of Object.values(world.nodes||{})){
   if(canvas.id!=='world-map')break;
   context.fillStyle=n.skill==='fishing'?'#82d7f7':n.skill==='mining'?'#c7b39a':'#66b976';
