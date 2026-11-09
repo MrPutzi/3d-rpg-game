@@ -25,14 +25,27 @@ function activateAvailable(p,finished){
   if(def.after===finished&&p.quests[id]?.status==='locked')p.quests[id].status='active';
  }
 }
-function turnInQuest(p,id,npcId){
- const def=QUESTS[id],q=p.quests[id];if(!def||!q||q.status!=='active'||q.progress<q.goal)return null;
- const giver=def.giver||{welcome:'elder',goblin_hunt:'elder',forest_supplies:'forester',first_catch:'fisher',wilds_patrol:'ranger'}[id];
- if(giver!==npcId)return null;
+function questReadiness(p,id){
+ const def=Object.hasOwn(QUESTS,id)?QUESTS[id]:null,q=p.quests[id];
+ if(!def||!q)return {ok:false,message:'Unknown quest.'};
+ if(q.status==='complete')return {ok:false,message:'Complete'};
+ if(q.status==='locked')return {ok:false,message:'Complete '+(QUESTS[def.after]?.name||'the previous quest')+' first.'};
+ if(q.progress<q.goal)return {ok:false,message:'Objective '+q.progress+' / '+q.goal};
  const future=p.inventory.map(x=>({...x}));
  for(const [item,qty] of Object.entries(def.deliverItems||{}))if(!removeItem(future,item,qty))return {ok:false,message:'Bring '+qty+' '+ITEMS[item].name+' to claim this reward.'};
  for(const [item,qty] of Object.entries(def.rewardItems||{}))if(!addItem(future,item,qty))return {ok:false,message:'Free inventory slots before claiming your reward.'};
- p.inventory=future;p.gold+=def.rewardGold||0;q.status='complete';activateAvailable(p,id);
+ return {ok:true,message:'Ready to claim',inventory:future};
+}
+function questJournal(p){
+ return Object.fromEntries(Object.entries(QUESTS).map(([id,def])=>{
+  const ready=questReadiness(p,id),npc=VILLAGE.villagers.find(n=>n.id===def.giver);
+  return [id,{ready:ready.ok,message:ready.message,giver:def.giver,giverName:npc?.name||def.giver}];
+ }));
+}
+function turnInQuest(p,id,npcId){
+ const def=Object.hasOwn(QUESTS,id)?QUESTS[id]:null,q=p.quests[id];if(!def||!q||q.status!=='active'||q.progress<q.goal||def.giver!==npcId)return null;
+ const ready=questReadiness(p,id);if(!ready.ok)return ready;
+ p.inventory=ready.inventory;p.gold+=def.rewardGold||0;q.status='complete';activateAvailable(p,id);
  return {ok:true,message:'Quest completed: '+def.name+' · +'+(def.rewardGold||0)+' coins!'};
 }
 function processRecipe(p,id,now=Date.now()){
@@ -52,4 +65,4 @@ function processRecipe(p,id,now=Date.now()){
  if(rec.requiresSlayerKills)p.slayerKills-=rec.requiresSlayerKills;
  return{ok:true,message:rec.name+' · +'+rec.xp+' '+rec.skill+' XP'+(rec.gold?' · +'+rec.gold+' coins':'')};
 }
-module.exports={stationReady,stationLocation,questProgress,activateAvailable,turnInQuest,processRecipe};
+module.exports={questReadiness,questJournal,stationReady,stationLocation,questProgress,activateAvailable,turnInQuest,processRecipe};
