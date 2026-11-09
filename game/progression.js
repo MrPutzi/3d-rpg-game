@@ -34,6 +34,9 @@ const DROPS={
  goblin:[{id:'bones',chance:.88,min:1,max:1},{id:'copper_ore',chance:.18,min:1,max:2},{id:'bronze_arrow',chance:.22,min:3,max:10},{id:'feathers',chance:.36,min:4,max:11},{id:'bronze_arrowtips',chance:.08,min:3,max:12},{id:'guam_leaf',chance:.11,min:1,max:1},{id:'iron_dagger',chance:.018,min:1,max:1}],
  wolf:[{id:'bones',chance:1,min:1,max:2},{id:'leather',chance:.7,min:1,max:2},{id:'guam_leaf',chance:.15,min:1,max:1},{id:'steel_scimitar',chance:.025,min:1,max:1}],
  skeleton:[{id:'bones',chance:1,min:2,max:3},{id:'rune_essence',chance:.38,min:2,max:6},{id:'air_rune',chance:.55,min:3,max:15},{id:'mind_rune',chance:.48,min:3,max:12},{id:'mithril_dagger',chance:.035,min:1,max:1}],
+ bandit:[{id:'bones',chance:.85,min:1,max:2},{id:'bronze_arrow',chance:.5,min:3,max:10},{id:'leather',chance:.35,min:1,max:2},{id:'mind_rune',chance:.25,min:2,max:8},{id:'iron_scimitar',chance:.04,min:1,max:1}],
+ swamp_troll:[{id:'bones',chance:1,min:2,max:4},{id:'guam_leaf',chance:.6,min:1,max:3},{id:'rune_essence',chance:.4,min:2,max:5},{id:'mithril_scimitar',chance:.02,min:1,max:1},{id:'healing_potion',chance:.25,min:1,max:2}],
+ mountain_golem:[{id:'iron_ore',chance:1,min:2,max:5},{id:'rune_essence',chance:.5,min:4,max:9},{id:'adamant_scimitar',chance:.03,min:1,max:1},{id:'rune_shield',chance:.008,min:1,max:1}],
  orc:[{id:'bones',chance:1,min:2,max:4},{id:'iron_ore',chance:.8,min:1,max:3},{id:'iron_arrow',chance:.6,min:6,max:20},{id:'adamant_shield',chance:.025,min:1,max:1},{id:'rune_scimitar',chance:.006,min:1,max:1}]
 };
 function rollDrops(kind,rng=Math.random){
