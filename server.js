@@ -384,7 +384,7 @@ setInterval(()=>{
   if(p.path.length)stepMove(p);
   if(p.intent)actionDone(p,now);
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
-   n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-(p.equipment.offhand?1:0)));
+   n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6)));
    if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.path=[];}
    if(!p.hp){p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);
