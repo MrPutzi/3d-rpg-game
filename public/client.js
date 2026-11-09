@@ -202,6 +202,13 @@ function updateUI(){
    const b=elem('button','',qty===28?'Make 28':'Make '+qty);b.disabled=!!reason;b.title=reason||'Stops if ingredients run out or you move.';
    b.onclick=()=>emit('craft',{id,qty});controls.append(b);
   }
+  const station=village.buildings.find(b=>b.id===recipe.station);
+  if(station){
+   const go=elem('button','','Go to '+station.label);
+   go.title='Walk to '+station.name+'. Movement cancels unfinished production.';
+   go.onclick=()=>{closeBuilding();emit('visitBuilding',station.id);notify('Walking to '+station.name+'…');};
+   controls.append(go);
+  }
   if(reason)info.append(elem('small','',reason));
   row.append(info,controls);activity.append(row);
  }

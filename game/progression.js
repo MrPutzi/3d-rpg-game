@@ -10,6 +10,7 @@ const RECIPES={
  fletch_shafts:{name:'Make arrow shafts',skill:'fletching',level:1,xp:15,inputs:{logs:1},outputs:{arrow_shafts:15},station:'any'},
  fletch_arrows:{name:'Fletch bronze arrows',skill:'fletching',level:1,xp:40,inputs:{arrow_shafts:15,feathers:15,bronze_arrowtips:15},outputs:{bronze_arrow:15},station:'any'},
  smelt_bronze:{name:'Smelt bronze bar',skill:'smithing',level:1,xp:55,inputs:{copper_ore:1,tin_ore:1},outputs:{bronze_bar:1},station:'forge'},
+ smith_arrowtips:{name:'Smith bronze arrowtips',skill:'smithing',level:1,xp:40,inputs:{bronze_bar:1},outputs:{bronze_arrowtips:15},station:'forge'},
  smith_dagger:{name:'Smith bronze dagger',skill:'smithing',level:1,xp:45,inputs:{bronze_bar:1},outputs:{bronze_dagger:1},station:'forge'},
  craft_gloves:{name:'Craft leather gloves',skill:'crafting',level:1,xp:45,inputs:{leather:1},outputs:{leather_gloves:1},station:'any'},
  bury_bones:{name:'Bury bones',skill:'prayer',level:1,xp:45,inputs:{bones:1},outputs:{},station:'any'},
@@ -28,6 +29,7 @@ const QUESTS={
  forest_supplies:{giver:'forester',name:'Forest Supplies',type:'gather',target:'logs',goal:5,rewardGold:45,rewardItems:{guam_seed:2},after:'welcome'},
  cooked_supplies:{name:'Meals for the Frontier',giver:'fisher',type:'craft',target:'cook_shrimp',goal:3,deliverItems:{cooked_shrimp:3},rewardGold:20,after:'first_catch'},
  first_catch:{giver:'fisher',name:'The Fisherman’s Request',type:'gather',target:'raw_shrimp',goal:3,rewardGold:40,rewardItems:{vial_of_water:2},after:'welcome'},
+ guard_supplies:{giver:'guard',name:'Points for the Patrol',type:'craft',target:'smith_arrowtips',goal:2,deliverItems:{bronze_arrowtips:30},rewardGold:25,rewardItems:{feathers:30},after:'goblin_hunt'},
  wilds_patrol:{giver:'ranger',name:'Eastern Wilds Patrol',type:'kill',target:'wolf',goal:2,rewardGold:110,rewardItems:{iron_arrow:25},after:'goblin_hunt'}
 };
 const DROPS={

@@ -46,6 +46,7 @@ test('registered player can create account, restore session, and see expanded ca
   assert.ok(logged.token?.length>32);
   assert.equal(profile.name,'TestKnight_98');
   assert.ok(profile.skills.smithing);
+  assert.equal(profile.quests.guard_supplies.status,'locked');
   assert.ok(profile.skills.slayer);
   assert.equal(Object.keys(profile.equipment).length,11);
   assert.equal(profile.gold,130);
@@ -73,6 +74,7 @@ test('registered player can create account, restore session, and see expanded ca
   assert.ok((await confirmed).at>0);
   const disk=JSON.parse(fs.readFileSync(path.join(dir,'profiles.json'),'utf8'));assert.equal(disk.accounts[0].profile.gold,134);
   assert.equal(saved.skills.fishing.level,1);
+  assert.equal(saved.quests.guard_supplies.status,'locked');
   // Invalid tokens are tested on a separate unauthenticated socket.
   sock.disconnect();
   sock=await connected(url);
