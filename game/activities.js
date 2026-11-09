@@ -1,5 +1,6 @@
 'use strict';
 const {RECIPES,QUESTS}=require('./progression');
+const {targetFor}=require('./quest-targets');
 const {ITEMS,VILLAGE}=require('./content');
 const {dist,count,addItem,removeItem,addXp}=require('./rules');
 const stationLocation={altar:{x:1370,y:1390},farm:{x:1010,y:890},hunt:{x:2520,y:2050},course:{x:530,y:760}};
@@ -39,7 +40,7 @@ function questReadiness(p,id){
 function questJournal(p){
  return Object.fromEntries(Object.entries(QUESTS).map(([id,def])=>{
   const ready=questReadiness(p,id),npc=VILLAGE.villagers.find(n=>n.id===def.giver);
-  return [id,{ready:ready.ok,message:ready.message,giver:def.giver,giverName:npc?.name||def.giver}];
+  return [id,{target:targetFor(p,id),ready:ready.ok,message:ready.message,giver:def.giver,giverName:npc?.name||def.giver}];
  }));
 }
 function turnInQuest(p,id,npcId){

@@ -191,3 +191,14 @@ Track pins one active quest's guidance on the HUD; completion or a new login cle
 it. Tracking is session-local and changes no rewards or account schema. This connects
 Oakvale's Elder, Thorin, Mara and Captain Rusk to existing combat, gathering and
 frontier meal objectives. Banked delivery items must still be withdrawn first.
+
+### Quest objective map
+
+Show objective pins an active quest and opens the world map. The server resolves
+objectives from existing enemy/resource spawn regions, recipe stations and NPCs;
+the map and minimap outline the area in turquoise. These are search areas, not
+promises of an alive enemy or a currently available resource. Completed objectives
+point back to the giver, except missing delivery meals still point to the cooking
+station. Bring ingredients separately. Locked/completed quests have no marker.
+Tracking remains session-local. Map clicks retain existing server movement checks;
+showing an objective does not teleport, attack, gather or award quest credit.
