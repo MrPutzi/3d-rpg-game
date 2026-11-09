@@ -31,7 +31,7 @@ function weaponOf(p){return ITEMS[p.equipment.weapon]||UNARMED;}
 function allowedStyles(weapon){return weapon?.styles||['accurate','aggressive','defensive'];}
 function styleFor(weapon,desired){return allowedStyles(weapon).includes(desired)?desired:allowedStyles(weapon)[0];}
 function canEquip(p,item){
- if(!item||!['weapon','offhand','ammo'].includes(item.slot))return false;
+ if(!item||!['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'].includes(item.slot))return false;
  const level=p.skills[item.skill||'defence']?.level||1;
  return level>=(item.level||1);
 }
