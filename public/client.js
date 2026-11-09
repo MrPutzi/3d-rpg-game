@@ -3,6 +3,7 @@ const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getCon
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
+let bankQuantity=1;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
 let SIZE=3600,authMode='signin';
@@ -256,16 +257,22 @@ function renderBuilding(){
   if(!list.children.length)list.append(elem('div','empty','No items.'));box.append(list);
   if(modalId==='tavern'){const b=elem('button','','🛏 Rest and restore health · 10 coins');b.style.marginTop='15px';b.onclick=()=>emit('rest');box.append(b);}
  }else if(modalId==='bank'){
-  box.append(elem('p','shop-description','Deposit or withdraw items. Items are stored in memory until you disconnect.'));
+  box.append(elem('p','shop-description','Registered accounts save bank contents with character progress. Guest progress is temporary.'));
+  box.append(elem('p','helper','Backpack '+profile.inventory.length+'/28 slots · Bank '+profile.bank.length+'/200 slots. All transfers the complete amount or leaves it unchanged.'));
+  const amounts=elem('div');
+  for(const qty of [1,5,10,50,'all']){const b=elem('button',bankQuantity===qty?'active':'',String(qty));b.style.margin='3px';b.onclick=()=>{bankQuantity=qty;renderBuilding();};amounts.append(b);}
+  box.append(amounts);
   const cols=elem('div','bank-list');
   for(const [title,arr,event] of [['Backpack',profile.inventory,'bankDeposit'],['Bank',profile.bank,'bankWithdraw']]){
    const col=elem('div','bank-column');col.append(elem('h3','',title));
    if(!arr.length)col.append(elem('p','muted','Empty'));
-   for(const entry of arr){
+   const grouped=new Map();for(const e of arr)grouped.set(e.id,(grouped.get(e.id)||0)+e.qty);
+   for(const [id,qty] of grouped){
+    const entry={id,qty};
     const r=elem('div','bank-row');
     r.append(elem('span','',(items[entry.id]?.icon||'📦')+' '+named(entry.id)+' ×'+entry.qty));
-    const b=elem('button','',event==='bankDeposit'?'Deposit':'Withdraw');b.onclick=()=>emit(event,{id:entry.id,qty:1});r.append(b);
-    r.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(named(entry.id),[1,5,10,50].map(q=>({label:(event==='bankDeposit'?'Deposit ':'Withdraw ')+q,action:()=>emit(event,{id:entry.id,qty:q})})),e.clientX,e.clientY);});col.append(r);
+    const b=elem('button','',event==='bankDeposit'?'Deposit':'Withdraw');b.disabled=bankQuantity!=='all'&&entry.qty<bankQuantity;b.onclick=()=>emit(event,{id:entry.id,qty:bankQuantity});r.append(b);
+    r.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(named(entry.id),[1,5,10,50,'all'].map(q=>({label:(event==='bankDeposit'?'Deposit ':'Withdraw ')+q,action:()=>emit(event,{id:entry.id,qty:q})})),e.clientX,e.clientY);});col.append(r);
    }
    cols.append(col);
   }

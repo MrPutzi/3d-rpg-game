@@ -9,6 +9,7 @@ const Production=require('./game/production');
 const Encounters=require('./game/encounters');
 const Food=require('./game/food');
 const Loot=require('./game/loot');
+const Bank=require('./game/bank');
 const Economy=require('./game/economy');
 const {accountStore}=require('./game/accounts');
 const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
@@ -321,19 +322,10 @@ io.on('connection',socket=>{
   if(p.hp>=p.maxHp){send(p,'You are already fully healed.');return;}
   p.gold-=10;p.hp=p.maxHp;send(p,'You rested and restored your health.');pushProfile(p);
  });
- socket.on('bankDeposit',data=>{
+ for(const [event,direction] of [['bankDeposit','deposit'],['bankWithdraw','withdraw']])socket.on(event,data=>{
   if(!p.loggedIn||!bankReady(p)||!has(ITEMS,data?.id))return;
-  const qty=Number(data.qty);if(![1,5,10,50].includes(qty))return;
-  if(!removeItem(p.inventory,data.id,qty))return;
-  if(!addItem(p.bank,data.id,qty,200)){addItem(p.inventory,data.id,qty);send(p,'Bank is full.');return;}
-  ensureEquipped(p);pushProfile(p);
- });
- socket.on('bankWithdraw',data=>{
-  if(!p.loggedIn||!bankReady(p)||!has(ITEMS,data?.id))return;
-  const qty=Number(data.qty);if(![1,5,10,50].includes(qty))return;
-  if(count(p.bank,data.id)<qty)return;
-  if(!addItem(p.inventory,data.id,qty)){send(p,'Inventory full.');return;}
-  removeItem(p.bank,data.id,qty);pushProfile(p);
+  const result=Bank.transfer(p,direction,data.id,data.qty);send(p,result.message);
+  if(result.ok){ensureEquipped(p);pushProfile(p);}
  });
  socket.on('disconnect',()=>{
   if(p.accountId){
