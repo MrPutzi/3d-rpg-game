@@ -149,3 +149,17 @@ removal are synchronous so only one contender can win. Expired drops cannot be
 picked up between cleanup ticks. Full bags preserve the entire drop; existing
 stacks can accept stackable loot. No currency, drop probabilities or account
 schema change. Ground loot remains ephemeral across server restarts.
+
+### Bank quantities
+
+Oakvale Bank now groups matching items visually and offers 1, 5, 10, 50 and All
+for deposits and withdrawals. All means every owned unit of the selected item;
+if the entire transfer cannot fit, neither inventory changes. Counts show actual
+occupied slots (28 backpack / 200 bank); grouping does not change storage rules.
+Transfers validate copied inventories before committing both arrays together,
+avoiding rollback and duplicate-item risks. Server proximity and bank-opening
+checks remain mandatory. Equipped items are reconciled after deposits.
+Registered accounts retain existing autosave/disconnect persistence; guests are
+temporary. This is in-memory transaction safety, not crash-safe database commits.
+No migration or economy/quest balance changes are needed. Bulk banking supports
+resource gathering, production batches and supplies for the existing frontier quests.
