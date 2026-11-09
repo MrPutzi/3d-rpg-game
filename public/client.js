@@ -2,12 +2,12 @@
 const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
-let items={},shops={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
+let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
-const SIZE=2400;
+let SIZE=3600,authMode='signin';
 const iconFor={attack:'⚔️',strength:'💪',defence:'🛡️',ranging:'🏹',hitpoints:'❤️',woodcutting:'🪓',mining:'⛏️',fishing:'🎣'};
-const zoneName=p=>p.x<850&&p.y<850?'Oakvale Village':p.x>1650?'Eastern Wilds':p.y>1450?'Southern Frontier':'Oakvale Outskirts';
+const zoneName=p=>[...regions].reverse().find(r=>p.x>=r.x&&p.x<r.x+r.w&&p.y>=r.y&&p.y<r.y+r.h)?.name||'The Frontier';
 const iconNode={tree:'🌳',oak:'🌲',copper:'🟠',iron:'🪨',shrimp:'🐟',trout:'🎣'};
 const styleNames={
  accurate:['Accurate','Attack XP'],aggressive:['Aggressive','Strength XP'],defensive:['Defensive','Defence XP'],
@@ -43,11 +43,12 @@ function contextMenu(title,options,x,y){
 function itemMenu(entry,event){
  const item=items[entry.id];if(!item)return;
  const options=[];
- if(['weapon','offhand','ammo'].includes(item.slot)){
+ if(['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'].includes(item.slot)){
   if(profile?.equipment[item.slot]===entry.id)options.push({label:'Unequip '+item.name,action:()=>emit('unequip',item.slot)});
   options.push({label:'Equip '+item.name,action:()=>emit('equip',entry.id)});
  }
  if(item.category==='food')options.push({label:'Eat '+item.name,action:()=>emit('useItem',entry.id)});
+ if(entry.id==='bones')options.push({label:'Bury Bones (+Prayer XP)',action:()=>emit('craft','bury_bones')});
  options.push({label:'Drop 1 × '+item.name,action:()=>emit('dropItem',entry.id)});
  options.push({label:'Examine '+item.name,action:()=>examineItem(entry.id)});
  options.push({label:'Cancel',action:()=>{}});
@@ -56,20 +57,57 @@ function itemMenu(entry,event){
 socket.on('connect',()=>{
  $('connection').textContent='● Connected';
  if(entered){entered=false;profile=null;$('login-overlay').hidden=false;closeBuilding();}
+ const token=localStorage.getItem('miniscape_session');
+ if(token)socket.emit('resumeSession',{token});
 });
 socket.on('disconnect',()=>{$('connection').textContent='● Reconnecting…';});
-socket.on('catalog',data=>{items=data.items||{};shops=data.shops||{};village=data.village||village;});
+socket.on('catalog',data=>{
+ items=data.items||{};shops=data.shops||{};village=data.village||village;
+ recipes=data.recipes||{};questsCatalog=data.quests||{};regions=data.regions||[];stations=data.stations||{};
+ SIZE=data.size||3600;
+});
+socket.on('shopState',data=>{if(data?.id){marketInfo[data.id]=data;if(modalId===data.id&&profile)renderBuilding();}});
 socket.on('serverMessage',text=>{notify(text);if(!entered)$('login-error').textContent=String(text).slice(0,100);});
-socket.on('loginSuccess',()=>{entered=true;$('login-overlay').hidden=true;$('login-error').textContent='';});
-$('login-form').onsubmit=e=>{e.preventDefault();if(socket.connected)socket.emit('login',{name:$('character-name').value});else $('login-error').textContent='Server is not connected.';};
+socket.on('authFailed',text=>{$('login-error').textContent=String(text).slice(0,140);localStorage.removeItem('miniscape_session');});
+socket.on('sessionReplaced',()=>{localStorage.removeItem('miniscape_session');notify('This account was opened on another device.');});
+socket.on('loginSuccess',data=>{
+ if(data?.token)localStorage.setItem('miniscape_session',data.token);
+ entered=true;$('login-overlay').hidden=true;$('login-error').textContent='';
+ $('logout-button').hidden=false;
+});
+socket.on('loggedOut',()=>{localStorage.removeItem('miniscape_session');entered=false;profile=null;$('login-overlay').hidden=false;});
+const logoutBtn=elem('button','','Odhlásiť sa');logoutBtn.id='logout-button';logoutBtn.hidden=true;logoutBtn.style.fontSize='11px';
+logoutBtn.onclick=()=>{localStorage.removeItem('miniscape_session');emit('logout');};
+document.querySelector('header').append(logoutBtn);
+for(const b of document.querySelectorAll('[data-auth-mode]'))b.onclick=()=>{
+ authMode=b.dataset.authMode;
+ document.querySelectorAll('[data-auth-mode]').forEach(x=>x.classList.toggle('active',x===b));
+ $('submit-auth').textContent=authMode==='register'?'VYTVORIŤ ÚČET':'PRIHLÁSIŤ SA';
+ $('password').autocomplete=authMode==='register'?'new-password':'current-password';
+ $('login-error').textContent='';
+};
+$('login-form').onsubmit=e=>{
+ e.preventDefault();
+ if(!socket.connected){$('login-error').textContent='Server is not connected.';return;}
+ socket.emit(authMode==='register'?'register':'signIn',{username:$('character-name').value.trim(),password:$('password').value});
+};
+$('guest-button').onclick=()=>{
+ if(!socket.connected){$('login-error').textContent='Server is not connected.';return;}
+ socket.emit('guestLogin',{name:$('character-name').value.trim()||'Guest'});
+};
 socket.on('profile',data=>{profile=data;updateUI();if(modalId&&profile.openBuilding===modalId)renderBuilding();else if(modalId&&profile.openBuilding!==modalId)closeBuilding();});
-socket.on('state',data=>{if(data?.players)world=data;const p=world.players[socket.id];if(p){$('coords').textContent=Math.round(p.x)+', '+Math.round(p.y);$('zone').textContent=zoneName(p);$('online').textContent=Object.keys(world.players).length+' players online';}});
+socket.on('state',data=>{
+ if(data?.players)world=data;
+ const p=world.players[socket.id];
+ if(p){$('coords').textContent=Math.round(p.x)+', '+Math.round(p.y);
+ $('zone').textContent=zoneName(p);$('online').textContent=Object.keys(world.players).length+' players online';}
+});
 socket.on('buildingOpen',data=>{modalId=data.id;shopTab='buy';renderBuilding();$('building-backdrop').hidden=false;});
 function closeBuilding(){modalId=null;$('building-backdrop').hidden=true;}
 $('close-building').onclick=closeBuilding;$('close-detail').onclick=()=>$('detail-backdrop').hidden=true;
 document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('pointerdown',e=>{if(e.target===b)b.hidden=true;if(b.id==='building-backdrop'&&b.hidden)modalId=null;}));
 document.addEventListener('pointerdown',e=>{if(!$('context-menu').contains(e.target))$('context-menu').hidden=true;});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;closeBuilding();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;$('map-backdrop').hidden=true;closeBuilding();}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
  document.querySelectorAll('.tab-pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
@@ -106,7 +144,7 @@ function updateUI(){
    cell.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')showItemTooltip(item.name,e);});
    cell.addEventListener('pointermove',e=>{if(e.pointerType==='mouse')showItemTooltip(item.name,e);});
    cell.addEventListener('pointerleave',()=>{$('item-tooltip').hidden=true;});
-   cell.addEventListener('click',()=>{if(['weapon','offhand','ammo'].includes(item.slot))emit('equip',entry.id);else if(item.category==='food')emit('useItem',entry.id);else examineItem(entry.id);});
+   cell.addEventListener('click',()=>{if(['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'].includes(item.slot))emit('equip',entry.id);else if(item.category==='food')emit('useItem',entry.id);else examineItem(entry.id);});
    cell.addEventListener('contextmenu',e=>{e.preventDefault();e.stopPropagation();itemMenu(entry,e);});
    cell.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();cell.click();}if(e.key==='ContextMenu'){e.preventDefault();itemMenu(entry,{clientX:innerWidth/2,clientY:innerHeight/2});}});
    attachLongPress(cell,e=>itemMenu(entry,e));
@@ -119,20 +157,35 @@ function updateUI(){
   row.append(elem('strong','', 'Lv '+stat.level+' · '+Math.floor(stat.xp)+' XP'));skills.append(row);
  }
  const equipment=$('equipment');equipment.replaceChildren();
- for(const [slot,id] of Object.entries(profile.equipment)){
-  const row=elem('div','gear-row');const info=elem('div');
-  info.append(elem('strong','',slot.toUpperCase()));info.append(elem('small','',named(id)));
-  row.append(info);
-  if(id){const b=elem('button','','Unequip');b.onclick=()=>emit('unequip',slot);row.append(b);}
-  equipment.append(row);
+ equipment.append(elem('div','paper-avatar','🧍'));
+ for(const slot of ['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo']){
+  const id=profile.equipment[slot];
+  const button=elem('button','paper-slot'+(id?'':' empty'),id?(items[id]?.icon||'📦'):'◇');
+  button.dataset.slot=slot;button.title=slot.toUpperCase()+' — '+(id?named(id):'Empty');
+  button.setAttribute('aria-label',button.title);
+  button.onclick=()=>{if(id)examineItem(id);else notify('Empty '+slot+' slot. Equip an item from inventory.');};
+  button.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(button.title,id?[
+   {label:'Unequip '+named(id),action:()=>emit('unequip',slot)},
+   {label:'Examine '+named(id),action:()=>examineItem(id)}
+  ]:[{label:'Empty '+slot,action:()=>{}}],e.clientX,e.clientY);});
+  equipment.append(button);
  }
  let attack=0,strength=0,defence=0;
  for(const id of Object.values(profile.equipment)){const i=items[id];attack+=i?.attackBonus||0;strength+=(i?.strengthBonus||0)+(i?.rangedStrength||0);defence+=i?.defenceBonus||0;}
  $('equipment-bonuses').textContent='Attack +'+attack+' · Strength +'+strength+' · Defence +'+defence;
+ const activity=$('recipes');activity.replaceChildren();
+ for(const [id,recipe] of Object.entries(recipes)){
+  const row=elem('div','recipe-row');
+  const txt=elem('span','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level);
+  txt.title='Station: '+recipe.station+' · XP '+recipe.xp+' · Needs '+Object.entries(recipe.inputs||{}).map(([k,v])=>named(k)+' ×'+v).join(', ');
+  const b=elem('button','', 'Train');b.title=txt.title;
+  b.disabled=(profile.skills[recipe.skill]?.level||1)<recipe.level;
+  b.onclick=()=>emit('craft',id);row.append(txt,b);activity.append(row);
+ }
  const quests=$('quests');quests.replaceChildren();
  for(const [id,q] of Object.entries(profile.quests)){
   const row=elem('div','quest-row');const el=elem('div');
-  el.append(elem('strong','',names[id]||id));
+  el.append(elem('strong','',questsCatalog[id]?.name||names[id]||id));
   el.append(elem('small','',q.status==='complete'?'✓ Complete':q.status==='locked'?'Locked':q.progress+' / '+q.goal));
   row.append(el);quests.append(row);
  }
@@ -141,7 +194,12 @@ function shopEntry(id){
  const item=items[id],row=elem('div','shop-entry');
  row.append(elem('span','shop-icon',item?.icon||'📦'));
  const info=elem('div');info.append(elem('strong','',item.name));info.append(elem('small','',item.price+' coins'+(item.level?' · lvl '+item.level:'')));row.append(info);
- const buy=elem('button','','Buy');buy.onclick=()=>emit('buy',{id,qty:1});row.append(buy);
+ const buy=elem('button','','Buy');buy.onclick=()=>emit('buy',{id,qty:1});
+ const stock=marketInfo[modalId]?.stock?.[id]??20;
+ const actualPrice=marketInfo[modalId]?.prices?.[id]?.buy??item.price;
+ buy.disabled=stock<=0||profile.gold<actualPrice;
+ info.lastChild.textContent=actualPrice+' coins · stock '+stock+(item.level?' · lvl '+item.level:'');
+ row.append(buy);
  row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
   {label:'Buy 1',action:()=>emit('buy',{id,qty:1})},{label:'Buy 5',action:()=>emit('buy',{id,qty:5})},
   {label:'Buy 10',action:()=>emit('buy',{id,qty:10})},{label:'Examine',action:()=>examineItem(id)}
@@ -153,6 +211,7 @@ function renderBuilding(){
  const b=village.buildings.find(x=>x.id===modalId);if(!b)return;
  $('building-title').textContent=(b.icon||'🏠')+' '+b.name;
  const box=$('building-content');box.replaceChildren();
+ box.append(elem('div','shop-coins','🪙 Your gold: '+profile.gold.toLocaleString()+' coins'));
  if(shops[modalId]){
   box.append(elem('p','shop-description',shops[modalId].greeting));
   const actions=elem('div','modal-actions');
@@ -165,7 +224,7 @@ function renderBuilding(){
   else for(const entry of profile.inventory){
    const item=items[entry.id],row=elem('div','shop-entry');
    row.append(elem('span','shop-icon',item.icon));const info=elem('div');
-   info.append(elem('strong','',item.name));info.append(elem('small','',Math.max(1,Math.floor(item.price/2))+' coins each · '+entry.qty+' owned'));row.append(info);
+   info.append(elem('strong','',item.name));info.append(elem('small','',(Math.max(1,Math.floor((marketInfo[modalId]?.prices?.[item.id]?.sell||item.price*.45))))+' coins each · '+entry.qty+' owned'));row.append(info);
    const sell=elem('button','','Sell 1');sell.onclick=()=>emit('sell',{id:item.id,qty:1});row.append(sell);list.append(row);
    row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
     {label:'Sell 1',action:()=>emit('sell',{id:item.id,qty:1})},{label:'Sell 5',action:()=>emit('sell',{id:item.id,qty:5})},
@@ -223,6 +282,8 @@ function hitAt(pt){
  const npc=Object.values(world.npcs||{}).find(n=>n.hp>0&&Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(npc)return{kind:'enemy',object:npc};
  const villager=village.villagers.find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(villager)return{kind:'npc',object:villager};
  const node=Object.values(world.nodes||{}).find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<24);if(node)return{kind:'node',object:node};
+ const found=Object.entries(stations).find(([id,p])=>Math.hypot(p.x-pt.x,p.y-pt.y)<30);
+ if(found)return{kind:'station',object:{id:found[0],x:found[1].x,y:found[1].y,name:found[0]}};
  const building=village.buildings.find(b=>pt.x>=b.x&&pt.x<b.x+b.w&&pt.y>=b.y&&pt.y<b.y+b.h);if(building)return{kind:'building',object:building};
  return{kind:'ground',object:pt};
 }
@@ -232,6 +293,7 @@ function clickAction(hit){
  else if(hit.kind==='enemy')emit('attack',o.id);
  else if(hit.kind==='npc')emit('interact',o.id);
  else if(hit.kind==='node')emit('gather',o.id);
+ else if(hit.kind==='station'){emit('move',{x:o.x,y:o.y});notify('Walking to '+o.name+' station.');}
  else if(hit.kind==='building'){emit('visitBuilding',o.id);notify('Walking to '+o.name+'…');}
  else {marker={x:o.x,y:o.y,expires:Date.now()+2300};emit('move',o);}
 }
@@ -241,6 +303,7 @@ function hitMenu(hit,e){
  if(hit.kind==='enemy'){
   title=o.name+' (level '+o.level+')';
   options=[{label:'⚔ Attack '+o.name,action:()=>emit('attack',o.id)},
+   {label:'✨ Cast Wind Strike',action:()=>emit('castSpell',o.id)},
    {label:'Walk here',action:()=>walk(o)},{label:'Examine '+o.name,action:()=>detail(o.name,['Combat level: '+o.level,'Hitpoints: '+o.hp+'/'+o.maxHp,'Defence: '+o.defence,'Damage on retaliation: up to '+o.damage])}];
  }else if(hit.kind==='npc'){
   title=o.name;options=[{label:'Talk to '+o.name,action:()=>emit('interact',o.id)},
@@ -252,6 +315,15 @@ function hitMenu(hit,e){
   title=o.name;const action=o.skill==='woodcutting'?'Chop':o.skill==='mining'?'Mine':'Fish';
   options=[{label:action+' '+o.name,action:()=>emit('gather',o.id)},{label:'Walk here',action:()=>walk(o)},
    {label:'Examine',action:()=>detail(o.name,['Skill: '+o.skill,'Required level: '+o.level,'XP: '+o.xp,'Resource: '+named(o.item)])}];
+ }else if(hit.kind==='station'){
+  title='Training: '+o.name;
+  options=[{label:'Walk to '+o.name,action:()=>walk(o)},
+   {label:'Open skill training',action:()=>{
+    const b=document.querySelector('[data-tab=skills]');if(b)b.click();
+    notify('Training location: '+o.name+'. Choose a recipe when you arrive.');
+   }},{label:'Examine',action:()=>detail('Training site',[
+    'Skill activities here: '+Object.values(recipes).filter(x=>x.station===o.name).map(x=>x.name).join(', ')
+   ])}];
  }else if(hit.kind==='loot'){
   title=named(o.item);options=[{label:'Take '+named(o.item),action:()=>emit('pickup',o.id)},{label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>examineItem(o.item)}];
  }else{
@@ -289,6 +361,10 @@ function draw(){
   rect(x,y,64,64,seed<4?'#315c43':'#2b5742');
   if(seed===1){circle(x+15,y+21,3,'#4e8b5a');circle(x+36,y+40,2,'#7eaa73');}
  }
+ for(const region of regions){
+  if(!inView(region.x+region.w/2,region.y+region.h/2,Math.max(region.w,region.h)))continue;
+  ctx.globalAlpha=.12;rect(region.x,region.y,region.w,region.h,region.color);ctx.globalAlpha=1;
+ }
  rect(70,1500,1150,760,'#355e62');rect(95,1520,1090,700,'#3c869b');
  for(const road of village.roads)rect(road.x,road.y,road.w,road.h,'#aa8e66');
  for(const b of village.buildings){
@@ -300,6 +376,11 @@ function draw(){
  }
  const f=village.fountain;if(inView(f.x,f.y)){circle(f.x,f.y,31,'#a7b8bd');circle(f.x,f.y,24,'#5bb1d5');}
  for(const v of village.villagers){if(!inView(v.x,v.y))continue;circle(v.x,v.y+8,13,'#102f2b66');circle(v.x,v.y,13,'#dfb079');label('◆ '+v.name,v.x,v.y-23,'#ffdea4');}
+ for(const [id,site] of Object.entries(stations)){
+  if(!inView(site.x,site.y))continue;
+  circle(site.x,site.y,17,'#927b50');label('✦',site.x,site.y+5,'#ffe4a3',17);
+  label(id.toUpperCase(),site.x,site.y-25,'#f3dbb3',11);
+ }
  for(const n of Object.values(world.nodes||{})){
   if(!inView(n.x,n.y))continue;const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
   if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,20,'#74513a');circle(n.x,n.y-8,n.kind==='oak'?22:18,n.kind==='oak'?'#357844':'#308751');circle(n.x-6,n.y-14,7,'#5ea86a');}
@@ -328,10 +409,68 @@ function draw(){
  }
  if(marker&&Date.now()<marker.expires){ctx.strokeStyle='#ffe1a1';ctx.lineWidth=3;ctx.beginPath();ctx.arc(marker.x,marker.y,16,0,Math.PI*2);ctx.stroke();}
 }
+let frameCount=0;
 function frame(){
  requestAnimationFrame(frame);
  const me=world.players[socket.id];if(me){camera.x+=(me.x-camera.x)*.17;camera.y+=(me.y-camera.y)*.17;}
  ctx.setTransform(viewport.dpr,0,0,viewport.dpr,0,0);ctx.clearRect(0,0,viewport.w,viewport.h);
  ctx.save();ctx.translate(viewport.w/2,viewport.h/2);ctx.translate(-camera.x,-camera.y);draw();ctx.restore();
+ if(frameCount++%6===0)drawAtlas($('minimap'));
+ if(!$('map-backdrop').hidden&&frameCount%12===0)drawAtlas($('world-map'));
+
 }
+
+function drawAtlas(canvas){
+ const context=canvas.getContext('2d'),w=canvas.width,h=canvas.height,ratioX=w/SIZE,ratioY=h/SIZE;
+ context.clearRect(0,0,w,h);
+ context.fillStyle='#244c37';context.fillRect(0,0,w,h);
+ for(const region of regions){
+  context.fillStyle=region.color||'#547d64';
+  context.globalAlpha=.75;context.fillRect(region.x*ratioX,region.y*ratioY,region.w*ratioX,region.h*ratioY);
+  context.globalAlpha=1;
+  if(canvas.id==='world-map'){
+   context.font='bold 12px system-ui';context.fillStyle='#f4e7cb';
+   context.textAlign='center';context.fillText(region.name,(region.x+region.w/2)*ratioX,(region.y+region.h/2)*ratioY);
+  }
+ }
+ for(const b of village.buildings){context.fillStyle='#e6c58a';context.fillRect(b.x*ratioX,b.y*ratioY,Math.max(3,b.w*ratioX),Math.max(3,b.h*ratioY));}
+ for(const site of Object.values(stations)){
+  context.fillStyle='#f5d084';context.beginPath();
+  context.arc(site.x*ratioX,site.y*ratioY,canvas.id==='world-map'?5:2.5,0,Math.PI*2);context.fill();
+ }
+ for(const n of Object.values(world.nodes||{})){
+  if(canvas.id!=='world-map')break;
+  context.fillStyle=n.skill==='fishing'?'#82d7f7':n.skill==='mining'?'#c7b39a':'#66b976';
+  context.fillRect(n.x*ratioX,n.y*ratioY,2.4,2.4);
+ }
+ for(const n of Object.values(world.npcs||{})){
+  if(!n.hp)continue;context.fillStyle='#f08b80';context.beginPath();
+  context.arc(n.x*ratioX,n.y*ratioY,canvas.id==='world-map'?3:1.3,0,Math.PI*2);context.fill();
+ }
+ for(const n of village.villagers){
+  context.fillStyle='#fae190';context.beginPath();context.arc(n.x*ratioX,n.y*ratioY,canvas.id==='world-map'?4:2.1,0,Math.PI*2);context.fill();
+ }
+ const me=world.players?.[socket.id];
+ if(me){
+  context.fillStyle='#f9d078';context.beginPath();
+  context.arc(me.x*ratioX,me.y*ratioY,canvas.id==='world-map'?8:5,0,Math.PI*2);context.fill();
+  context.strokeStyle='#0d2530';context.lineWidth=1.5;context.stroke();
+  if(canvas.id==='minimap'){
+   const left=Math.max(0,(camera.x-viewport.w/2)*ratioX),top=Math.max(0,(camera.y-viewport.h/2)*ratioY);
+   context.strokeStyle='#fcfcfcbb';context.lineWidth=.7;context.strokeRect(left,top,viewport.w*ratioX,viewport.h*ratioY);
+  }
+ }
+}
+function openMap(){if(!entered)return;$('map-backdrop').hidden=false;drawAtlas($('world-map'));}
+$('minimap').onclick=openMap;$('open-world-map').onclick=openMap;
+$('close-map').onclick=()=>{$('map-backdrop').hidden=true;};
+$('world-map').addEventListener('click',e=>{
+ if(!entered)return;
+ const rect=e.currentTarget.getBoundingClientRect();
+ const x=clampNumber((e.clientX-rect.left)/rect.width*SIZE,20,SIZE-20);
+ const y=clampNumber((e.clientY-rect.top)/rect.height*SIZE,20,SIZE-20);
+ emit('move',{x,y});marker={x,y,expires:Date.now()+4500};$('map-backdrop').hidden=true;
+});
+const clampNumber=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
+
 requestAnimationFrame(frame);

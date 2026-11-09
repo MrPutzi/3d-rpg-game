@@ -31,7 +31,7 @@ function weaponOf(p){return ITEMS[p.equipment.weapon]||UNARMED;}
 function allowedStyles(weapon){return weapon?.styles||['accurate','aggressive','defensive'];}
 function styleFor(weapon,desired){return allowedStyles(weapon).includes(desired)?desired:allowedStyles(weapon)[0];}
 function canEquip(p,item){
- if(!item||!['weapon','offhand','ammo'].includes(item.slot))return false;
+ if(!item||!['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'].includes(item.slot))return false;
  const level=p.skills[item.skill||'defence']?.level||1;
  return level>=(item.level||1);
 }
@@ -55,7 +55,8 @@ function combatRoll(p,target,rng=Math.random){
  const atkLevel=(ranged?p.skills.ranging.level:p.skills.attack.level)+(style==='accurate'||style==='range_accurate'?3:0);
  const strLevel=(ranged?p.skills.ranging.level:p.skills.strength.level)+(style==='aggressive'?3:0);
  const ammo=ITEMS[p.equipment.ammo];
- const acc=Math.max(1,(atkLevel+8)*(64+(w.attackBonus||0)));
+ const equipmentBonus=Object.values(p.equipment||{}).reduce((sum,id)=>sum+(ITEMS[id]?.attackBonus||0),0);
+ const acc=Math.max(1,(atkLevel+8)*(64+equipmentBonus));
  const weak=(target.weakness===w.type)?-.25:0;
  const def=Math.max(1,(target.defence+8)*(64+(target.defenceBonus||0))*(1+weak));
  const chance=acc>def?1-(def+2)/(2*(acc+1)):acc/(2*(def+1));
