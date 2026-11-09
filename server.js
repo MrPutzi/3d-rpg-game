@@ -81,12 +81,13 @@ function openBuilding(p,b){
  if(!b||!reachable(p,b.door,90))return false;
  stop(p);p.openBuilding=b.id;
  io.to(p.id).emit('buildingOpen',{id:b.id,name:b.name});
+ if(SHOPS[b.id])io.to(p.id).emit('shopState',{id:b.id,...Economy.snapshot(b.id)});
  pushProfile(p);return true;
 }
 function merchant(p){return p.openBuilding&&SHOPS[p.openBuilding]&&buildingById(p.openBuilding)&&reachable(p,buildingById(p.openBuilding).door,110)?SHOPS[p.openBuilding]:null;}
 function bankReady(p){return p.openBuilding==='bank'&&reachable(p,buildingById('bank').door,110);}
 function ensureEquipped(p){
- for(const slot of ['weapon','offhand','ammo'])if(p.equipment[slot]&&count(p.inventory,p.equipment[slot])<1)p.equipment[slot]=null;
+ for(const slot of PAPER_SLOTS)if(p.equipment[slot]&&count(p.inventory,p.equipment[slot])<1)p.equipment[slot]=null;
  if(!p.equipment.weapon){p.combatStyle='accurate';p.intent=null;}
 }
 function handleElder(p,id){
@@ -113,6 +114,7 @@ function actionDone(p,now){
  }else if(action.type==='pickup'){
   const g=groundItems[action.id];if(!g){stop(p);return;}
   if(reachable(p,g,48)){
+   if(g.ownerId&&g.ownerId!==p.id&&now<g.privateUntil){send(p,'Loot is reserved for another player.');stop(p);return;}
    if(addItem(p.inventory,g.item,g.qty)){delete groundItems[g.id];send(p,'Picked up '+ITEMS[g.item].name+'.');pushProfile(p);}
    else send(p,'Your inventory is full.');
    stop(p);
@@ -127,7 +129,7 @@ function actionDone(p,now){
   if(!count(p.inventory,toolId)){send(p,'You need a '+(ITEMS[toolId]?.name||'tool')+'.');stop(p);return;}
   if(now<n.readyAt){send(p,'This resource has been depleted.');stop(p);return;}
   if(!addItem(p.inventory,n.item)){send(p,'Inventory full (28 slots).');stop(p);return;}
-  addXp(p,n.skill,n.xp);n.readyAt=now+7500;send(p,'Gathered '+ITEMS[n.item].name+' · +'+n.xp+' '+n.skill+' XP');
+  addXp(p,n.skill,n.xp);questProgress(p,'gather',n.item,1);n.readyAt=now+7500;send(p,'Gathered '+ITEMS[n.item].name+' · +'+n.xp+' '+n.skill+' XP');
   stop(p);pushProfile(p);
  }else if(action.type==='attack'){
   const n=enemies[action.id];if(!n||n.hp<=0){stop(p);return;}
@@ -145,7 +147,17 @@ function actionDone(p,now){
   effects.push({x:n.x,y:n.y,damage:actual,style:w.type==='ranged'?'ranged':outcome.type,fromX:p.x,fromY:p.y});
   if(n.hp<=0){
    n.targetPlayer=null;n.respawnAt=now+6500;p.gold+=Math.max(2,n.level*2);
-   if(n.kind==='goblin'&&p.quests.goblin_hunt.status==='active')p.quests.goblin_hunt.progress=Math.min(3,p.quests.goblin_hunt.progress+1);
+   questProgress(p,'kill',n.kind,1);
+   if(n.kind==='wolf')p.slayerKills++;
+   for(const drop of rollDrops(n.kind)){
+    if(!ITEMS[drop.id])continue;
+    const lootId=crypto.randomUUID();
+    groundItems[lootId]={id:lootId,item:drop.id,qty:drop.qty,
+     x:clamp(n.x+(Math.random()-.5)*25,20,WORLD_SIZE-20),
+     y:clamp(n.y+(Math.random()-.5)*25,20,WORLD_SIZE-20),
+     ownerId:p.id,privateUntil:now+15000,expires:now+180000};
+   }
+   
    send(p,'Defeated '+n.name+' (level '+n.level+').');
    stop(p);
   }
@@ -197,7 +209,7 @@ io.on('connection',socket=>{
  socket.on('guestLogin',data=>{
   if(p.loggedIn)return;
   const raw=typeof data?.name==='string'?data.name:'';
-  const name=raw.trim().replace(/[^\\p{L}\\p{N} _-]/gu,'').slice(0,18);
+  const name=raw.trim().replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,18);
   if(name.length<2){send(p,'Guest name must be at least two characters.');return;}
   p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id,username:name,guest:true});
   send(p,'Guest mode: progress will not be saved.');pushProfile(p);
@@ -242,7 +254,7 @@ io.on('connection',socket=>{
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
  socket.on('unequip',slot=>{
-  if(!p.loggedIn||!['weapon','offhand','ammo'].includes(slot))return;
+  if(!p.loggedIn||!PAPER_SLOTS.includes(slot))return;
   p.equipment[slot]=null;if(slot==='weapon'){p.combatStyle='accurate';stop(p);}pushProfile(p);
  });
  socket.on('useItem',id=>{
@@ -261,18 +273,18 @@ io.on('connection',socket=>{
   else navigate(p,g,{type:'pickup',id});
  });
  socket.on('buy',data=>{
-  const shop=merchant(p);if(!p.loggedIn||!shop||!has(ITEMS,data?.id)||!shop.items.includes(data.id))return;
-  const qty=Number(data.qty);if(![1,5,10,50].includes(qty))return;
-  const item=ITEMS[data.id],price=item.price*qty;if(p.gold<price){send(p,'Not enough gold.');return;}
-  if(!addItem(p.inventory,item.id,qty)){send(p,'Inventory full.');return;}
-  p.gold-=price;send(p,'Purchased '+qty+' × '+item.name+'.');pushProfile(p);
+  const shop=merchant(p);
+  if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
+  const outcome=Economy.buy(p,p.openBuilding,data.id,Number(data.qty));
+  send(p,outcome.message);
+  if(outcome.ok){pushProfile(p);io.to(p.id).emit('shopState',{id:p.openBuilding,...Economy.snapshot(p.openBuilding)});}
  });
  socket.on('sell',data=>{
-  const shop=merchant(p);if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
-  const qty=Number(data.qty);if(![1,5,10,50].includes(qty))return;
-  if(!removeItem(p.inventory,data.id,qty)){send(p,'You do not have enough items.');return;}
-  p.gold+=Math.max(1,Math.floor(ITEMS[data.id].price/2))*qty;ensureEquipped(p);
-  send(p,'Sold '+qty+' × '+ITEMS[data.id].name+'.');pushProfile(p);
+  const shop=merchant(p);
+  if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
+  const outcome=Economy.sell(p,p.openBuilding,data.id,Number(data.qty));
+  send(p,outcome.message);
+  if(outcome.ok){ensureEquipped(p);pushProfile(p);io.to(p.id).emit('shopState',{id:p.openBuilding,...Economy.snapshot(p.openBuilding)});}
  });
  socket.on('rest',()=>{
   if(!p.loggedIn||p.openBuilding!=='tavern'||!reachable(p,buildingById('tavern').door,110))return;
