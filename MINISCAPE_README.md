@@ -180,3 +180,14 @@ release completed entries and permit retries after errors. Logout failures keep
 the client connected and report the failure. No schema or migration changes.
 This protects bank contents, skill/quest progress and gold across session changes;
 it does not provide per-action crash-safe economic transactions.
+
+### Quest guidance
+
+Quest journal readiness uses the same server-side validation as turn-in: prerequisite,
+objective progress, delivery items and reward inventory capacity. Every quest defines
+its actual existing giver. The journal shows rewards and a Go to NPC action using
+normal server navigation and interaction (arrival may claim eligible rewards).
+Track pins one active quest's guidance on the HUD; completion or a new login clears
+it. Tracking is session-local and changes no rewards or account schema. This connects
+Oakvale's Elder, Thorin, Mara and Captain Rusk to existing combat, gathering and
+frontier meal objectives. Banked delivery items must still be withdrawn first.

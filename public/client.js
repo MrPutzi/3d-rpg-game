@@ -3,7 +3,7 @@ const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getCon
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
-let bankQuantity=1;
+let bankQuantity=1,trackedQuest=null;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
 let SIZE=3600,authMode='signin';
@@ -205,11 +205,20 @@ function updateUI(){
   if(reason)info.append(elem('small','',reason));
   row.append(info,controls);activity.append(row);
  }
+ const pinned=$('tracked-quest');if(trackedQuest&&profile.quests[trackedQuest]?.status!=='active')trackedQuest=null;
+ pinned.hidden=!trackedQuest;if(trackedQuest)pinned.textContent=(questsCatalog[trackedQuest]?.name||trackedQuest)+' · '+(profile.questJournal?.[trackedQuest]?.message||'')+' · '+(profile.questJournal?.[trackedQuest]?.giverName||'');
  const quests=$('quests');quests.replaceChildren();
  for(const [id,q] of Object.entries(profile.quests)){
   const row=elem('div','quest-row');const el=elem('div');
   el.append(elem('strong','',questsCatalog[id]?.name||names[id]||id));
-  el.append(elem('small','',q.status==='complete'?'✓ Complete':q.status==='locked'?'Locked':q.progress+' / '+q.goal+(questsCatalog[id]?.deliverItems?' · Bring meals to Mara':'')));
+  const guidance=profile.questJournal?.[id],def=questsCatalog[id];
+  el.append(elem('small','',guidance?.message||q.status));
+  if(guidance)el.append(elem('small','','Return to '+guidance.giverName));
+  if(def)el.append(elem('small','','Reward: '+(def.rewardGold||0)+' coins'+Object.entries(def.rewardItems||{}).map(([item,qty])=>' · '+named(item)+' ×'+qty).join('')));
+  if(q.status==='active'){
+   const track=elem('button','',trackedQuest===id?'Untrack':'Track');track.onclick=()=>{trackedQuest=trackedQuest===id?null:id;updateUI();};el.append(track);
+   if(guidance?.giver){const go=elem('button','','Go to '+guidance.giverName);go.onclick=()=>emit('interact',guidance.giver);el.append(go);}
+  }
   row.append(el);quests.append(row);
  }
 }
@@ -556,3 +565,5 @@ socket.on('saveStatus',data=>{
 $('save-progress').onclick=()=>{if(!registeredSave||!socket.connected)return;saveButtonUntil=Date.now()+5000;$('save-progress').disabled=true;emit('saveProgress');};
 setInterval(()=>{$('save-progress').disabled=!socket.connected||Date.now()<saveButtonUntil;},250);
 socket.on('disconnect',()=>{$('save-status').textContent=registeredSave?'Disconnected — save status unknown':'Guest progress is temporary';});
+
+socket.on('loginSuccess',()=>{trackedQuest=null;$('tracked-quest').hidden=true;});

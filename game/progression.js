@@ -23,12 +23,12 @@ const RECIPES={
  slayer_contract:{name:'Claim Slayer training',skill:'slayer',level:1,xp:65,inputs:{},outputs:{},station:'guild',requiresSlayerKills:3}
 };
 const QUESTS={
- welcome:{name:'Welcome to Oakvale',type:'talk',target:'elder',goal:1,rewardGold:10},
- goblin_hunt:{name:'Goblin Menace',type:'kill',target:'goblin',goal:3,rewardGold:40,rewardItems:{bronze_shield:1,bread:1},after:'welcome'},
- forest_supplies:{name:'Forest Supplies',type:'gather',target:'logs',goal:5,rewardGold:45,rewardItems:{guam_seed:2},after:'welcome'},
+ welcome:{giver:'elder',name:'Welcome to Oakvale',type:'talk',target:'elder',goal:1,rewardGold:10},
+ goblin_hunt:{giver:'elder',name:'Goblin Menace',type:'kill',target:'goblin',goal:3,rewardGold:40,rewardItems:{bronze_shield:1,bread:1},after:'welcome'},
+ forest_supplies:{giver:'forester',name:'Forest Supplies',type:'gather',target:'logs',goal:5,rewardGold:45,rewardItems:{guam_seed:2},after:'welcome'},
  cooked_supplies:{name:'Meals for the Frontier',giver:'fisher',type:'craft',target:'cook_shrimp',goal:3,deliverItems:{cooked_shrimp:3},rewardGold:20,after:'first_catch'},
- first_catch:{name:'The Fisherman’s Request',type:'gather',target:'raw_shrimp',goal:3,rewardGold:40,rewardItems:{vial_of_water:2},after:'welcome'},
- wilds_patrol:{name:'Eastern Wilds Patrol',type:'kill',target:'wolf',goal:2,rewardGold:110,rewardItems:{iron_arrow:25},after:'goblin_hunt'}
+ first_catch:{giver:'fisher',name:'The Fisherman’s Request',type:'gather',target:'raw_shrimp',goal:3,rewardGold:40,rewardItems:{vial_of_water:2},after:'welcome'},
+ wilds_patrol:{giver:'ranger',name:'Eastern Wilds Patrol',type:'kill',target:'wolf',goal:2,rewardGold:110,rewardItems:{iron_arrow:25},after:'goblin_hunt'}
 };
 const DROPS={
  rat:[{id:'bones',chance:.7,min:1,max:1},{id:'guam_seed',chance:.12,min:1,max:1},{id:'rune_essence',chance:.08,min:1,max:2}],
