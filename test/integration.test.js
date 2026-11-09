@@ -37,11 +37,6 @@ test('registered player can create account, restore session, and see expanded ca
   }
   assert.ok(ready,'Server did not become healthy: '+output);
   sock=await connected(url);
-  const catalog=await new Promise(resolve=>{
-   sock.once('catalog',resolve);
-   // catalog is sent immediately on connection; separately verify from state if event missed.
-   setTimeout(()=>resolve(null),50);
-  });
   // Registration returns a one-time client token and profile independently.
   const onLogin=event(sock,'loginSuccess');
   const profileReady=event(sock,'profile');
@@ -65,8 +60,7 @@ test('registered player can create account, restore session, and see expanded ca
   assert.equal(resumed.username,'TestKnight_98');
   assert.equal(saved.gold,130);
   assert.equal(saved.skills.fishing.level,1);
-  const check=event(sock,'authFailed');
-  // Cannot authenticate twice on an already logged in socket; invalid tokens must be checked elsewhere.
+  // Invalid tokens are tested on a separate unauthenticated socket.
   sock.disconnect();
   sock=await connected(url);
   const fail=event(sock,'authFailed');
