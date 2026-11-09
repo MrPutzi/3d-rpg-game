@@ -3,6 +3,12 @@ const express=require('express'),http=require('http'),path=require('path'),crypt
 const {Server}=require('socket.io');
 const {TICK_MS,WORLD_SIZE,BAG_SLOTS,ITEMS,VILLAGE,SHOPS,ENEMY_TEMPLATES,RESOURCE_TEMPLATES}=require('./game/content');
 const {xpForLevel,skill,addXp,dist,clamp,count,addItem,removeItem,weaponOf,allowedStyles,equip,attackDelayMs,attackRange,combatRoll,awardCombatXp,collides,makePath}=require('./game/rules');
+const {SKILLS,RECIPES,QUESTS,REGIONS,rollDrops}=require('./game/progression');
+const {stationLocation,questProgress,turnInQuest,processRecipe}=require('./game/activities');
+const Economy=require('./game/economy');
+const {accountStore}=require('./game/accounts');
+const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
+const PAPER_SLOTS=['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'];
 const app=express();app.disable('x-powered-by');app.use(express.static(path.join(__dirname,'public')));
 const server=http.createServer(app),io=new Server(server,{maxHttpBufferSize:4096});
 const STEP_MS=100,STATE_MS=200,MOVE_PER_STEP=12,SPAWN={x:380,y:380};
@@ -12,7 +18,8 @@ for(const d of ENEMY_TEMPLATES)for(let i=0;i<d.count;i++){
  const id=d.kind+'_'+i;
  enemies[id]={id,kind:d.kind,name:d.name,level:d.level,
  x:d.region[0]+(i*83+31)%(d.region[2]-d.region[0]),y:d.region[1]+(i*109+43)%(d.region[3]-d.region[1]),
- hp:d.hp,maxHp:d.hp,damage:d.damage,defence:d.defence,weakness:d.weakness,aggressive:d.aggressive,color:d.color,targetPlayer:null,respawnAt:0,lastHit:0};
+ hp:d.hp,maxHp:d.hp,damage:d.damage,defence:d.defence,weakness:d.weakness,aggressive:d.aggressive,color:d.color,targetPlayer:null,respawnAt:0,lastHit:0,
+ homeX:d.region[0]+(i*83+31)%(d.region[2]-d.region[0]),homeY:d.region[1]+(i*109+43)%(d.region[3]-d.region[1]),territoryRadius:Math.min(105,50+d.level*1.2),nextWander:0,wanderX:0,wanderY:0};
 }
 for(const d of RESOURCE_TEMPLATES)for(let i=0;i<d.count;i++){
  const id=d.kind+'_'+i;
@@ -24,16 +31,42 @@ const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
  return {id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
- bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate};
+ bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
+function storedProfile(p){return{x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
+ equipment:p.equipment,bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,
+ autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills};}
+function hydrate(p,account){
+ const d=account.profile||{},fresh=newPlayer(p.id);
+ for(const field of ['x','y','hp','maxHp','gold','inventory','equipment','bank','quests','skills','combatStyle','autoRetaliate','slayerKills']){
+  if(Object.hasOwn(d,field))fresh[field]=d[field];
+ }
+ for(const k of SKILLS)fresh.skills[k]=fresh.skills[k]||skill(k==='hitpoints'?xpForLevel(10):0);
+ for(const [id,def] of Object.entries(QUESTS))fresh.quests[id]=fresh.quests[id]||{status:def.after?'locked':'active',progress:0,goal:def.goal};
+ fresh.equipment={...newPlayer(p.id).equipment,...fresh.equipment};
+ fresh.x=Number.isFinite(fresh.x)?clamp(fresh.x,30,WORLD_SIZE-30):SPAWN.x;
+ fresh.y=Number.isFinite(fresh.y)?clamp(fresh.y,30,WORLD_SIZE-30):SPAWN.y;
+ fresh.hp=Math.max(1,Math.min(fresh.maxHp,fresh.hp||20));
+ if(!Array.isArray(fresh.inventory))fresh.inventory=newPlayer(p.id).inventory;
+ if(!Array.isArray(fresh.bank))fresh.bank=[];
+ if(fresh.inventory.length>BAG_SLOTS)fresh.inventory=fresh.inventory.slice(0,BAG_SLOTS);
+ if(collides(fresh)){fresh.x=SPAWN.x;fresh.y=SPAWN.y;}
+ Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,path:[],intent:null,openBuilding:null,nextAttack:0});
+}
+function persist(p){
+ if(!p.accountId)return Promise.resolve();
+ const id=p.accountId,snapshot=structuredClone(storedProfile(p));
+ const next=(saving.get(id)||Promise.resolve()).catch(()=>{}).then(()=>accountDb.save(id,snapshot));
+ saving.set(id,next);next.catch(e=>console.error('Profile save failed',e.message));return next;
+}
 function newPlayer(id){
  const inventory=[];for(const [item,qty] of [['bronze_scimitar',1],['shortbow',1],['bronze_arrow',120],['bronze_axe',1],['bronze_pickaxe',1],['small_net',1],['bread',2]])addItem(inventory,item,qty);
  return {id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
- equipment:{weapon:'bronze_scimitar',offhand:null,ammo:'bronze_arrow'},bank:[],
- quests:{welcome:{status:'active',progress:0,goal:1},goblin_hunt:{status:'locked',progress:0,goal:3}},
- skills:Object.fromEntries(['attack','strength','defence','ranging','hitpoints','woodcutting','mining','fishing'].map(k=>[k,skill(k==='hitpoints'?xpForLevel(10):0)])),
- combatStyle:'accurate',autoRetaliate:false,path:[],intent:null,nextAttack:0,openBuilding:null};
+ equipment:{head:null,cape:null,neck:null,weapon:'bronze_scimitar',body:null,offhand:null,legs:null,hands:null,feet:null,ring:null,ammo:'bronze_arrow'},bank:[],
+ quests:Object.fromEntries(Object.entries(QUESTS).map(([id,q])=>[id,{status:q.after?'locked':'active',progress:0,goal:q.goal}])),
+ skills:Object.fromEntries(SKILLS.map(k=>[k,skill(k==='hitpoints'?xpForLevel(10):0)])),
+ combatStyle:'accurate',autoRetaliate:false,path:[],intent:null,nextAttack:0,openBuilding:null,slayerKills:0};
 }
 function stop(p){p.path=[];p.intent=null;}
 function navigate(p,point,intent=null){
@@ -58,16 +91,17 @@ function ensureEquipped(p){
 }
 function handleElder(p,id){
  const npc=VILLAGE.villagers.find(v=>v.id===id);if(!npc||!reachable(p,npc,90))return;
- if(id==='guard'){send(p,'Guard: Beware! Wolves, skeletons and orcs roam far beyond Oakvale.');return;}
- if(p.quests.welcome.status==='active'){
-  p.quests.welcome={status:'complete',progress:1,goal:1};p.quests.goblin_hunt.status='active';p.gold+=10;
-  send(p,'Elder: Welcome to Oakvale! +10 gold. Defeat three goblins and return.');
- }else if(p.quests.goblin_hunt.status==='active'&&p.quests.goblin_hunt.progress>=3){
-  if(p.inventory.length+2>BAG_SLOTS){send(p,'You need two free inventory slots for the reward.');return;}
-  p.quests.goblin_hunt.status='complete';p.gold+=40;addItem(p.inventory,'bronze_shield');addItem(p.inventory,'bread');
-  send(p,'Quest complete! +40 gold, Bronze Shield and Bread.');
- }else send(p,'Elder: Train your skills, defeat goblins and return for your reward.');
- pushProfile(p);
+ const messages={guard:'Guard: Beware of the Eastern Wilds; bring armour and provisions.',
+ forester:'Thorin: Chop five logs and return for a reward.',
+ fisher:'Mara: Catch three raw shrimp from the lake, then speak to me.',
+ ranger:'Captain Rusk: Defeat two wolves to keep the frontier safe.'};
+ if(id==='elder'&&p.quests.welcome.status==='active')questProgress(p,'talk','elder',1);
+ const eligible=id==='elder'?['welcome','goblin_hunt']:id==='forester'?['forest_supplies']:id==='fisher'?['first_catch']:id==='ranger'?['wilds_patrol']:[];
+ for(const questId of eligible){
+  const outcome=turnInQuest(p,questId,id);
+  if(outcome){send(p,outcome.message);pushProfile(p);return;}
+ }
+ send(p,messages[id]||'No tasks available at the moment.');pushProfile(p);
 }
 function actionDone(p,now){
  const action=p.intent;if(!action)return;
@@ -132,12 +166,47 @@ app.get('/health',(_,res)=>res.json({ok:true,players:Object.keys(players).length
 io.on('connection',socket=>{
  if(Object.keys(players).length>=100){socket.emit('serverMessage','World is full.');socket.disconnect(true);return;}
  const p=newPlayer(socket.id);players[socket.id]=p;
- socket.emit('catalog',{items:ITEMS,shops:SHOPS,village:VILLAGE,size:WORLD_SIZE,tickMs:TICK_MS});
- socket.on('login',data=>{
-  if(p.loggedIn)return;const raw=typeof data?.name==='string'?data.name:'';
-  const name=raw.trim().replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,18);
-  if(name.length<2){send(p,'Character name must be at least two letters.');return;}
-  p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id});send(p,'Welcome to Oakvale! Visit a building, equip a weapon or gather resources.');pushProfile(p);
+ socket.emit('catalog',{items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
+ let authAttempts=0,authWindow=Date.now();
+ async function authenticate(operation,data){
+  if(p.loggedIn)return;
+  if(Date.now()-authWindow>60000){authAttempts=0;authWindow=Date.now();}
+  if(++authAttempts>12){send(p,'Too many login attempts. Try again in a minute.');return;}
+  try{
+   let result;
+   if(operation==='register'){const username=String(data?.username||'').trim();
+    result=await accountDb.register(username,data?.password,storedProfile(newPlayer(p.id)));
+   }else if(operation==='signIn')result=await accountDb.login(String(data?.username||''),data?.password);
+   else if(operation==='resume'){
+    const account=await accountDb.resume(data?.token);
+    if(!account){socket.emit('authFailed','Session expired. Please log in again.');return;}
+    result={account,token:data.token};
+   }else return;
+   const previous=activeAccounts.get(result.account.id);
+   if(previous&&previous!==p.id){io.to(previous).emit('sessionReplaced');io.sockets.sockets.get(previous)?.disconnect(true);}
+   hydrate(p,result.account);p.sessionToken=result.token;
+   activeAccounts.set(p.accountId,p.id);
+   socket.emit('loginSuccess',{id:p.id,username:p.name,token:result.token,registered:true});
+   send(p,'Welcome to Oakvale, '+p.name+'! Your progress is linked to your account.');
+   pushProfile(p);
+  }catch(err){socket.emit('authFailed',err.message||'Authentication failed.');}
+ }
+ socket.on('register',data=>{authenticate('register',data).catch(e=>console.error('Registration failed',e.message));});
+ socket.on('signIn',data=>{authenticate('signIn',data).catch(e=>console.error('Sign-in failed',e.message));});
+ socket.on('resumeSession',data=>{authenticate('resume',data).catch(e=>console.error('Resume failed',e.message));});
+ socket.on('guestLogin',data=>{
+  if(p.loggedIn)return;
+  const raw=typeof data?.name==='string'?data.name:'';
+  const name=raw.trim().replace(/[^\\p{L}\\p{N} _-]/gu,'').slice(0,18);
+  if(name.length<2){send(p,'Guest name must be at least two characters.');return;}
+  p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id,username:name,guest:true});
+  send(p,'Guest mode: progress will not be saved.');pushProfile(p);
+ });
+ socket.on('logout',async()=>{
+  if(!p.loggedIn)return;
+  await persist(p);if(p.sessionToken)await accountDb.logout(p.sessionToken);
+  if(p.accountId)activeAccounts.delete(p.accountId);
+  socket.emit('loggedOut');socket.disconnect(true);
  });
  socket.on('move',pos=>{
   if(!p.loggedIn||!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))return;
