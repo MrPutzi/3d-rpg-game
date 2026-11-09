@@ -60,7 +60,7 @@ socket.on('connect',()=>{
  const token=localStorage.getItem('miniscape_session');
  if(token)socket.emit('resumeSession',{token});
 });
-socket.on('disconnect',()=>{$('connection').textContent='● Reconnecting…';});
+socket.on('disconnect',()=>{$('combat-target').hidden=true;$('connection').textContent='● Reconnecting…';});
 socket.on('catalog',data=>{
  items=data.items||{};shops=data.shops||{};village=data.village||village;
  recipes=data.recipes||{};questsCatalog=data.quests||{};regions=data.regions||[];stations=data.stations||{};
@@ -102,6 +102,14 @@ socket.on('state',data=>{
  if(p){$('coords').textContent=Math.round(p.x)+', '+Math.round(p.y);
  $('zone').textContent=zoneName(p);$('online').textContent=Object.keys(world.players).length+' players online';}
 });
+socket.on('combatTarget',target=>{
+ $('combat-target').hidden=!target;
+ if(!target)return;
+ $('target-name').textContent=target.name+' · Lv '+target.level+' · '+target.hp+'/'+target.maxHp+' HP';
+ $('target-hp').max=target.maxHp;$('target-hp').value=target.hp;
+ $('target-credit').textContent='Your damage: '+target.damage+' · '+(target.qualifies?'Eligible for shared rewards':'Deal at least '+target.minimumDamage+' damage or lead the encounter')+'. Stay nearby; credit expires after 30s without a hit.';
+});
+socket.on('combatReward',reward=>notify(reward.name+' defeated · +'+reward.gold+' coins · Quest/Slayer credit if applicable'+(reward.lootOwner?' · Your drops are protected for 15s.':'.')));
 socket.on('buildingOpen',data=>{modalId=data.id;shopTab='buy';renderBuilding();$('building-backdrop').hidden=false;});
 function closeBuilding(){modalId=null;$('building-backdrop').hidden=true;}
 $('close-building').onclick=closeBuilding;$('close-detail').onclick=()=>$('detail-backdrop').hidden=true;
