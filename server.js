@@ -104,7 +104,7 @@ function handleElder(p,id){
  const messages={guard:'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
  forester:'Thorin: Chop five logs and return for a reward.',
  fisher:'Mara: Catch three shrimp at Moonwater Lake. After your first catch, cook three at the Oakvale tavern and bring the meals for our frontier patrol.',
- ranger:'Captain Rusk: Defeat two wolves to keep the frontier safe.'};
+ ranger:'Captain Rusk: Defeat two wolves to keep the frontier safe. Then hunt rabbits southwest of Newhaven, roast three at the Oakvale tavern and bring the meals for our patrol.'};
  if(id==='elder'&&p.quests.welcome.status==='active')questProgress(p,'talk','elder',1);
  const eligible=Object.keys(QUESTS).filter(key=>QUESTS[key].giver===id);
  for(const questId of eligible){

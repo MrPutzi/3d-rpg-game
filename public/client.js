@@ -195,6 +195,7 @@ function updateUI(){
   const owned=k=>profile.inventory.reduce((n,e)=>n+(e.id===k?e.qty:0),0);
   info.append(elem('small','',inputs.length?inputs.map(([k,v])=>named(k)+' '+owned(k)+'/'+v).join(' · '):'No ingredients'));
   info.append(elem('small','', '→ '+(outputs.map(([k,v])=>named(k)+' ×'+v).join(', ')||'Training')+' · '+recipe.xp+' XP · '+recipe.station));
+  for(const [item] of outputs)if(items[item]?.heal)info.append(elem('small','','Heals up to '+items[item].heal+' HP per item · eating delays attacks by 1.8s'));
   const missing=inputs.some(([k,v])=>owned(k)<v);
   const reason=active?'Batch in progress':(profile.skills[recipe.skill]?.level||0)<recipe.level?'Level too low':missing?'Missing ingredients':'';
   const controls=elem('div','recipe-controls');
