@@ -78,7 +78,7 @@ const VILLAGE={
   {id:'outpost',x:2700,y:1080,w:180,h:145,name:'Newhaven Outpost',label:'Outpost',door:{x:2790,y:1265},icon:'🏕️'}
  ],
  roads:[{x:0,y:352,w:900,h:65},{x:353,y:0,w:65,h:850},{x:220,y:295,w:35,h:60},{x:480,y:288,w:35,h:65},{x:730,y:295,w:35,h:60},{x:235,y:416,w:35,h:70},{x:530,y:416,w:35,h:70}],
- villagers:[{id:'elder',name:'Village Elder',x:490,y:385},{id:'guard',name:'Guard',x:635,y:385},{id:'fisher',name:'Mara the Fisher',x:260,y:1430},{id:'forester',name:'Thorin the Forester',x:800,y:1320},{id:'ranger',name:'Captain Rusk',x:2780,y:1150}],
+ villagers:[{id:'elder',name:'Village Elder',x:490,y:385},{id:'guard',name:'Guard',x:635,y:385},{id:'fisher',name:'Mara the Fisher',x:260,y:1430},{id:'forester',name:'Thorin the Forester',x:800,y:1320},{id:'ranger',name:'Captain Rusk',x:2930,y:1230}],
  fountain:{x:390,y:390}
 };
 const SHOPS={
