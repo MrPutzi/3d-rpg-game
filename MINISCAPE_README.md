@@ -119,3 +119,21 @@ credit eligibility. Reward messages explain your coin share and drop ownership. 
 server-confirmed for attacks, spells and auto-retaliation and clears when the target dies.
 These changes extend existing account-save behavior; crash-proof shared-world persistence,
 party membership and player trading remain future work. No schema migration is required.
+
+
+### Food and combat pacing
+
+Food (including the existing healing potion) now shares a server-authoritative
+1.8-second consumption cooldown. A successful meal delays the next melee/ranged
+attack or spell until at least that deadline, without shortening longer weapon
+cooldowns. Only actual restored HP is reported; full-health, absent and invalid
+items consume nothing. Eating interrupts production but preserves movement and
+combat intent. The deadline is saved with existing account progress and restored
+on reconnect (no migration required); existing autosave/disconnect durability
+limits still apply.
+
+The HUD Eat button uses the first food in backpack order and shows the cooldown.
+Inventory/context-menu eating uses the same server rules. This connects Cooking,
+Mara's food quest, tavern supplies and frontier combat without changing prices,
+healing amounts or quest requirements. Multiplayer tests cover spammed eating,
+spell delay, independent player timers and existing shared kill rewards.

@@ -502,3 +502,18 @@ $('world-map').addEventListener('click',e=>{
 const clampNumber=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 
 requestAnimationFrame(frame);
+
+// Convenience only: the server independently validates every consumption.
+function quickFood(){
+ return profile?.inventory.find(e=>items[e.id]?.category==='food'&&e.qty>0);
+}
+function updateFoodButton(){
+ const button=$('quick-eat'),entry=quickFood();
+ const now=(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt);
+ const remaining=Math.max(0,(profile?.nextEat||0)-now);
+ button.disabled=!entered||!socket.connected||!entry||profile.hp>=profile.maxHp||remaining>0;
+ button.textContent=remaining>0?'Eat in '+(remaining/1000).toFixed(1)+'s':entry?'Eat '+items[entry.id].name:'No food';
+ button.title=entry?'Heals up to '+items[entry.id].heal+' HP; delays your next attack by at least 1.8s. Uses first food in backpack.':'Cook food or visit a merchant.';
+}
+$('quick-eat').onclick=()=>{const entry=quickFood();if(entry&&!$('quick-eat').disabled)emit('useItem',entry.id);};
+setInterval(updateFoodButton,100);

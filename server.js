@@ -7,6 +7,7 @@ const {SKILLS,RECIPES,QUESTS,REGIONS,rollDrops}=require('./game/progression');
 const {stationLocation,questProgress,turnInQuest}=require('./game/activities');
 const Production=require('./game/production');
 const Encounters=require('./game/encounters');
+const Food=require('./game/food');
 const Economy=require('./game/economy');
 const {accountStore}=require('./game/accounts');
 const accountDb=accountStore(),activeAccounts=new Map(),saving=new Map();
@@ -33,12 +34,12 @@ const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
  return {id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
- bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,serverNow:Date.now()};
+ bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
 function storedProfile(p){return{x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
  equipment:p.equipment,bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,
- autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills};}
+ autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,nextEat:p.nextEat||0};}
 function hydrate(p,account){
  const d=account.profile||{},fresh=newPlayer(p.id);
  for(const field of ['x','y','hp','maxHp','gold','inventory','equipment','bank','quests','skills','combatStyle','autoRetaliate','slayerKills']){
@@ -54,7 +55,7 @@ function hydrate(p,account){
  if(!Array.isArray(fresh.bank))fresh.bank=[];
  if(fresh.inventory.length>BAG_SLOTS)fresh.inventory=fresh.inventory.slice(0,BAG_SLOTS);
  if(collides(fresh)){fresh.x=SPAWN.x;fresh.y=SPAWN.y;}
- Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,path:[],intent:null,openBuilding:null,nextAttack:0});
+ Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,path:[],intent:null,openBuilding:null,nextEat:Food.restoreDeadline(d.nextEat),nextAttack:Food.restoreDeadline(d.nextEat)});
 }
 function persist(p){
  if(!p.accountId)return Promise.resolve();
@@ -287,8 +288,8 @@ io.on('connection',socket=>{
  });
  socket.on('useItem',id=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
-  const item=ITEMS[id];if(item.category!=='food'||p.hp>=p.maxHp||count(p.inventory,id)<1)return;
-  removeItem(p.inventory,id,1);p.hp=Math.min(p.maxHp,p.hp+item.heal);send(p,'You eat '+item.name+' (+'+item.heal+' HP).');pushProfile(p);
+  const result=Food.eat(p,id);if(!result.ok)return;
+  Production.cancel(p);send(p,result.message);pushProfile(p);
  });
  socket.on('dropItem',id=>{
   if(!p.loggedIn||!has(ITEMS,id)||!removeItem(p.inventory,id,1))return;
