@@ -4,8 +4,8 @@ const path = require('node:path');
 const {randomUUID} = require('node:crypto');
 
 // One owner per file/process. Not a cross-process lock or PostgreSQL adapter.
-// All writers must use this store; never share its file with accountStore.
-async function openSnapshot(filename, initialState) {
+// All writers must use the same store instance.
+async function openSnapshot(filename, initialState, {encode = value => value, decode = value => value} = {}) {
  let state, poisoned = false, queue = Promise.resolve();
  const clone = value => JSON.parse(JSON.stringify(value));
  const valid = value => value && Number.isSafeInteger(value.revision) && value.revision >= 0;
@@ -14,7 +14,7 @@ async function openSnapshot(filename, initialState) {
   let handle, renamed = false;
   try {
    handle = await fs.open(temporary, 'wx', 0o600);
-   await handle.writeFile(JSON.stringify(next));
+   await handle.writeFile(JSON.stringify(encode(next)));
    await handle.sync();
    await handle.close(); handle = null;
    await fs.rename(temporary, filename); renamed = true;
@@ -31,7 +31,7 @@ async function openSnapshot(filename, initialState) {
   }
  }
  await fs.mkdir(path.dirname(filename), {recursive:true});
- try { state = JSON.parse(await fs.readFile(filename, 'utf8')); }
+ try { state = decode(JSON.parse(await fs.readFile(filename, 'utf8'))); }
  catch (error) {
   if (error.code !== 'ENOENT') throw error;
   state = {revision:0, data:clone(initialState)};

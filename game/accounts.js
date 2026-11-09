@@ -1,6 +1,8 @@
 'use strict';
 const crypto=require('node:crypto');
-const fs=require('node:fs/promises');
+const {openSnapshot}=require('./atomic-snapshot');
+const {planTrade}=require('./merchant-plan');
+const {createEconomy}=require('./economy');
 const path=require('node:path');
 const {promisify}=require('node:util');
 const scrypt=promisify(crypto.scrypt);
@@ -21,20 +23,21 @@ async function checkPassword(password,stored){
  const a=Buffer.from(hex,'hex'),b=await scrypt(password,salt,a.length);
  return crypto.timingSafeEqual(a,b);
 }
-function publicAccount(account){return{id:account.id,username:account.username,profile:account.profile};}
-function accountStore(){
- let pool=null,disk={accounts:[],sessions:[]};
+function publicAccount(account){return{id:account.id,username:account.username,profile:structuredClone(account.profile),tradeRevision:account.tradeRevision||0};}
+function accountStore({filename=STORE_PATH}={}){
+ let pool=null,local=null;
  const usesPostgres=!!process.env.DATABASE_URL;
  let writeQueue=Promise.resolve();
- async function writeDisk(){
-  const json=JSON.stringify(disk);
-  writeQueue=writeQueue.catch(()=>{}).then(async()=>{
-   await fs.mkdir(path.dirname(STORE_PATH),{recursive:true});
-   const tmp=STORE_PATH+'.tmp';
-   await fs.writeFile(tmp,json,{mode:0o600});
-   await fs.rename(tmp,STORE_PATH);
+ function readDisk(){return local.read().data;}
+ function mutateDisk(change){
+  const job=writeQueue.then(async()=>{
+   const current=local.read();
+   let result;
+   await local.update(current.revision,async disk=>{result=await change(disk);return disk;});
+   return result;
   });
-  return writeQueue;
+  writeQueue=job.catch(()=>{});
+  return job;
  }
  async function init(){
   if(usesPostgres){
@@ -54,8 +57,11 @@ function accountStore(){
    await pool.query('CREATE INDEX IF NOT EXISTS sessions_expires_idx ON game_sessions(expires_at)');
    console.log('Accounts: PostgreSQL ready');
   }else{
-   try{disk=JSON.parse(await fs.readFile(STORE_PATH,'utf8'));}
-   catch(err){if(err.code!=='ENOENT')throw err;}
+   local=await openSnapshot(filename,{accounts:[],sessions:[]},{
+    encode:state=>({...state.data,storageRevision:state.revision}),
+    decode:disk=>({revision:disk.storageRevision??0,data:disk})
+   });
+   const disk=readDisk();
    if(!Array.isArray(disk.accounts)||!Array.isArray(disk.sessions))throw Error('Invalid local account database');
    console.warn('Accounts: local file mode, NOT persistent on ephemeral Render filesystem. Set DATABASE_URL.');
   }
@@ -64,7 +70,7 @@ function accountStore(){
   const token=crypto.randomBytes(32).toString('base64url');
   const tokenHash=digest(token),expires=Date.now()+SESSION_AGE_MS;
   if(pool)await pool.query('INSERT INTO game_sessions (token_hash,account_id,expires_at) VALUES($1,$2,$3)',[tokenHash,accountId,new Date(expires)]);
-  else{disk.sessions=disk.sessions.filter(s=>s.expires>Date.now());disk.sessions.push({hash:tokenHash,accountId,expires});await writeDisk();}
+  else await mutateDisk(disk=>{disk.sessions=disk.sessions.filter(s=>s.expires>Date.now());disk.sessions.push({hash:tokenHash,accountId,expires});});
   return token;
  }
  async function register(username,password,profile){
@@ -75,25 +81,26 @@ function accountStore(){
     await pool.query('INSERT INTO game_accounts (id,username,username_key,password_hash,profile) VALUES($1,$2,$3,$4,$5::jsonb)',
      [id,username,usernameKey,passHash,JSON.stringify(profile)]);
    }catch(err){if(err.code==='23505')throw Error('This character name is already taken.');throw err;}
-  }else{
+  }else await mutateDisk(disk=>{
    if(disk.accounts.some(a=>a.usernameKey===usernameKey))throw Error('This character name is already taken.');
-   disk.accounts.push({id,username,usernameKey,passwordHash:passHash,profile});
-   await writeDisk();
-  }
-  return{account:{id,username,profile},token:await createSession(id)};
+   disk.accounts.push({id,username,usernameKey,passwordHash:passHash,profile:structuredClone(profile),tradeRevision:0});
+  });
+  const token=await createSession(id);
+  return{account:await resume(token),token};
  }
  async function findByName(username){
   if(pool){
    const r=await pool.query('SELECT id,username,profile,password_hash FROM game_accounts WHERE username_key=$1',[keyOf(username)]);
    return r.rows[0]||null;
   }
-  return disk.accounts.find(a=>a.usernameKey===keyOf(username))||null;
+  return readDisk().accounts.find(a=>a.usernameKey===keyOf(username))||null;
  }
  async function login(username,password){
   if(!usernameValid(username)||!passwordValid(password))throw Error('Incorrect username or password.');
   const a=await findByName(username);
   if(!a||!(await checkPassword(password,a.password_hash||a.passwordHash)))throw Error('Incorrect username or password.');
-  return{account:publicAccount(a),token:await createSession(a.id)};
+  const token=await createSession(a.id);
+  return{account:await resume(token),token};
  }
  async function resume(token){
   if(typeof token!=='string'||token.length>150||token.length<32)return null;
@@ -103,6 +110,7 @@ function accountStore(){
     JOIN game_accounts a ON s.account_id=a.id WHERE s.token_hash=$1 AND s.expires_at>NOW()`,[h]);
    return r.rows[0]?publicAccount(r.rows[0]):null;
   }
+  const disk=readDisk();
   const s=disk.sessions.find(x=>x.hash===h&&x.expires>Date.now());
   const a=s?disk.accounts.find(x=>x.id===s.accountId):null;
   return a?publicAccount(a):null;
@@ -111,17 +119,40 @@ function accountStore(){
   if(typeof token!=='string'||token.length>150)return;
   const h=digest(token);
   if(pool)await pool.query('DELETE FROM game_sessions WHERE token_hash=$1',[h]);
-  else{disk.sessions=disk.sessions.filter(s=>s.hash!==h);await writeDisk();}
+  else await mutateDisk(disk=>{disk.sessions=disk.sessions.filter(s=>s.hash!==h);});
  }
- async function save(accountId,profile){
+ async function save(accountId,profile,expectedTradeRevision=0){
   if(!accountId)return;
-  if(pool)await pool.query('UPDATE game_accounts SET profile=$2::jsonb WHERE id=$1',[accountId,JSON.stringify(profile)]);
-  else{
+  const captured=structuredClone(profile);
+  if(pool)await pool.query('UPDATE game_accounts SET profile=$2::jsonb WHERE id=$1',[accountId,JSON.stringify(captured)]);
+  else await mutateDisk(disk=>{
    const a=disk.accounts.find(x=>x.id===accountId);
-   if(a){a.profile=profile;await writeDisk();}
-  }
+   if(a){
+    if((a.tradeRevision||0)!==expectedTradeRevision)throw Error('Stale account trade revision');
+    a.profile=captured;
+   }
+  });
+ }
+ // Operates on checkpointed profiles only. Live handlers must checkpoint and
+ // lock gameplay first; PostgreSQL support is deliberately fail-closed.
+ async function trade(accountId,expectedTradeRevision,request){
+  if(usesPostgres)throw Error('Durable PostgreSQL trading is not implemented');
+  const captured=structuredClone(request);
+  return mutateDisk(disk=>{
+   const a=disk.accounts.find(x=>x.id===accountId);
+   if(!a)throw Error('Account not found');
+   const revision=a.tradeRevision||0;
+   if(!Number.isSafeInteger(expectedTradeRevision)||expectedTradeRevision!==revision)throw Error('Stale account trade revision');
+   if(!Number.isSafeInteger(revision+1))throw Error('Account trade revision exhausted');
+   const merchants=disk.merchants||createEconomy().stock;
+   const plan=planTrade(a.profile,merchants[captured?.shopId],captured);
+   if(!plan.ok)return plan;
+   a.profile=plan.profile;a.tradeRevision=revision+1;
+   merchants[captured.shopId]=plan.stock;disk.merchants=merchants;
+   return {...plan,tradeRevision:a.tradeRevision};
+  });
  }
  async function close(){if(pool)await pool.end();else await writeQueue;}
- return{init,register,login,resume,logout,save,close,mode:usesPostgres?'postgres':'local-file'};
+ return{init,register,login,resume,logout,save,trade,close,mode:usesPostgres?'postgres':'local-file'};
 }
 module.exports={accountStore,usernameValid,passwordValid,hashPassword,checkPassword};
