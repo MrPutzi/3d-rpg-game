@@ -4,7 +4,8 @@
 const {ITEMS,SHOPS}=require('./content');
 const {count,addItem,removeItem}=require('./rules');
 const BASE_STOCK=20;
-const stock=Object.fromEntries(Object.entries(SHOPS).map(([id,shop])=>[id,Object.fromEntries(shop.items.map(x=>[x,BASE_STOCK]))]));
+function createEconomy(initialStock){
+const stock=initialStock?structuredClone(initialStock):Object.fromEntries(Object.entries(SHOPS).map(([id,shop])=>[id,Object.fromEntries(shop.items.map(x=>[x,BASE_STOCK]))]));
 function getStock(shopId,id){return stock[shopId]?.[id]??0;}
 function price(shopId,id,side='buy'){
  const item=ITEMS[id];if(!item||!SHOPS[shopId])return 0;
@@ -48,4 +49,6 @@ function restock(){
  }
 }
 function snapshot(shopId){return{stock:{...stock[shopId]},prices:Object.fromEntries(Object.keys(ITEMS).map(id=>[id,{buy:price(shopId,id,'buy'),sell:price(shopId,id,'sell')}]))};}
-module.exports={buy,sell,quote,price,restock,snapshot,getStock,stock};
+return {buy,sell,quote,price,restock,snapshot,getStock,stock};
+}
+module.exports={...createEconomy(),createEconomy};

@@ -43,3 +43,17 @@ After process death the durable inventories contain two rabbits instead of one.
 The test asserts conservation and must fail until the architecture is repaired.
 No production database or user progress is touched. This test covers local-file
 storage; equivalent PostgreSQL fault-injection coverage is still required.
+
+## Implemented foundation: isolated trade planning
+`game/merchant-plan.js` now builds candidate profile and stock snapshots without
+mutating the caller or global economy. `createEconomy(initialStock)` provides an
+isolated simulation instance. Invalid stock, quantities, IDs and unsafe integer
+totals fail closed; failed plans expose no commit payload. Five new tests cover
+isolation, rejection, sequential last-stock revalidation and overflow.
+
+This is NOT yet connected to socket handlers. The caller must load/lock fresh
+profile and stock, call planTrade, commit both atomically, then publish the result.
+Two concurrent plans against one old snapshot can both succeed: the persistence
+layer MUST serialize/version-check them. Existing server code still has the crash
+bug and the failing regression stays enabled. No durable-store or UI completion
+is claimed. Next implement step 1 storage commits, then steps 2 and 3 above.
