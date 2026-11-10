@@ -50,4 +50,21 @@ test('PostgreSQL durable merchant transactions',{skip:!url},async t=>{
   assert.equal(profiles[0].tradeRevision,1);
   assert.equal((await query.query("SELECT stock FROM game_merchants WHERE id='tavern'")).rows[0].stock.cooked_rabbit,0);
  });
+ await t.test('restock and purchases serialize; persisted deadline prevents duplicate replenishment',async()=>{
+  const a=await db.register('StockBuyer','test-password-only',{gold:1000,inventory:[]});
+  await db.trade(a.account.id,0,{shopId:'tavern',itemId:'bread',qty:5,side:'buy'});
+  assert.equal((await db.restockMerchants(0)).restocked,false);
+  const results=await Promise.all([
+   db.restockMerchants(60000),db.restockMerchants(60000),
+   db.trade(a.account.id,1,{shopId:'tavern',itemId:'bread',qty:1,side:'buy'})
+  ]);
+  assert.equal(results.slice(0,2).filter(r=>r.restocked).length,1);
+  assert.equal(results[2].ok,true);
+  assert.equal((await db.merchantStock()).tavern.bread,15);
+  assert.equal((await db.merchantStock()).tavern.cooked_rabbit,0);
+  await db.close();db=accountStore({databaseUrl:isolated.toString()});await db.init();
+  assert.equal((await db.restockMerchants(60000)).restocked,false);
+  assert.equal((await db.merchantStock()).tavern.bread,15);
+ });
+
 });

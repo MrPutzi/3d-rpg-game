@@ -45,7 +45,7 @@ function sell(p,shopId,id,qty){
 }
 function restock(){
  for(const [shopId,shop] of Object.entries(SHOPS)){
-  for(const id of shop.items){const current=getStock(shopId,id);stock[shopId][id]+=current<BASE_STOCK?1:current>BASE_STOCK?-1:0;}
+  for(const id of shop.items){const current=getStock(shopId,id);stock[shopId]??={};stock[shopId][id]=current+(current<BASE_STOCK?1:current>BASE_STOCK?-1:0);}
  }
 }
 function snapshot(shopId){return{stock:{...stock[shopId]},prices:Object.fromEntries(Object.keys(ITEMS).map(id=>[id,{buy:price(shopId,id,'buy'),sell:price(shopId,id,'sell')}]))};}

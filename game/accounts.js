@@ -3,6 +3,7 @@ const crypto=require('node:crypto');
 const {openSnapshot}=require('./atomic-snapshot');
 const {planTrade}=require('./merchant-plan');
 const {postgresTrade}=require('./postgres-trade');
+const {planRestock,postgresRestock}=require('./merchant-stock');
 const {createEconomy}=require('./economy');
 const path=require('node:path');
 const {promisify}=require('node:util');
@@ -60,6 +61,8 @@ function accountStore({filename=STORE_PATH,databaseUrl=process.env.DATABASE_URL}
    await pool.query('CREATE TABLE IF NOT EXISTS game_merchants (id TEXT PRIMARY KEY,stock JSONB NOT NULL)');
    for(const [id,stock] of Object.entries(createEconomy().stock))
     await pool.query('INSERT INTO game_merchants (id,stock) VALUES($1,$2::jsonb) ON CONFLICT(id) DO NOTHING',[id,JSON.stringify(stock)]);
+   await pool.query('CREATE TABLE IF NOT EXISTS game_economy_clock (id INTEGER PRIMARY KEY CHECK(id=1),next_restock_at BIGINT)');
+   await pool.query('INSERT INTO game_economy_clock(id,next_restock_at) VALUES(1,NULL) ON CONFLICT(id) DO NOTHING');
    console.log('Accounts: PostgreSQL ready');
   }else{
    local=await openSnapshot(filename,{accounts:[],sessions:[]},{
@@ -161,7 +164,22 @@ function accountStore({filename=STORE_PATH,databaseUrl=process.env.DATABASE_URL}
    return {...plan,tradeRevision:a.tradeRevision};
   });
  }
+ async function merchantStock(){
+  if(pool){
+   const result=await pool.query('SELECT id,stock FROM game_merchants');
+   return Object.fromEntries(result.rows.map(row=>[row.id,row.stock]));
+  }
+  return readDisk().merchants||createEconomy().stock;
+ }
+ async function restockMerchants(now=Date.now()){
+  if(usesPostgres)return postgresRestock(pool,now);
+  return mutateDisk(disk=>{
+   const result=planRestock(disk.merchants||createEconomy().stock,disk.nextRestockAt,now);
+   disk.merchants=result.stock;disk.nextRestockAt=result.nextRestockAt;
+   return result;
+  });
+ }
  async function close(){if(pool)await pool.end();else await writeQueue;}
- return{init,register,login,resume,logout,save,trade,close,mode:usesPostgres?'postgres':'local-file'};
+ return{init,register,login,resume,logout,save,trade,merchantStock,restockMerchants,close,mode:usesPostgres?'postgres':'local-file'};
 }
 module.exports={accountStore,usernameValid,passwordValid,hashPassword,checkPassword};
