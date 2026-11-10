@@ -2,6 +2,7 @@
 const crypto=require('node:crypto');
 const {openSnapshot}=require('./atomic-snapshot');
 const {planTrade}=require('./merchant-plan');
+const {postgresTrade}=require('./postgres-trade');
 const {createEconomy}=require('./economy');
 const path=require('node:path');
 const {promisify}=require('node:util');
@@ -23,10 +24,10 @@ async function checkPassword(password,stored){
  const a=Buffer.from(hex,'hex'),b=await scrypt(password,salt,a.length);
  return crypto.timingSafeEqual(a,b);
 }
-function publicAccount(account){return{id:account.id,username:account.username,profile:structuredClone(account.profile),tradeRevision:account.tradeRevision||0};}
-function accountStore({filename=STORE_PATH}={}){
+function publicAccount(account){return{id:account.id,username:account.username,profile:structuredClone(account.profile),tradeRevision:Number(account.trade_revision??account.tradeRevision??0)};}
+function accountStore({filename=STORE_PATH,databaseUrl=process.env.DATABASE_URL}={}){
  let pool=null,local=null;
- const usesPostgres=!!process.env.DATABASE_URL;
+ const usesPostgres=!!databaseUrl;
  let writeQueue=Promise.resolve();
  function readDisk(){return local.read().data;}
  function mutateDisk(change){
@@ -42,7 +43,7 @@ function accountStore({filename=STORE_PATH}={}){
  async function init(){
   if(usesPostgres){
    const {Pool}=require('pg');
-   pool=new Pool({connectionString:process.env.DATABASE_URL,
+   pool=new Pool({connectionString:databaseUrl,
     ssl:process.env.DATABASE_SSL==='true'?{rejectUnauthorized:true}:undefined,
     max:5,connectionTimeoutMillis:10000});
    await pool.query(`CREATE TABLE IF NOT EXISTS game_accounts (
@@ -55,6 +56,10 @@ function accountStore({filename=STORE_PATH}={}){
     expires_at TIMESTAMPTZ NOT NULL
    )`);
    await pool.query('CREATE INDEX IF NOT EXISTS sessions_expires_idx ON game_sessions(expires_at)');
+   await pool.query('ALTER TABLE game_accounts ADD COLUMN IF NOT EXISTS trade_revision BIGINT NOT NULL DEFAULT 0');
+   await pool.query('CREATE TABLE IF NOT EXISTS game_merchants (id TEXT PRIMARY KEY,stock JSONB NOT NULL)');
+   for(const [id,stock] of Object.entries(createEconomy().stock))
+    await pool.query('INSERT INTO game_merchants (id,stock) VALUES($1,$2::jsonb) ON CONFLICT(id) DO NOTHING',[id,JSON.stringify(stock)]);
    console.log('Accounts: PostgreSQL ready');
   }else{
    local=await openSnapshot(filename,{accounts:[],sessions:[]},{
@@ -106,7 +111,7 @@ function accountStore({filename=STORE_PATH}={}){
   if(typeof token!=='string'||token.length>150||token.length<32)return null;
   const h=digest(token);
   if(pool){
-   const r=await pool.query(`SELECT a.id,a.username,a.profile FROM game_sessions s
+   const r=await pool.query(`SELECT a.id,a.username,a.profile,a.trade_revision FROM game_sessions s
     JOIN game_accounts a ON s.account_id=a.id WHERE s.token_hash=$1 AND s.expires_at>NOW()`,[h]);
    return r.rows[0]?publicAccount(r.rows[0]):null;
   }
@@ -124,7 +129,11 @@ function accountStore({filename=STORE_PATH}={}){
  async function save(accountId,profile,expectedTradeRevision=0){
   if(!accountId)return;
   const captured=structuredClone(profile);
-  if(pool)await pool.query('UPDATE game_accounts SET profile=$2::jsonb WHERE id=$1',[accountId,JSON.stringify(captured)]);
+  if(pool){
+   if(!Number.isSafeInteger(expectedTradeRevision)||expectedTradeRevision<0)throw Error('Invalid account trade revision');
+   const result=await pool.query('UPDATE game_accounts SET profile=$2::jsonb WHERE id=$1 AND trade_revision=$3',[accountId,JSON.stringify(captured),expectedTradeRevision]);
+   if(result.rowCount!==1)throw Error('Stale account trade revision or missing account');
+  }
   else await mutateDisk(disk=>{
    const a=disk.accounts.find(x=>x.id===accountId);
    if(a){
@@ -134,10 +143,10 @@ function accountStore({filename=STORE_PATH}={}){
   });
  }
  // Operates on checkpointed profiles only. Live handlers must checkpoint and
- // lock gameplay first; PostgreSQL support is deliberately fail-closed.
+ // lock gameplay first; both backends commit the account and merchant together.
  async function trade(accountId,expectedTradeRevision,request){
-  if(usesPostgres)throw Error('Durable PostgreSQL trading is not implemented');
   const captured=structuredClone(request);
+  if(usesPostgres)return postgresTrade(pool,accountId,expectedTradeRevision,captured);
   return mutateDisk(disk=>{
    const a=disk.accounts.find(x=>x.id===accountId);
    if(!a)throw Error('Account not found');
