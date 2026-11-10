@@ -94,6 +94,10 @@ function openBuilding(p,b){
  pushProfile(p);return true;
 }
 function merchant(p){return p.openBuilding&&SHOPS[p.openBuilding]&&buildingById(p.openBuilding)&&reachable(p,buildingById(p.openBuilding).door,110)?SHOPS[p.openBuilding]:null;}
+function broadcastShop(id){
+ const snapshot={id,...Economy.snapshot(id)};
+ for(const viewer of Object.values(players))if(viewer.loggedIn&&viewer.openBuilding===id&&merchant(viewer))io.to(viewer.id).emit('shopState',snapshot);
+}
 function bankReady(p){return p.openBuilding==='bank'&&reachable(p,buildingById('bank').door,110);}
 function ensureEquipped(p){
  for(const slot of PAPER_SLOTS)if(p.equipment[slot]&&count(p.inventory,p.equipment[slot])<1)p.equipment[slot]=null;
@@ -326,14 +330,14 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
   const outcome=Economy.buy(p,p.openBuilding,data.id,Number(data.qty));
   send(p,outcome.message);
-  if(outcome.ok){pushProfile(p);io.to(p.id).emit('shopState',{id:p.openBuilding,...Economy.snapshot(p.openBuilding)});}
+  if(outcome.ok){pushProfile(p);broadcastShop(p.openBuilding);}
  });
  socket.on('sell',data=>{
   const shop=merchant(p);
   if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
   const outcome=Economy.sell(p,p.openBuilding,data.id,Number(data.qty));
   send(p,outcome.message);
-  if(outcome.ok){ensureEquipped(p);pushProfile(p);io.to(p.id).emit('shopState',{id:p.openBuilding,...Economy.snapshot(p.openBuilding)});}
+  if(outcome.ok){ensureEquipped(p);pushProfile(p);broadcastShop(p.openBuilding);}
  });
  socket.on('rest',()=>{
   if(!p.loggedIn||p.openBuilding!=='tavern'||!reachable(p,buildingById('tavern').door,110))return;
@@ -379,7 +383,7 @@ setInterval(()=>{
   }
   if(!chase&&n.targetPlayer)n.targetPlayer=null;
  }
- if(now-lastRestock>=60000){Economy.restock();lastRestock=now;}
+ if(now-lastRestock>=60000){Economy.restock();for(const id of Object.keys(SHOPS))broadcastShop(id);lastRestock=now;}
  if(now-lastSave>=20000){for(const p of Object.values(players))if(p.loggedIn)persist(p);lastSave=now;}
  for(const [id,g] of Object.entries(groundItems))if(now>=g.expires)delete groundItems[id];
  for(const p of Object.values(players)){
