@@ -458,7 +458,7 @@ setInterval(()=>{
   io.emit('state',state);
   for(const p of Object.values(players))if(p.loggedIn){
    io.to(p.id).emit('combatTarget',Encounters.target(enemies[p.selectedEnemyId],p,players,now));
-   io.to(p.id).emit('nearbyLoot',Loot.nearby(p,groundItems,now));
+   io.to(p.id).emit('nearbyLoot',Loot.nearby(p,groundItems,now,reachable));
   }
   effects=[];lastSnapshot=now;
  }

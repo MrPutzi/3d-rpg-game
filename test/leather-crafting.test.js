@@ -21,7 +21,7 @@ test('higher leather tiers require Crafting levels and consume exact quantities'
 test('patrol boots unlock after provisions, require personal crafting and reward only once',()=>{
  const p=player();p.quests.patrol_provisions.status='active';p.quests.patrol_provisions.progress=3;addItem(p.inventory,'cooked_rabbit',3);
  assert.equal(turnInQuest(p,'patrol_provisions','ranger').ok,true);assert.equal(p.quests.patrol_boots.status,'active');
- addItem(p.inventory,'leather_boots',2);assert.equal(turnInQuest(p,'patrol_boots','ranger'),null);assert.equal(targetFor(p,'patrol_boots').kind,'station');
+ addItem(p.inventory,'leather_boots',2);assert.equal(turnInQuest(p,'patrol_boots','ranger'),null);assert.equal(targetFor(p,'patrol_boots').kind,'area');
  p.inventory=[];addItem(p.inventory,'leather',2);craft(p,'craft_boots');craft(p,'craft_boots',2000);
  assert.equal(targetFor(p,'patrol_boots').kind,'npc');assert.equal(turnInQuest(p,'patrol_boots','elder'),null);
  p.equipment.feet='leather_boots';

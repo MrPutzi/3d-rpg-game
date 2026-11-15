@@ -18,7 +18,7 @@ test('watch quest follows arrow supplies, requires personal crafting and consume
  const p=trained();p.quests.guard_supplies.status='active';p.quests.guard_supplies.progress=2;addItem(p.inventory,'bronze_arrowtips',30);
  assert.equal(turnInQuest(p,'guard_supplies','guard').ok,true);assert.equal(p.quests.iron_supplies.status,'active');
  addItem(p.inventory,'iron_dagger',2);assert.equal(turnInQuest(p,'iron_supplies','guard'),null);p.inventory=[];
- assert.equal(targetFor(p,'iron_supplies').kind,'station');addItem(p.inventory,'iron_bar',2);
+ assert.equal(targetFor(p,'iron_supplies').kind,'area');addItem(p.inventory,'iron_bar',2);
  craft(p,'smith_iron_dagger',0);craft(p,'smith_iron_dagger',2000);assert.equal(targetFor(p,'iron_supplies').kind,'npc');
  assert.equal(turnInQuest(p,'iron_supplies','elder'),null);equip(p,'iron_dagger');
  assert.equal(turnInQuest(p,'iron_supplies','guard').ok,true);assert.equal(p.equipment.weapon,null);assert.equal(count(p.inventory,'iron_dagger'),0);assert.equal(p.gold,70);

@@ -53,3 +53,11 @@ test('two sweepers and repeated requests conserve all drops and cap per-call wor
  assert.equal(a.inventory[0].qty+b.inventory[0].qty,25);
  assert.equal(takeNearby({...player('anon'),loggedIn:false},{a:drop()},1,reach).taken,0);
 });
+test('pickup availability uses exact reach and ownership rather than rounded display distance',()=>{
+ const p=player('me'),ground={a:drop({x:48.4})};
+ let row=nearby(p,ground,1,reach)[0];assert.equal(row.distance,48);assert.equal(row.canTake,false);assert.equal(take(p,ground,'a',1,reach).ok,false);
+ ground.a.x=48;assert.equal(nearby(p,ground,1,reach)[0].canTake,true);
+ assert.equal(nearby(p,ground,1,()=>false)[0].canTake,false);
+ ground.a.ownerId='other';ground.a.privateUntil=100;assert.equal(nearby(p,ground,99,reach)[0].canTake,false);assert.equal(nearby(p,ground,100,reach)[0].canTake,true);
+ assert.equal(nearby(player('other'),ground,99,reach)[0].canTake,true);
+});
