@@ -338,7 +338,7 @@ io.on('connection',socket=>{
   const done=result=>{socket.emit('tradeStatus',{state:'done',ok:result.ok,message:result.message});send(p,result.message);};
   if(!p.loggedIn||!merchant(p)||!has(ITEMS,data?.id)){done({ok:false,message:'Visit a merchant first.'});return;}
   // Any outstanding contribution may become eligible when another player leaves.
-  if(Object.values(enemies).some(n=>n.hp>0&&(Encounters.contribution(n,p.id)>0||n.targetPlayer===p.id))){done({ok:false,message:'Finish your combat encounter before trading.'});return;}
+  if(Object.values(enemies).some(n=>n.hp>0&&(Encounters.hasRecentContribution(n,p.id,Date.now())||n.targetPlayer===p.id))){done({ok:false,message:'Finish your combat encounter before trading.'});return;}
   const shopId=p.openBuilding;
   stop(p);
   if(!p.accountId){

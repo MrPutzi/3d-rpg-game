@@ -17,7 +17,7 @@ equipped item clears that slot in the durable profile as well.
 The account queue includes the complete trade, so disconnect and session takeover
 wait for it. While pending, socket mutations and player simulation are paused;
 production is cancelled before checkpointing. Players with an outstanding combat
-contribution cannot trade until that encounter ends, avoiding concurrent kill rewards.
+contribution cannot trade until that encounter ends or their combat credit expires, avoiding concurrent kill rewards.
 Merchant operations and replenishment share a server queue. An uncertain commit
 never retries automatically or checkpoints old memory: the connection closes and
 the player must reload to restore the authoritative persisted result.
