@@ -36,8 +36,8 @@ test('full inventory conversion is atomic and failed output grants no XP',()=>{
  const p=player();addItem(p.inventory,'logs');addItem(p.inventory,'bread',27);
  P.start(p,'fletch_shafts',1,1000);assert.equal(P.advance(p,2800).ok,true);assert.equal(count(p.inventory,'arrow_shafts'),15);
  const b=player();b.x=2520;b.y=2050;addItem(b.inventory,'bread',28);
- const before=JSON.stringify(b.inventory);P.start(b,'hunt_rabbit',1,1000);
- assert.equal(P.advance(b,2800).ok,false);assert.equal(JSON.stringify(b.inventory),before);assert.equal(b.skills.hunter.xp,0);
+ const before=JSON.stringify(b.inventory);assert.equal(P.start(b,'hunt_rabbit',1,1000).ok,false);
+ assert.equal(P.advance(b,2800),null);assert.equal(JSON.stringify(b.inventory),before);assert.equal(b.skills.hunter.xp,0);
 });
 test('frontier meals quest requires crafting and delivery; rewards only once',()=>{
  const p=player();addItem(p.inventory,'raw_shrimp',3);P.start(p,'cook_shrimp',3,1000);
@@ -47,4 +47,27 @@ test('frontier meals quest requires crafting and delivery; rewards only once',()
  assert.equal(turnInQuest(p,'cooked_supplies','fisher').ok,true);
  assert.equal(count(p.inventory,'cooked_shrimp'),0);assert.equal(p.gold,20);
  assert.equal(turnInQuest(p,'cooked_supplies','fisher'),null);assert.equal(p.gold,20);
+});
+test('max planning is read-only and consumes only completed timed actions',()=>{
+ const p=player();addItem(p.inventory,'raw_shrimp',3);const before=JSON.stringify(p);
+ assert.equal(P.availability(p,'cook_shrimp').max,3);assert.equal(JSON.stringify(p),before);
+ assert.equal(P.start(p,'cook_shrimp','max',0).ok,true);assert.equal(p.production.total,3);assert.equal(count(p.inventory,'raw_shrimp'),3);
+ for(const now of [1800,3600,5400])assert.equal(P.advance(p,now).ok,true);
+ assert.equal(P.advance(p,7200),null);assert.equal(count(p.inventory,'cooked_shrimp'),3);assert.equal(p.skills.cooking.xp,90);
+});
+test('max respects output capacity, consumed input slots and stack overflow',()=>{
+ const p=player();p.x=2520;p.y=2050;addItem(p.inventory,'bread',26);assert.equal(P.availability(p,'hunt_rabbit').max,2);
+ const q=player();addItem(q.inventory,'logs',2);addItem(q.inventory,'bread',25);addItem(q.inventory,'arrow_shafts',999980);
+ assert.equal(P.availability(q,'fletch_shafts').max,1);assert.equal(q.inventory.length,28);
+ const r=player();addItem(r.inventory,'raw_shrimp',28);assert.equal(P.availability(r,'cook_shrimp').max,28);
+});
+test('max caps free activities and accounts for Slayer credits',()=>{
+ const p=player();assert.equal(P.availability(p,'pickpocket').max,28);
+ p.x=540;p.y=467;p.openBuilding='guild';p.slayerKills=7;assert.equal(P.availability(p,'slayer_contract').max,2);assert.equal(p.slayerKills,7);
+});
+test('max remains isolated and revalidates changed inputs after start',()=>{
+ const a=player(),b=player();addItem(a.inventory,'raw_shrimp',2);addItem(b.inventory,'raw_shrimp',1);
+ P.start(a,'cook_shrimp','max',0);P.start(b,'cook_shrimp','max',0);a.inventory=[];
+ assert.equal(P.advance(a,1800).ok,false);assert.equal(a.skills.cooking.xp,0);assert.equal(P.advance(b,1800).ok,true);assert.equal(b.skills.cooking.xp,30);
+ assert.equal(P.availability(a,'constructor').max,0);a.path=[{x:1,y:1}];assert.match(P.availability(a,'pickpocket').reason,/moving/);
 });

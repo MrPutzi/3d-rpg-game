@@ -212,10 +212,11 @@ function updateUI(){
   for(const [item] of outputs)if(items[item]?.heal)info.append(elem('small','','Heals up to '+items[item].heal+' HP per item · eating delays attacks by 1.8s'));
   for(const [item] of outputs){const details=recipeEquipmentDetails(items[item]);if(details)info.append(elem('small','',details));}
   const missing=inputs.some(([k,v])=>owned(k)<v);
-  const reason=active?'Batch in progress':(profile.skills[recipe.skill]?.level||0)<recipe.level?'Level too low':missing?'Missing ingredients':'';
+  const available=profile.productionOptions?.[id];
+  const reason=active?'Batch in progress':available?available.reason:(profile.skills[recipe.skill]?.level||0)<recipe.level?'Level too low':missing?'Missing ingredients':'';
   const controls=elem('div','recipe-controls');
-  for(const qty of [1,5,28]){
-   const b=elem('button','',qty===28?'Make 28':'Make '+qty);b.disabled=!!reason;b.title=reason||'Stops if ingredients run out or you move.';
+  for(const qty of [1,5,28,'max']){
+   const b=elem('button','',qty==='max'?'Make max ('+(available?.max||0)+')':'Make '+qty);b.disabled=!!reason||(qty==='max'&&!available?.max);b.title=reason||'Stops if ingredients run out or you move.';
    b.onclick=()=>emit('craft',{id,qty});controls.append(b);
   }
   const station=village.buildings.find(b=>b.id===recipe.station);

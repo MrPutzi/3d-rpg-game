@@ -1,7 +1,7 @@
 'use strict';
 const {RECIPES}=require('./progression');
 const {stationReady,processRecipe}=require('./activities');
-const {count}=require('./rules');
+const {count,addItem,removeItem}=require('./rules');
 const DURATION=1800,MAX_BATCH=28;
 function requirements(p,id){
  const r=typeof id==='string'&&Object.hasOwn(RECIPES,id)?RECIPES[id]:null;
@@ -12,11 +12,26 @@ function requirements(p,id){
  for(const [item,qty] of Object.entries(r.inputs))if(count(p.inventory,item)<qty)return 'Missing ingredients.';
  return null;
 }
+function availability(p,id){
+ const reason=p.production?'Batch in progress':p.intent||p.path?.length?'Stop moving or fighting before production.':requirements(p,id);
+ if(reason)return {max:0,reason};
+ const r=RECIPES[id],inventory=p.inventory.map(e=>({...e}));let max=0,kills=p.slayerKills||0;
+ for(let i=0;i<MAX_BATCH;i++){
+  if(r.requiresSlayerKills&&kills<r.requiresSlayerKills)break;
+  if(Object.entries(r.inputs).some(([item,qty])=>count(inventory,item)<qty))break;
+  for(const [item,qty] of Object.entries(r.inputs))removeItem(inventory,item,qty);
+  if(Object.entries(r.outputs).some(([item,qty])=>!addItem(inventory,item,qty)))break;
+  max++;kills-=r.requiresSlayerKills||0;
+ }
+ return {max,reason:max?'':'Inventory cannot hold the output.'};
+}
+function options(p){return Object.fromEntries(Object.keys(RECIPES).map(id=>[id,availability(p,id)]));}
 function start(p,id,qty=1,now=Date.now()){
  if(p.production)return {ok:false,message:'Already producing. Cancel the current batch first.'};
- if(!Number.isSafeInteger(qty)||qty<1||qty>MAX_BATCH)return {ok:false,message:'Choose 1–28 actions.'};
+ if(qty!=='max'&&(!Number.isSafeInteger(qty)||qty<1||qty>MAX_BATCH))return {ok:false,message:'Choose 1–28 actions.'};
  if(p.intent||p.path?.length)return {ok:false,message:'Stop moving or fighting before production.'};
- const reason=requirements(p,id);if(reason)return {ok:false,message:reason};
+ const available=availability(p,id);if(!available.max)return {ok:false,message:available.reason};
+ if(qty==='max')qty=available.max;
  // No ingredients/XP are changed before a full action duration elapses.
  p.production={id,total:qty,remaining:qty,completed:0,startedAt:now,endsAt:Math.max(now+DURATION,p.nextSkillAction||0)};
  return {ok:true,message:'Started '+RECIPES[id].name+' ×'+qty+'.'};
@@ -36,4 +51,4 @@ function advance(p,now=Date.now()){
  // At most one completion per tick, even after long server stalls.
  return result;
 }
-module.exports={start,advance,cancel,requirements,DURATION,MAX_BATCH};
+module.exports={start,advance,cancel,requirements,availability,options,DURATION,MAX_BATCH};

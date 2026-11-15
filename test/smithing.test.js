@@ -35,6 +35,6 @@ test('two smiths remain isolated; leaving forge and duplicate requests cannot gr
 });
 test('stack overflow leaves bar, XP and quest progress unchanged',()=>{
  const p=player();p.quests.guard_supplies.status='active';addItem(p.inventory,'bronze_bar');addItem(p.inventory,'bronze_arrowtips',999990);
- const before=JSON.stringify(p.inventory);assert.equal(P.start(p,'smith_arrowtips',1,1000).ok,true);
- assert.equal(P.advance(p,2800).ok,false);assert.equal(JSON.stringify(p.inventory),before);assert.equal(p.skills.smithing.xp,0);assert.equal(p.quests.guard_supplies.progress,0);
+ const before=JSON.stringify(p.inventory);assert.equal(P.start(p,'smith_arrowtips',1,1000).ok,false);
+ assert.equal(P.advance(p,2800),null);assert.equal(JSON.stringify(p.inventory),before);assert.equal(p.skills.smithing.xp,0);assert.equal(p.quests.guard_supplies.progress,0);
 });
