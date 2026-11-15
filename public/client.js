@@ -135,6 +135,10 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
  document.querySelectorAll('.tab-pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
 });
+function questDeliveryDetails(inventory,item,qty){
+ const owned=inventory.reduce((n,e)=>n+(e.id===item?e.qty:0),0);
+ return 'Deliver: '+named(item)+' '+owned+'/'+qty+' · consumed on turn-in';
+}
 function updateUI(){
  if(!profile||!entered)return;
  $('player-name').textContent=profile.name;
@@ -245,6 +249,9 @@ function updateUI(){
   el.append(elem('small','',guidance?.message||q.status));
   if(guidance)el.append(elem('small','','Return to '+guidance.giverName));
   if(def)el.append(elem('small','','Reward: '+(def.rewardGold||0)+' coins'+Object.entries(def.rewardItems||{}).map(([item,qty])=>' · '+named(item)+' ×'+qty).join('')));
+  if(q.status==='active'&&def?.deliverItems)for(const [item,qty] of Object.entries(def.deliverItems)){
+   el.append(elem('small','',questDeliveryDetails(profile.inventory,item,qty)));
+  }
   if(q.status==='active'){
    if(guidance?.target){el.append(elem('small','',guidance.target.label));const show=elem('button','','Show objective');show.onclick=()=>{trackedQuest=id;updateUI();openMap();};el.append(show);}
    const track=elem('button','',trackedQuest===id?'Untrack':'Track');track.onclick=()=>{trackedQuest=trackedQuest===id?null:id;updateUI();};el.append(track);
