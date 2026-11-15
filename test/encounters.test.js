@@ -44,3 +44,11 @@ test('death removes contribution even after immediate respawn',()=>{
  assert.equal(E.target(n,p,{dead:p},101)?.qualifies,false);
  n.hp=0;assert.deepEqual(E.settle(n,{dead:p},101).rewards,[]);
 });
+
+test('merchant combat guard expires with reward credit instead of blocking escaped players forever',()=>{
+ const E=require('../game/encounters'),n={},p={id:'trader'};
+ E.record(n,p,1,1000);
+ assert.equal(E.hasRecentContribution(n,p.id,1000+E.CREDIT_AGE),true);
+ assert.equal(E.hasRecentContribution(n,p.id,1001+E.CREDIT_AGE),false);
+ E.reset(n);assert.equal(E.hasRecentContribution(n,p.id,1000),false);
+});

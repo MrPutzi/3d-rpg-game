@@ -29,3 +29,18 @@
 - No migrations, new persistence semantics or deployment changes. Tests cover
   hunting/cooking/eating/selling, unlock/delivery/replay, concurrent players,
   interrupted/remote production and full-backpack conversion.
+
+### Shared merchant resale
+- Merchants now offer positive stock supplied by players, including crafted
+  meals, materials and loot outside their usual catalogue. These entries are
+  labelled Player supplied and disappear when exhausted. They never regenerate.
+- Every nearby player visiting the same shop receives new stock and prices after
+  a successful trade and the regular restock tick. Gold remains private in each
+  player's own profile. Purchase checks always use current server stock.
+- Quotes cover every item, so the Sell tab shows the actual next-unit price even
+  before a merchant has bought that item. Batch prices remain dynamic per unit.
+- Existing single-process/in-memory shop stock and character autosave semantics
+  remain unchanged: shop stock resets at restart, and this is not a durable
+  player-to-player trading system. No database migration is introduced.
+- Regression tests cover resale, exhausted stock, two buyers contending for the
+  last item, insufficient money/full bags, quote accuracy and no resale restock.

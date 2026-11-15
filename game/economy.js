@@ -4,7 +4,8 @@
 const {ITEMS,SHOPS}=require('./content');
 const {count,addItem,removeItem}=require('./rules');
 const BASE_STOCK=20;
-const stock=Object.fromEntries(Object.entries(SHOPS).map(([id,shop])=>[id,Object.fromEntries(shop.items.map(x=>[x,BASE_STOCK]))]));
+function createEconomy(initialStock){
+const stock=initialStock?structuredClone(initialStock):Object.fromEntries(Object.entries(SHOPS).map(([id,shop])=>[id,Object.fromEntries(shop.items.map(x=>[x,BASE_STOCK]))]));
 function getStock(shopId,id){return stock[shopId]?.[id]??0;}
 function price(shopId,id,side='buy'){
  const item=ITEMS[id];if(!item||!SHOPS[shopId])return 0;
@@ -14,8 +15,8 @@ function price(shopId,id,side='buy'){
  return side==='sell'?Math.max(1,Math.floor(buy*.45)):buy;
 }
 function quote(shopId,id,qty,side){
- if(!SHOPS[shopId]||!ITEMS[id]||![1,5,10,50].includes(qty))return null;
- if(side==='buy'&&!SHOPS[shopId].items.includes(id))return null;
+ if(!Object.hasOwn(SHOPS,shopId)||!Object.hasOwn(ITEMS,id)||!['buy','sell'].includes(side)||![1,5,10,50].includes(qty))return null;
+ if(side==='buy'&&!SHOPS[shopId].items.includes(id)&&getStock(shopId,id)<=0)return null;
  let sum=0,remaining=getStock(shopId,id);
  for(let i=0;i<qty;i++){
   if(side==='buy'&&remaining<=0)return null;
@@ -44,8 +45,10 @@ function sell(p,shopId,id,qty){
 }
 function restock(){
  for(const [shopId,shop] of Object.entries(SHOPS)){
-  for(const id of shop.items){const current=getStock(shopId,id);stock[shopId][id]+=current<BASE_STOCK?1:current>BASE_STOCK?-1:0;}
+  for(const id of shop.items){const current=getStock(shopId,id);stock[shopId]??={};stock[shopId][id]=current+(current<BASE_STOCK?1:current>BASE_STOCK?-1:0);}
  }
 }
-function snapshot(shopId){return{stock:stock[shopId]||{},prices:Object.fromEntries(Object.keys(stock[shopId]||{}).map(id=>[id,{buy:price(shopId,id,'buy'),sell:price(shopId,id,'sell')}]))};}
-module.exports={buy,sell,quote,price,restock,snapshot,getStock,stock};
+function snapshot(shopId){return{stock:{...stock[shopId]},prices:Object.fromEntries(Object.keys(ITEMS).map(id=>[id,{buy:price(shopId,id,'buy'),sell:price(shopId,id,'sell')}]))};}
+return {buy,sell,quote,price,restock,snapshot,getStock,stock};
+}
+module.exports={...createEconomy(),createEconomy};

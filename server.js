@@ -11,7 +11,10 @@ const Food=require('./game/food');
 const Loot=require('./game/loot');
 const Bank=require('./game/bank');
 const {serialQueue}=require('./game/serial');
-const Economy=require('./game/economy');
+const {createEconomy}=require('./game/economy');
+let Economy=createEconomy();const guestEconomy=createEconomy(),marketQueue=serialQueue();
+let marketReady=false;
+const marketFor=p=>p.accountId?Economy:guestEconomy;
 const {accountStore}=require('./game/accounts');
 const accountDb=accountStore(),activeAccounts=new Map(),saving=serialQueue(),authQueue=serialQueue();
 const PAPER_SLOTS=['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'];
@@ -58,13 +61,14 @@ function hydrate(p,account){
  if(!Array.isArray(fresh.bank))fresh.bank=[];
  if(fresh.inventory.length>BAG_SLOTS)fresh.inventory=fresh.inventory.slice(0,BAG_SLOTS);
  if(collides(fresh)){fresh.x=SPAWN.x;fresh.y=SPAWN.y;}
- Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,path:[],intent:null,openBuilding:null,nextEat:Food.restoreDeadline(d.nextEat),nextAttack:Food.restoreDeadline(d.nextEat)});
+ Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,tradeRevision:account.tradeRevision||0,path:[],intent:null,openBuilding:null,nextEat:Food.restoreDeadline(d.nextEat),nextAttack:Food.restoreDeadline(d.nextEat)});
 }
 function persist(p){
- if(!p.accountId)return Promise.resolve();
- const id=p.accountId,snapshot=structuredClone(storedProfile(p));
+ if(!p.accountId||p.tradeFailed)return Promise.resolve();
+ if(p.tradePending)return p.tradeTask;
+ const id=p.accountId,snapshot=structuredClone(storedProfile(p)),revision=p.tradeRevision||0;
  io.to(p.id).emit('saveStatus',{state:'saving'});
- const next=saving.run(id,()=>accountDb.save(id,snapshot));
+ const next=saving.run(id,()=>accountDb.save(id,snapshot,revision));
  next.then(()=>io.to(p.id).emit('saveStatus',{state:'saved',at:Date.now()}),e=>{
   console.error('Profile save failed',e.message);io.to(p.id).emit('saveStatus',{state:'error'});
  });return next;
@@ -90,10 +94,13 @@ function openBuilding(p,b){
  if(!b||!reachable(p,b.door,90))return false;
  stop(p);p.openBuilding=b.id;
  io.to(p.id).emit('buildingOpen',{id:b.id,name:b.name});
- if(SHOPS[b.id])io.to(p.id).emit('shopState',{id:b.id,...Economy.snapshot(b.id)});
+ if(SHOPS[b.id])io.to(p.id).emit('shopState',{id:b.id,...marketFor(p).snapshot(b.id),temporary:!p.accountId});
  pushProfile(p);return true;
 }
 function merchant(p){return p.openBuilding&&SHOPS[p.openBuilding]&&buildingById(p.openBuilding)&&reachable(p,buildingById(p.openBuilding).door,110)?SHOPS[p.openBuilding]:null;}
+function broadcastShop(id){
+ for(const viewer of Object.values(players))if(viewer.loggedIn&&viewer.openBuilding===id&&merchant(viewer))io.to(viewer.id).emit('shopState',{id,...marketFor(viewer).snapshot(id),temporary:!viewer.accountId});
+}
 function bankReady(p){return p.openBuilding==='bank'&&reachable(p,buildingById('bank').door,110);}
 function ensureEquipped(p){
  for(const slot of PAPER_SLOTS)if(p.equipment[slot]&&count(p.inventory,p.equipment[slot])<1)p.equipment[slot]=null;
@@ -190,6 +197,12 @@ app.get('/health',(_,res)=>res.json({ok:true,players:Object.keys(players).length
 io.on('connection',socket=>{
  if(Object.keys(players).length>=100){socket.emit('serverMessage','World is full.');socket.disconnect(true);return;}
  const p=newPlayer(socket.id);players[socket.id]=p;
+ function onAction(event,handler){
+  socket.on(event,(...args)=>{
+   if(p.tradePending||p.tradeFailed){send(p,'Wait for the current trade to finish.');return;}
+   return handler(...args);
+  });
+ }
  socket.emit('catalog',{items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
  let authAttempts=0,authWindow=Date.now(),authBusy=false,nextManualSave=0;
  async function authenticate(operation,data){
@@ -224,10 +237,10 @@ io.on('connection',socket=>{
    });
   }catch(err){socket.emit('authFailed',err.message||'Authentication failed.');}finally{authBusy=false;}
  }
- socket.on('register',data=>{authenticate('register',data).catch(e=>console.error('Registration failed',e.message));});
- socket.on('signIn',data=>{authenticate('signIn',data).catch(e=>console.error('Sign-in failed',e.message));});
- socket.on('resumeSession',data=>{authenticate('resume',data).catch(e=>console.error('Resume failed',e.message));});
- socket.on('guestLogin',data=>{
+ onAction('register',data=>{authenticate('register',data).catch(e=>console.error('Registration failed',e.message));});
+ onAction('signIn',data=>{authenticate('signIn',data).catch(e=>console.error('Sign-in failed',e.message));});
+ onAction('resumeSession',data=>{authenticate('resume',data).catch(e=>console.error('Resume failed',e.message));});
+ onAction('guestLogin',data=>{
   if(p.loggedIn||authBusy)return;
   const raw=typeof data?.name==='string'?data.name:'';
   const name=raw.trim().replace(/[^\p{L}\p{N} _-]/gu,'').slice(0,18);
@@ -235,11 +248,11 @@ io.on('connection',socket=>{
   p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id,username:name,guest:true});
   send(p,'Guest mode: progress will not be saved.');pushProfile(p);
  });
- socket.on('saveProgress',()=>{
+ onAction('saveProgress',()=>{
   if(!p.loggedIn||!p.accountId||Date.now()<nextManualSave)return;
   nextManualSave=Date.now()+5000;persist(p).catch(()=>{});
  });
- socket.on('logout',async()=>{
+ onAction('logout',async()=>{
   if(!p.loggedIn)return;
   try{
    await persist(p);if(p.sessionToken)await accountDb.logout(p.sessionToken);
@@ -247,47 +260,47 @@ io.on('connection',socket=>{
    socket.emit('loggedOut');socket.disconnect(true);
   }catch{send(p,'Could not save progress. Stay connected and retry.');}
  });
- socket.on('move',pos=>{
+ onAction('move',pos=>{
   if(!p.loggedIn||!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.y))return;
   navigate(p,pos);
  });
- socket.on('visitBuilding',id=>{
+ onAction('visitBuilding',id=>{
   if(!p.loggedIn||!safeId(id))return;
   const b=buildingById(id);if(!b)return;
   if(!openBuilding(p,b))navigate(p,b.door,{type:'building',id});
  });
- socket.on('interact',id=>{
+ onAction('interact',id=>{
   if(!p.loggedIn||!safeId(id))return;
   const v=VILLAGE.villagers.find(x=>x.id===id);if(!v)return;
   if(reachable(p,v,85))handleElder(p,id);else navigate(p,v,{type:'talk',id});
  });
- socket.on('attack',id=>{
+ onAction('attack',id=>{
   if(!p.loggedIn||!has(enemies,id)||enemies[id].hp<=0)return;
   const n=enemies[id];p.selectedEnemyId=id;if(reachable(p,n,attackRange(p))){p.path=[];p.intent={type:'attack',id};p.openBuilding=null;}
   else navigate(p,n,{type:'attack',id});
  });
- socket.on('gather',id=>{
+ onAction('gather',id=>{
   if(!p.loggedIn||!has(nodes,id))return;
   const n=nodes[id];if(reachable(p,n,65)){p.path=[];p.intent={type:'gather',id};p.openBuilding=null;}
   else navigate(p,n,{type:'gather',id});
  });
- socket.on('toggleRetaliate',enabled=>{if(!p.loggedIn||typeof enabled!=='boolean')return;p.autoRetaliate=enabled;pushProfile(p);});
- socket.on('setStyle',style=>{
+ onAction('toggleRetaliate',enabled=>{if(!p.loggedIn||typeof enabled!=='boolean')return;p.autoRetaliate=enabled;pushProfile(p);});
+ onAction('setStyle',style=>{
   if(!p.loggedIn||!safeId(style)||!allowedStyles(weaponOf(p)).includes(style))return;
   p.combatStyle=style;pushProfile(p);
  });
- socket.on('equip',id=>{
+ onAction('equip',id=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
- socket.on('craft',data=>{
+ onAction('craft',data=>{
   if(!p.loggedIn)return;
   const id=typeof data==='string'?data:data?.id,qty=typeof data==='string'?1:data?.qty;
   const result=Production.start(p,id,qty,Date.now());
   send(p,result.message);if(result.ok)pushProfile(p);
  });
- socket.on('cancelProduction',()=>{if(p.loggedIn&&Production.cancel(p)){send(p,'Production cancelled. Completed items are kept.');pushProfile(p);}});
- socket.on('castSpell',id=>{
+ onAction('cancelProduction',()=>{if(p.loggedIn&&Production.cancel(p)){send(p,'Production cancelled. Completed items are kept.');pushProfile(p);}});
+ onAction('castSpell',id=>{
   if(!p.loggedIn||!has(enemies,id))return;
   const n=enemies[id],now=Date.now();
   if(Production.cancel(p))pushProfile(p);
@@ -302,46 +315,63 @@ io.on('connection',socket=>{
   if(n.hp===0)finishEnemy(n,now);
   pushProfile(p);
  });
- socket.on('unequip',slot=>{
+ onAction('unequip',slot=>{
   if(!p.loggedIn||!PAPER_SLOTS.includes(slot))return;
   p.equipment[slot]=null;if(slot==='weapon'){p.combatStyle='accurate';stop(p);}pushProfile(p);
  });
- socket.on('useItem',id=>{
+ onAction('useItem',id=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const result=Food.eat(p,id);if(!result.ok)return;
   Production.cancel(p);send(p,result.message);pushProfile(p);
  });
- socket.on('dropItem',id=>{
+ onAction('dropItem',id=>{
   if(!p.loggedIn||!has(ITEMS,id)||!removeItem(p.inventory,id,1))return;
   ensureEquipped(p);const dropId=crypto.randomUUID();
   groundItems[dropId]={id:dropId,item:id,qty:1,x:p.x+12,y:p.y+12,expires:Date.now()+180000};pushProfile(p);
  });
- socket.on('pickup',id=>{
+ onAction('pickup',id=>{
   if(!p.loggedIn||!has(groundItems,id))return;
   const g=groundItems[id];if(reachable(p,g,48)){p.intent={type:'pickup',id};actionDone(p,Date.now());}
   else navigate(p,g,{type:'pickup',id});
  });
- socket.on('buy',data=>{
-  const shop=merchant(p);
-  if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
-  const outcome=Economy.buy(p,p.openBuilding,data.id,Number(data.qty));
-  send(p,outcome.message);
-  if(outcome.ok){pushProfile(p);io.to(p.id).emit('shopState',{id:p.openBuilding,...Economy.snapshot(p.openBuilding)});}
- });
- socket.on('sell',data=>{
-  const shop=merchant(p);
-  if(!p.loggedIn||!shop||!has(ITEMS,data?.id))return;
-  const outcome=Economy.sell(p,p.openBuilding,data.id,Number(data.qty));
-  send(p,outcome.message);
-  if(outcome.ok){ensureEquipped(p);pushProfile(p);io.to(p.id).emit('shopState',{id:p.openBuilding,...Economy.snapshot(p.openBuilding)});}
- });
- socket.on('rest',()=>{
+ function trade(side,data){
+  const done=result=>{socket.emit('tradeStatus',{state:'done',ok:result.ok,message:result.message});send(p,result.message);};
+  if(!p.loggedIn||!merchant(p)||!has(ITEMS,data?.id)){done({ok:false,message:'Visit a merchant first.'});return;}
+  // Any outstanding contribution may become eligible when another player leaves.
+  if(Object.values(enemies).some(n=>n.hp>0&&(Encounters.hasRecentContribution(n,p.id,Date.now())||n.targetPlayer===p.id))){done({ok:false,message:'Finish your combat encounter before trading.'});return;}
+  const shopId=p.openBuilding;
+  stop(p);
+  if(!p.accountId){
+   const result=guestEconomy[side](p,shopId,data.id,Number(data.qty));
+   if(result.ok){ensureEquipped(p);pushProfile(p);broadcastShop(shopId);}done(result);return;
+  }
+  const snapshot=structuredClone(storedProfile(p)),revision=p.tradeRevision||0;
+  p.tradePending=true;socket.emit('tradeStatus',{state:'pending'});
+  // Register in the account queue immediately: session handoff waits for this commit.
+  p.tradeTask=saving.run(p.accountId,()=>marketQueue.run('market',async()=>{
+   try{
+    await accountDb.save(p.accountId,snapshot,revision);
+    const result=await accountDb.trade(p.accountId,revision,{shopId,itemId:data.id,qty:Number(data.qty),side});
+    if(result.ok){p.inventory=result.profile.inventory;p.gold=result.profile.gold;p.tradeRevision=result.tradeRevision;ensureEquipped(p);}
+    Economy=createEconomy(await accountDb.merchantStock());
+    pushProfile(p);broadcastShop(shopId);done(result);
+   }catch(error){
+    // The commit outcome may be unknown. Never checkpoint the pre-trade memory.
+    p.tradeFailed=true;console.error('Trade failed',error.message);
+    socket.emit('tradeStatus',{state:'unknown',message:'Trade status unknown. Sign in again to load saved progress.'});
+    socket.disconnect(true);
+   }finally{p.tradePending=false;}
+  }));
+ }
+ onAction('buy',data=>trade('buy',data));
+ onAction('sell',data=>trade('sell',data));
+ onAction('rest',()=>{
   if(!p.loggedIn||p.openBuilding!=='tavern'||!reachable(p,buildingById('tavern').door,110))return;
   if(p.gold<10){send(p,'You need 10 gold to rest.');return;}
   if(p.hp>=p.maxHp){send(p,'You are already fully healed.');return;}
   p.gold-=10;p.hp=p.maxHp;send(p,'You rested and restored your health.');pushProfile(p);
  });
- for(const [event,direction] of [['bankDeposit','deposit'],['bankWithdraw','withdraw']])socket.on(event,data=>{
+ for(const [event,direction] of [['bankDeposit','deposit'],['bankWithdraw','withdraw']])onAction(event,data=>{
   if(!p.loggedIn||!bankReady(p)||!has(ITEMS,data?.id))return;
   const result=Bank.transfer(p,direction,data.id,data.qty);send(p,result.message);
   if(result.ok){ensureEquipped(p);pushProfile(p);}
@@ -379,11 +409,14 @@ setInterval(()=>{
   }
   if(!chase&&n.targetPlayer)n.targetPlayer=null;
  }
- if(now-lastRestock>=60000){Economy.restock();lastRestock=now;}
+ if(marketReady&&now-lastRestock>=60000){
+  lastRestock=now;guestEconomy.restock();
+  marketQueue.run('market',async()=>{await accountDb.restockMerchants(now);Economy=createEconomy(await accountDb.merchantStock());for(const id of Object.keys(SHOPS))broadcastShop(id);}).catch(e=>console.error('Restock failed',e.message));
+ }
  if(now-lastSave>=20000){for(const p of Object.values(players))if(p.loggedIn)persist(p);lastSave=now;}
  for(const [id,g] of Object.entries(groundItems))if(now>=g.expires)delete groundItems[id];
  for(const p of Object.values(players)){
-  if(!p.loggedIn)continue;
+  if(!p.loggedIn||p.tradePending||p.tradeFailed)continue;
   const intent=p.intent;
   if(intent?.type==='attack'){
    const n=enemies[intent.id];if(!n||n.hp<=0){stop(p);continue;}
@@ -419,6 +452,7 @@ setInterval(()=>{
   effects=[];lastSnapshot=now;
  }
 },STEP_MS);
-accountDb.init().then(()=>{
+accountDb.init().then(async()=>{
+ await accountDb.restockMerchants();Economy=createEconomy(await accountDb.merchantStock());marketReady=true;lastRestock=Date.now();
  server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('MiniScape online · account mode: '+accountDb.mode));
 }).catch(err=>{console.error('Account database failed to initialize:',err);process.exitCode=1;});

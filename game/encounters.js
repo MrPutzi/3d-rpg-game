@@ -13,6 +13,7 @@ function record(n,p,damage,now){
 }
 function forget(n,id){ledgers.get(n)?.delete(id);}
 function contribution(n,id){return ledgers.get(n)?.get(id)?.damage||0;}
+function hasRecentContribution(n,id,now){const entry=ledgers.get(n)?.get(id);return !!entry&&now-entry.lastHit<=CREDIT_AGE;}
 function eligible(n,players,now){
  const candidates=[...(ledgers.get(n)||[])].filter(([id,v])=>{
   const p=players[id];return p?.loggedIn&&p.hp>0&&dist(p,n)<=CREDIT_RANGE&&now-v.lastHit<=CREDIT_AGE;
@@ -35,4 +36,4 @@ function target(n,p,players,now){
  return {id:n.id,name:n.name,level:n.level,hp:n.hp,maxHp:n.maxHp,damage:contribution(n,p.id),
   qualifies:eligible(n,players,now).some(v=>v.id===p.id),minimumDamage:Math.max(1,Math.ceil(n.maxHp*.1))};
 }
-module.exports={forget,record,settle,reset,target,contribution,CREDIT_RANGE,CREDIT_AGE};
+module.exports={hasRecentContribution,forget,record,settle,reset,target,contribution,CREDIT_RANGE,CREDIT_AGE};
