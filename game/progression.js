@@ -8,6 +8,8 @@ const RECIPES={
  cook_rabbit:{name:'Roast rabbit',skill:'cooking',level:1,xp:35,inputs:{raw_rabbit:1},outputs:{cooked_rabbit:1},station:'tavern'},
  cook_trout:{name:'Cook trout',skill:'cooking',level:15,xp:70,inputs:{raw_trout:1},outputs:{trout_cooked:1},station:'tavern'},
  firemaking_logs:{name:'Light logs',skill:'firemaking',level:1,xp:40,inputs:{logs:1},outputs:{},station:'any'},
+ fletch_shortbow:{name:'Bind a shortbow',skill:'fletching',level:5,xp:50,inputs:{logs:2,leather:1},outputs:{shortbow:1},station:'guild'},
+ fletch_oak_shortbow:{name:'Bind an oak shortbow',skill:'fletching',level:20,xp:100,inputs:{oak_logs:2,leather:2},outputs:{oak_shortbow:1},station:'guild'},
  fletch_shafts:{name:'Make arrow shafts',skill:'fletching',level:1,xp:15,inputs:{logs:1},outputs:{arrow_shafts:15},station:'any'},
  fletch_arrows:{name:'Fletch bronze arrows',skill:'fletching',level:1,xp:40,inputs:{arrow_shafts:15,feathers:15,bronze_arrowtips:15},outputs:{bronze_arrow:15},station:'any'},
  smelt_bronze:{name:'Smelt bronze bar',skill:'smithing',level:1,xp:55,inputs:{copper_ore:1,tin_ore:1},outputs:{bronze_bar:1},station:'forge'},

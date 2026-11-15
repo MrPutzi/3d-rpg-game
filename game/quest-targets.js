@@ -26,6 +26,7 @@ function recipeTarget(p,id,visited=new Set()){
   const enemy=ENEMY_TEMPLATES.find(e=>DROPS[e.kind]?.some(d=>d.id===item));
   if(enemy)return area(enemy,'Defeat '+enemy.name+' for a chance of '+ITEMS[item].name);
  }
+ if(recipe.station==='any'&&Number.isFinite(p.x)&&Number.isFinite(p.y))return {x:p.x,y:p.y,kind:'activity',label:recipe.name+' here · '+recipe.skill+' Lv'+recipe.level};
  const site=Object.hasOwn(stationLocation,recipe.station)?stationLocation[recipe.station]:null;
  if(site)return {...site,kind:'station',label:recipe.name+' at '+recipe.station+' · '+recipe.skill+' Lv'+recipe.level};
  const building=VILLAGE.buildings.find(b=>b.id===recipe.station);
