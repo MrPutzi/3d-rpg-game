@@ -18,6 +18,10 @@ const styleNames={
 const names={welcome:'First Steps — Speak with the Elder',goblin_hunt:'Goblin Menace — Defeat 3 Goblins'};
 function notify(t){$('notice').textContent=String(t).slice(0,220);}
 function emit(action,data){if(!socket.connected||!entered||tradeBusy)return;if(action==='buy'||action==='sell'){tradeBusy=true;renderBuilding();}socket.emit(action,data);}
+function recipeEquipmentDetails(item){
+ if(!item?.slot)return '';
+ return item.slot+' slot · Defence +'+(item.defenceBonus||0)+' · Requires '+(item.skill||'defence')+' Lv'+(item.level||1);
+}
 function named(id){return items[id]?.name||id||'None';}
 function gear(){return items[profile?.equipment.weapon]||{name:'Unarmed',icon:'👊',type:'crush',speed:4,styles:['accurate','aggressive','defensive']};}
 function elem(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
@@ -199,6 +203,7 @@ function updateUI(){
   info.append(elem('small','',inputs.length?inputs.map(([k,v])=>named(k)+' '+owned(k)+'/'+v).join(' · '):'No ingredients'));
   info.append(elem('small','', '→ '+(outputs.map(([k,v])=>named(k)+' ×'+v).join(', ')||'Training')+' · '+recipe.xp+' XP · '+recipe.station));
   for(const [item] of outputs)if(items[item]?.heal)info.append(elem('small','','Heals up to '+items[item].heal+' HP per item · eating delays attacks by 1.8s'));
+  for(const [item] of outputs){const details=recipeEquipmentDetails(items[item]);if(details)info.append(elem('small','',details));}
   const missing=inputs.some(([k,v])=>owned(k)<v);
   const reason=active?'Batch in progress':(profile.skills[recipe.skill]?.level||0)<recipe.level?'Level too low':missing?'Missing ingredients':'';
   const controls=elem('div','recipe-controls');
