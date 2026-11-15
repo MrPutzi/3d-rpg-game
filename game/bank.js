@@ -12,4 +12,24 @@ function transfer(p,direction,id,quantity){
  p[from]=source;p[to]=target;
  return {ok:true,message:(direction==='deposit'?'Deposited ':'Withdrew ')+ITEMS[id].name+' ×'+qty+'.'};
 }
-module.exports={transfer};
+function depositInventory(p,mode){
+ if(!p.loggedIn||!['all','spare'].includes(mode))return {ok:false,message:'Invalid bank request.'};
+ const target=p.bank.map(e=>({...e})),remaining=[];
+ const keep=new Set(mode==='spare'?Object.values(p.equipment||{}).filter(Boolean):[]);
+ let moved=0;
+ for(const entry of p.inventory){
+  let retained=0;
+  if(keep.has(entry.id)){
+   retained=ITEMS[entry.id]?.stackable?entry.qty:1;
+   if(!ITEMS[entry.id]?.stackable)keep.delete(entry.id);
+  }
+  const qty=entry.qty-retained;
+  if(qty&&!addItem(target,entry.id,qty,200))return {ok:false,message:'Bank cannot hold the whole deposit. Nothing moved.'};
+  if(retained)remaining.push({id:entry.id,qty:retained});
+  moved+=qty;
+ }
+ if(!moved)return {ok:false,message:'No items to deposit.'};
+ p.inventory=remaining;p.bank=target;
+ return {ok:true,moved,message:'Deposited '+moved+' items.'};
+}
+module.exports={transfer,depositInventory};

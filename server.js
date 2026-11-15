@@ -377,6 +377,11 @@ io.on('connection',socket=>{
   if(p.hp>=p.maxHp){send(p,'You are already fully healed.');return;}
   p.gold-=10;p.hp=p.maxHp;send(p,'You rested and restored your health.');pushProfile(p);
  });
+ onAction('bankDepositInventory',mode=>{
+  if(!p.loggedIn||!bankReady(p))return;
+  const result=Bank.depositInventory(p,mode);send(p,result.message);
+  if(result.ok){ensureEquipped(p);pushProfile(p);}
+ });
  for(const [event,direction] of [['bankDeposit','deposit'],['bankWithdraw','withdraw']])onAction(event,data=>{
   if(!p.loggedIn||!bankReady(p)||!has(ITEMS,data?.id))return;
   const result=Bank.transfer(p,direction,data.id,data.qty);send(p,result.message);
