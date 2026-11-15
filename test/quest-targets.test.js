@@ -33,3 +33,13 @@ test('leather quest distinguishes random drops from guaranteed gathering',()=>{
  const p=player();assert.match(targetFor(p,'patrol_boots').label,/chance of Leather/);
  p.inventory=[{id:'leather',qty:1}];assert.match(targetFor(p,'patrol_boots').label,/Craft leather boots/);
 });
+
+test('rabbit provision guide follows hunt, cooking, then Rusk independently',()=>{
+ const a=player(),b=player(),before=JSON.stringify(b);
+ const target=targetFor(a,'patrol_provisions');
+ assert.equal(target.x,2520);assert.equal(target.y,2050);assert.match(target.label,/hunt/);
+ a.inventory=[{id:'raw_rabbit',qty:1}];assert.match(targetFor(a,'patrol_provisions').label,/Roast rabbit/);
+ assert.equal(JSON.stringify(b),before);assert.equal(targetFor(b,'patrol_provisions').x,2520);
+ a.inventory=[{id:'cooked_rabbit',qty:3}];a.quests.patrol_provisions.progress=3;
+ assert.equal(targetFor(a,'patrol_provisions').kind,'npc');
+});

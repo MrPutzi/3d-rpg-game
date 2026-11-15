@@ -3,7 +3,7 @@ const {RECIPES,QUESTS}=require('./progression');
 const {targetFor}=require('./quest-targets');
 const {ITEMS,VILLAGE}=require('./content');
 const {dist,count,addItem,removeItem,addXp}=require('./rules');
-const stationLocation={altar:{x:1370,y:1390},farm:{x:1010,y:890},hunt:{x:2520,y:2050},course:{x:530,y:760}};
+const {stationLocation}=require('./stations');
 function stationReady(p,station){
  if(station==='any')return true;
  if(['forge','tavern','guild'].includes(station)){

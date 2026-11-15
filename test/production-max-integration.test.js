@@ -15,6 +15,13 @@ test('live max production exposes availability and respects cancellation',{timeo
    const logged=event(s,'profile');s.emit('guestLogin',{name});await logged;
   }
   for(const s of sockets)assert.equal(profiles.get(s).productionOptions.pickpocket.max,28);
+  const mover=sockets[0];
+  const walking=event(mover,'profile',p=>p.productionOptions.pickpocket.reason==='Stop moving or fighting before production.');
+  const arrived=event(mover,'profile',p=>p.productionOptions.pickpocket.max===28);
+  mover.emit('move',{x:420,y:420});
+  await walking;await arrived;
+  assert.equal(profiles.get(sockets[1]).productionOptions.pickpocket.max,28);
+
   const started=sockets.map(s=>event(s,'profile',p=>p.production?.total===28));
   for(const s of sockets)s.emit('craft',{id:'pickpocket',qty:'max'});await Promise.all(started);
   for(const s of sockets){assert.equal(profiles.get(s).gold,130);assert.equal(profiles.get(s).productionOptions.pickpocket.max,0);}
