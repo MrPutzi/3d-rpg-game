@@ -61,3 +61,26 @@ test('pickup availability uses exact reach and ownership rather than rounded dis
  ground.a.ownerId='other';ground.a.privateUntil=100;assert.equal(nearby(p,ground,99,reach)[0].canTake,false);assert.equal(nearby(p,ground,100,reach)[0].canTake,true);
  assert.equal(nearby(player('other'),ground,99,reach)[0].canTake,true);
 });
+test('partial non-stack pickup preserves remaining loot and its deadline for other contenders',()=>{
+ const a=player('a'),b=player('b');a.inventory=Array.from({length:27},()=>({id:'bread',qty:1}));
+ const ground={a:drop({qty:3})};assert.equal(take(a,ground,'a',1,reach).takenQty,1);
+ assert.equal(ground.a.qty,2);assert.equal(ground.a.expires,10000);
+ assert.equal(take(b,ground,'a',2,reach).takenQty,2);assert.equal(ground.a,undefined);
+ assert.equal(a.inventory.filter(x=>x.id==='bones').length+b.inventory.length,3);
+});
+test('stack cap and full bags produce accurate read-only availability',()=>{
+ const p=player('p');p.inventory=[{id:'feathers',qty:999998},...Array.from({length:27},()=>({id:'bread',qty:1}))];
+ const ground={a:drop({item:'feathers',qty:5})};const before=JSON.stringify(p);
+ assert.equal(nearby(p,ground,1)[0].fitQty,1);assert.equal(JSON.stringify(p),before);
+ assert.equal(take(p,ground,'a',1,reach).takenQty,1);assert.equal(ground.a.qty,4);
+ const row=nearby(p,ground,1)[0];assert.equal(row.fitQty,0);assert.equal(row.canTake,false);
+ assert.equal(take(p,ground,'a',1,reach).ok,false);assert.equal(ground.a.qty,4);
+});
+test('discard protection follows account reconnect and releases at exactly fifteen seconds',()=>{
+ const {protectDiscard}=require('../game/loot');
+ const a={...player('a'),accountId:'one'},b={...player('b'),accountId:'two'};
+ const ground={a:protectDiscard(drop({expires:30000}),a,100)};
+ assert.equal(take(b,ground,'a',15099,reach).ok,false);
+ assert.equal(nearby({...a,id:'new'},ground,101)[0].access,'yours');
+ assert.equal(take(b,ground,'a',15100,reach).ok,true);
+});

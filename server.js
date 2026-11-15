@@ -328,7 +328,8 @@ io.on('connection',socket=>{
  onAction('dropItem',id=>{
   if(!p.loggedIn||!has(ITEMS,id)||!removeItem(p.inventory,id,1))return;
   ensureEquipped(p);const dropId=crypto.randomUUID();
-  groundItems[dropId]={id:dropId,item:id,qty:1,x:p.x+12,y:p.y+12,expires:Date.now()+180000};pushProfile(p);
+  const now=Date.now();
+  groundItems[dropId]=Loot.protectDiscard({id:dropId,item:id,qty:1,x:p.x+12,y:p.y+12,expires:now+180000},p,now);pushProfile(p);
  });
  onAction('pickup',id=>{
   if(!p.loggedIn||!has(groundItems,id))return;
