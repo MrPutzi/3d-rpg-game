@@ -54,6 +54,7 @@ for(const [id,name,icon,category,price,extra] of [
  ['guam_leaf','Guam leaf','🌿','resource',9,{}],['guam_seed','Guam seed','🌱','resource',7,{}],
  ['vial_of_water','Vial of water','🧴','resource',5,{}],['tin_ore','Tin ore','🪨','resource',6,{}],
  ['bronze_bar','Bronze bar','🟤','resource',22,{}],['arrow_shafts','Arrow shafts','🪡','resource',1,{stackable:true}],
+ ['iron_arrowtips','Iron arrowtips','➶','resource',3,{stackable:true}],
  ['feathers','Feathers','🪶','resource',1,{stackable:true}],['bronze_arrowtips','Bronze arrowtips','➶','resource',2,{stackable:true}],
  ['rune_essence','Rune essence','💠','resource',7,{}],['air_rune','Air runes','💨','resource',2,{stackable:true}],
  ['mind_rune','Mind runes','🔮','resource',2,{stackable:true}],['raw_rabbit','Raw rabbit','🐇','resource',6,{}],
