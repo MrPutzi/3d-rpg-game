@@ -565,7 +565,12 @@ setInterval(updateFoodButton,100);
 
 // Stable rows keep focus and clicks intact across server snapshots.
 const lootRows=new Map();
+$('take-nearby').onclick=()=>emit('takeNearby');
 socket.on('nearbyLoot',drops=>{
+ const available=drops.filter(g=>g.access!=='reserved'&&g.distance<=48).length;
+ $('take-nearby').disabled=!entered||!socket.connected||!available||tradeBusy;
+ $('take-nearby').textContent='Take nearby'+(available?' ('+available+')':'');
+ $('take-nearby').title='Take up to 20 available drops within reach. Drops that do not fit stay on the ground.';
  const box=$('nearby-loot'),ids=new Set(drops.map(g=>g.id));
  for(const [id,row] of lootRows)if(!ids.has(id)){row.remove();lootRows.delete(id);}
  if(!drops.length){if(!box.querySelector('p'))box.append(elem('p','helper','No nearby drops.'));return;}
@@ -579,7 +584,7 @@ socket.on('nearbyLoot',drops=>{
   row.title='Walk to and take this drop. Inventory space and ownership are checked by the server.';
  }
 });
-socket.on('disconnect',()=>{lootRows.clear();$('nearby-loot').replaceChildren(elem('p','helper','Reconnect to see nearby drops.'));});
+socket.on('disconnect',()=>{$('take-nearby').disabled=true;lootRows.clear();$('nearby-loot').replaceChildren(elem('p','helper','Reconnect to see nearby drops.'));});
 
 let registeredSave=false,saveButtonUntil=0;
 socket.on('loginSuccess',data=>{

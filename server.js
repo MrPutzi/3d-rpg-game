@@ -180,6 +180,7 @@ function finishEnemy(n,now){
   groundItems[id]={id,item:drop.id,qty:drop.qty,
    x:clamp(n.x+(Math.random()-.5)*25,20,WORLD_SIZE-20),y:clamp(n.y+(Math.random()-.5)*25,20,WORLD_SIZE-20),
    ownerId:outcome.ownerId,privateUntil:now+15000,expires:now+180000};
+  Loot.assignOwner(groundItems[id],players[outcome.ownerId]);
  }
  for(const p of Object.values(players))if(p.selectedEnemyId===n.id)p.selectedEnemyId=null;
 }
@@ -363,6 +364,11 @@ io.on('connection',socket=>{
    }finally{p.tradePending=false;}
   }));
  }
+ let nextLootSweep=0;
+ onAction('takeNearby',()=>{
+  const now=Date.now();if(!p.loggedIn||now<nextLootSweep)return;nextLootSweep=now+600;
+  stop(p);const result=Loot.takeNearby(p,groundItems,now,reachable);send(p,result.message);if(result.ok)pushProfile(p);
+ });
  onAction('buy',data=>trade('buy',data));
  onAction('sell',data=>trade('sell',data));
  onAction('rest',()=>{
