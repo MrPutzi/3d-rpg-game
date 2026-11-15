@@ -20,7 +20,14 @@ function notify(t){$('notice').textContent=String(t).slice(0,220);}
 function emit(action,data){if(!socket.connected||!entered||tradeBusy)return;if(action==='buy'||action==='sell'){tradeBusy=true;renderBuilding();}socket.emit(action,data);}
 function recipeEquipmentDetails(item){
  if(!item?.slot)return '';
- return item.slot+' slot · Defence +'+(item.defenceBonus||0)+' · Requires '+(item.skill||'defence')+' Lv'+(item.level||1);
+ const stats=[item.slot+' slot'];
+ if(item.attackBonus)stats.push('Attack +'+item.attackBonus);
+ if(item.strengthBonus)stats.push('Strength +'+item.strengthBonus);
+ stats.push('Defence +'+(item.defenceBonus||0));
+ if(item.speed)stats.push('Attack interval '+(item.speed*.6).toFixed(1)+'s');
+ if(item.twoHanded)stats.push('Two-handed');
+ stats.push('Requires '+(item.skill||'defence')+' Lv'+(item.level||1));
+ return stats.join(' · ');
 }
 function named(id){return items[id]?.name||id||'None';}
 function gear(){return items[profile?.equipment.weapon]||{name:'Unarmed',icon:'👊',type:'crush',speed:4,styles:['accurate','aggressive','defensive']};}

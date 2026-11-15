@@ -38,6 +38,7 @@ item('trout_cooked',{name:'Cooked trout',icon:'🐟',category:'food',heal:9,pric
 item('logs',{name:'Logs',icon:'🪵',category:'resource',price:4});
 item('oak_logs',{name:'Oak logs',icon:'🪵',category:'resource',price:15});
 item('copper_ore',{name:'Copper ore',icon:'🟠',category:'resource',price:5});
+item('iron_bar',{name:'Iron bar',icon:'⬜',category:'resource',price:32});
 item('iron_ore',{name:'Iron ore',icon:'🪨',category:'resource',price:18});
 item('raw_shrimp',{name:'Raw shrimp',icon:'🦐',category:'resource',price:4});
 item('raw_trout',{name:'Raw trout',icon:'🐟',category:'resource',price:20});

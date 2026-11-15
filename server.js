@@ -108,7 +108,7 @@ function ensureEquipped(p){
 }
 function handleElder(p,id){
  const npc=VILLAGE.villagers.find(v=>v.id===id);if(!npc||!reachable(p,npc,90))return;
- const messages={guard:'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
+ const messages={guard:p.quests.guard_supplies?.status==='complete'?'Guard: Train Smithing to level 15. Smelt iron from Southstone Quarry at Oakvale Forge, smith two iron daggers and bring them for the watch.':'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
  forester:'Thorin: Chop five logs and return for a reward.',
  fisher:'Mara: Catch three shrimp at Moonwater Lake. After your first catch, cook three at the Oakvale tavern and bring the meals for our frontier patrol.',
  ranger:p.quests.patrol_provisions?.status==='complete'?'Captain Rusk: Craft two pairs of leather boots at the Oakvale guild and bring them here. Wolves and bandits drop leather.':'Captain Rusk: Defeat two wolves to keep the frontier safe. Then hunt rabbits southwest of Newhaven, roast three at the Oakvale tavern and bring the meals for our patrol.'};
