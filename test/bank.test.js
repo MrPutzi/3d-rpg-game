@@ -41,3 +41,16 @@ test('batch banks stay isolated, reject malformed modes and roll back stack over
  b.bank=[{id:'feathers',qty:999950}];const before=JSON.stringify(b);assert.equal(depositInventory(b,'all').ok,false);assert.equal(JSON.stringify(b),before);
  b.loggedIn=false;assert.equal(depositInventory(b,'spare').ok,false);
 });
+test('max banks only what fits while all remains all-or-nothing',()=>{
+ const a=p();a.inventory=Array.from({length:27},()=>({id:'bread',qty:1}));a.bank=Array.from({length:5},()=>({id:'bones',qty:1}));
+ const before=JSON.stringify(a);assert.equal(transfer(a,'withdraw','bones','all').ok,false);assert.equal(JSON.stringify(a),before);
+ assert.equal(transfer(a,'withdraw','bones','max').ok,true);assert.equal(a.inventory.length,28);assert.equal(a.bank.length,4);
+ const after=JSON.stringify(a);assert.equal(transfer(a,'withdraw','bones','max').ok,false);assert.equal(JSON.stringify(a),after);
+});
+test('max respects stack cap, bank capacity and independent accounts',()=>{
+ const a=p(),b=p();a.bank=[{id:'feathers',qty:999990}];
+ assert.equal(transfer(a,'deposit','feathers','max').ok,true);assert.equal(a.bank[0].qty,999999);assert.equal(a.inventory[2].qty,91);
+ assert.equal(b.inventory[2].qty,100);assert.equal(b.bank.length,0);
+ a.bank=Array.from({length:199},()=>({id:'bread',qty:1}));
+ assert.equal(transfer(a,'deposit','bones','max').ok,true);assert.equal(a.bank.length,200);assert.equal(a.inventory.filter(e=>e.id==='bones').length,1);
+});

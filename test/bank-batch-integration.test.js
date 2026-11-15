@@ -22,6 +22,12 @@ test('live bank batch enforces proximity, preserves gear and isolates simultaneo
   const deposits=sockets.map(s=>event(s,'profile',p=>p.bank.length>0));
   sockets[0].emit('bankDepositInventory','spare');sockets[1].emit('bankDepositInventory','all');await Promise.all(deposits);
   const a=profiles.get(sockets[0]),b=profiles.get(sockets[1]);assert.equal(a.equipment.weapon,'bronze_scimitar');assert.ok(a.inventory.some(i=>i.id==='bronze_arrow'));assert.equal(b.inventory.length,0);assert.equal(b.equipment.weapon,null);assert.equal(b.equipment.ammo,null);
-  const bank=JSON.stringify(b.bank);const rejected=event(sockets[1],'serverMessage',m=>m==='No items to deposit.');sockets[1].emit('bankDepositInventory','all');await rejected;assert.equal(JSON.stringify(profiles.get(sockets[1]).bank),bank);
+  const withdrawals=sockets.map(s=>event(s,'profile',p=>p.inventory.filter(i=>i.id==='bread').reduce((n,i)=>n+i.qty,0)===2));
+  for(const s of sockets)s.emit('bankWithdraw',{id:'bread',qty:'max'});
+  await Promise.all(withdrawals);
+  for(const s of sockets)assert.equal(profiles.get(s).bank.filter(i=>i.id==='bread').length,0);
+  const returned=event(sockets[1],'profile',p=>p.inventory.length===0);
+  sockets[1].emit('bankDeposit',{id:'bread',qty:'max'});await returned;
+  const bank=JSON.stringify(profiles.get(sockets[1]).bank);const rejected=event(sockets[1],'serverMessage',m=>m==='No items to deposit.');sockets[1].emit('bankDepositInventory','all');await rejected;assert.equal(JSON.stringify(profiles.get(sockets[1]).bank),bank);
  }finally{for(const s of sockets)s.disconnect();if(child){const exited=new Promise(r=>child.once('exit',r));child.kill('SIGKILL');await exited;}fs.rmSync(dir,{recursive:true,force:true});}
 });

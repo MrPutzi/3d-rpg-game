@@ -3,7 +3,7 @@ const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getCon
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
-let bankQuantity=1,trackedQuest=null;
+let bankQuantity=1,bankSearch='',trackedQuest=null;
 let tradeBusy=false;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
@@ -135,6 +135,13 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
  document.querySelectorAll('.tab-pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
 });
+function bankMatches(id,query){
+ return named(id).toLowerCase().includes(query.trim().toLowerCase());
+}
+function guildQuestDetails(id,q){
+ const guide=profile.questJournal?.[id];
+ return (questsCatalog[id]?.name||names[id]||id)+' · '+(guide?.message||q.status)+(guide?.giverName?' · '+guide.giverName:'');
+}
 function questDeliveryDetails(inventory,item,qty){
  const owned=inventory.reduce((n,e)=>n+(e.id===item?e.qty:0),0);
  return 'Deliver: '+named(item)+' '+owned+'/'+qty+' · consumed on turn-in';
@@ -310,7 +317,7 @@ function renderBuilding(){
   if(modalId==='tavern'){const b=elem('button','','🛏 Rest and restore health · 10 coins');b.style.marginTop='15px';b.onclick=()=>emit('rest');box.append(b);}
  }else if(modalId==='bank'){
   box.append(elem('p','shop-description','Registered accounts save bank contents with character progress. Guest progress is temporary.'));
-  box.append(elem('p','helper','Backpack '+profile.inventory.length+'/28 slots · Bank '+profile.bank.length+'/200 slots. All transfers the complete amount or leaves it unchanged.'));
+  box.append(elem('p','helper','Backpack '+profile.inventory.length+'/28 slots · Bank '+profile.bank.length+'/200 slots. All transfers the complete amount or leaves it unchanged. Max transfers only what fits.'));
   const batch=elem('div','modal-actions');
   for(const [mode,label] of [['all','Deposit inventory'],['spare','Deposit except equipped']]){
    const button=elem('button','',label);button.disabled=!profile.inventory.length||tradeBusy||!socket.connected;
@@ -319,30 +326,34 @@ function renderBuilding(){
   }
   box.append(batch);
   const amounts=elem('div');
-  for(const qty of [1,5,10,50,'all']){const b=elem('button',bankQuantity===qty?'active':'',String(qty));b.style.margin='3px';b.onclick=()=>{bankQuantity=qty;renderBuilding();};amounts.append(b);}
+  for(const qty of [1,5,10,50,'all','max']){const b=elem('button',bankQuantity===qty?'active':'',String(qty));b.style.margin='3px';b.onclick=()=>{bankQuantity=qty;renderBuilding();};amounts.append(b);}
   box.append(amounts);
+  const search=elem('input');search.id='bank-search';search.type='search';search.placeholder='Search bank and backpack';search.setAttribute('aria-label','Search bank and backpack');search.value=bankSearch;
+  search.oninput=()=>{const cursor=search.selectionStart;bankSearch=search.value;renderBuilding();const fresh=$('bank-search');fresh.focus();if(cursor!==null)fresh.setSelectionRange(cursor,cursor);};box.append(search);
   const cols=elem('div','bank-list');
   for(const [title,arr,event] of [['Backpack',profile.inventory,'bankDeposit'],['Bank',profile.bank,'bankWithdraw']]){
    const col=elem('div','bank-column');col.append(elem('h3','',title));
    if(!arr.length)col.append(elem('p','muted','Empty'));
    const grouped=new Map();for(const e of arr)grouped.set(e.id,(grouped.get(e.id)||0)+e.qty);
    for(const [id,qty] of grouped){
+    if(!bankMatches(id,bankSearch))continue;
     const entry={id,qty};
     const r=elem('div','bank-row');
     r.append(elem('span','',(items[entry.id]?.icon||'📦')+' '+named(entry.id)+' ×'+entry.qty));
-    const b=elem('button','',event==='bankDeposit'?'Deposit':'Withdraw');b.disabled=bankQuantity!=='all'&&entry.qty<bankQuantity;b.onclick=()=>emit(event,{id:entry.id,qty:bankQuantity});r.append(b);
-    r.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(named(entry.id),[1,5,10,50,'all'].map(q=>({label:(event==='bankDeposit'?'Deposit ':'Withdraw ')+q,action:()=>emit(event,{id:entry.id,qty:q})})),e.clientX,e.clientY);});col.append(r);
+    const b=elem('button','',event==='bankDeposit'?'Deposit':'Withdraw');b.disabled=typeof bankQuantity==='number'&&entry.qty<bankQuantity;b.onclick=()=>emit(event,{id:entry.id,qty:bankQuantity});r.append(b);
+    r.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(named(entry.id),[1,5,10,50,'all','max'].map(q=>({label:(event==='bankDeposit'?'Deposit ':'Withdraw ')+q,action:()=>emit(event,{id:entry.id,qty:q})})),e.clientX,e.clientY);});col.append(r);
    }
+   if(arr.length&&!col.querySelector('.bank-row'))col.append(elem('p','muted','No matching items.'));
    cols.append(col);
   }
   box.append(cols);
  }else if(modalId==='guild'){
   box.append(elem('p','shop-description','Adventurers Guild — contracts, training notes and progress.'));
   for(const [id,q] of Object.entries(profile.quests)){
-   box.append(elem('div','quest-row',(names[id]||id)+' · '+(q.status==='complete'?'Complete':q.status==='locked'?'Locked':q.progress+'/'+q.goal)));
+   box.append(elem('div','quest-row',guildQuestDetails(id,q)));
   }
   box.append(elem('p','shop-description','Train Attack, Strength, Defence and Ranged by fighting. Woodcutting, Mining and Fishing require the correct tools and skill levels.'));
-  box.append(elem('p','shop-description','Quest rewards are claimed from the Village Elder beside the fountain.'));
+  box.append(elem('p','shop-description','Claim rewards from each quest’s named giver. Check the Quest Journal for objectives, deliveries and navigation.'));
  }
  box.append(elem('div','foot-tag','Press Esc to close · Right click a shop item for more actions'));
 }
