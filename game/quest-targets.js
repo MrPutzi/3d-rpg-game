@@ -2,6 +2,7 @@
 const {QUESTS,RECIPES,DROPS}=require('./progression');
 const {VILLAGE,ENEMY_TEMPLATES,RESOURCE_TEMPLATES,ITEMS}=require('./content');
 const {count}=require('./rules');
+const {stationLocation}=require('./stations');
 function area(template,label){
  const [x1,y1,x2,y2]=template.region;
  return {x:(x1+x2)/2,y:(y1+y2)/2,bounds:{x:x1,y:y1,w:x2-x1,h:y2-y1},kind:'area',label};
@@ -25,6 +26,8 @@ function recipeTarget(p,id,visited=new Set()){
   const enemy=ENEMY_TEMPLATES.find(e=>DROPS[e.kind]?.some(d=>d.id===item));
   if(enemy)return area(enemy,'Defeat '+enemy.name+' for a chance of '+ITEMS[item].name);
  }
+ const site=Object.hasOwn(stationLocation,recipe.station)?stationLocation[recipe.station]:null;
+ if(site)return {...site,kind:'station',label:recipe.name+' at '+recipe.station+' · '+recipe.skill+' Lv'+recipe.level};
  const building=VILLAGE.buildings.find(b=>b.id===recipe.station);
  return building?{x:building.door.x,y:building.door.y,label:recipe.name+' at '+building.name+' · '+recipe.skill+' Lv'+recipe.level,kind:'station'}:null;
 }

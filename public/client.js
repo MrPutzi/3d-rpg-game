@@ -226,6 +226,12 @@ function updateUI(){
    go.onclick=()=>{closeBuilding();emit('visitBuilding',station.id);notify('Walking to '+station.name+'…');};
    controls.append(go);
   }
+  if(!station&&Object.hasOwn(stations,recipe.station)){
+   const site=stations[recipe.station],go=elem('button','','Go to '+recipe.station);
+   go.title='Walk to this activity. Movement cancels unfinished production.';
+   go.onclick=()=>{closeBuilding();emit('move',{x:site.x,y:site.y});notify('Walking to '+recipe.station+'…');};
+   controls.append(go);
+  }
   if(reason)info.append(elem('small','',reason));
   row.append(info,controls);activity.append(row);
  }

@@ -440,8 +440,10 @@ setInterval(()=>{
    else if(!p.path.length)navigate(p,n,intent);
   }
   if(intent?.type==='building'||intent?.type==='talk'||intent?.type==='pickup')actionDone(p,now);
-  if(p.path.length)stepMove(p);
+  const wasWalking=p.path.length>0;
+  if(wasWalking)stepMove(p);
   if(p.intent)actionDone(p,now);
+  if(wasWalking&&!p.path.length&&!p.intent)pushProfile(p);
   const productionResult=Production.advance(p,now);
   if(productionResult){send(p,productionResult.message);ensureEquipped(p);pushProfile(p);}
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
