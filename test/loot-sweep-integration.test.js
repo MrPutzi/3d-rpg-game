@@ -15,8 +15,12 @@ test('live nearby sweep handles competing clients without duplicating player dro
    const logged=event(s,'profile');s.emit('guestLogin',{name});await logged;
    const dropped=event(s,'profile');s.emit('dropItem','bread');await dropped;
   }
+  const protectedView=await event(sockets[0],'nearbyLoot',drops=>drops.length===2);
+  assert.equal(protectedView.filter(g=>g.access==='reserved').length,1);
+  assert.equal(protectedView.filter(g=>g.access==='yours').length,1);
+  const restored=sockets.map(s=>event(s,'profile',p=>p.inventory.filter(i=>i.id==='bread').reduce((n,i)=>n+i.qty,0)===2));
   const replies=sockets.map(s=>event(s,'serverMessage',m=>/nearby drops|within reach/.test(m)));
-  for(const s of sockets)s.emit('takeNearby');await Promise.all(replies);
+  for(const s of sockets)s.emit('takeNearby');await Promise.all(replies);await Promise.all(restored);
   const total=[...profiles.values()].reduce((n,p)=>n+p.inventory.filter(i=>i.id==='bread').reduce((n,i)=>n+i.qty,0),0);assert.equal(total,4);
   const empty=event(sockets[0],'nearbyLoot',drops=>drops.length===0);await empty;
   for(const s of sockets)s.emit('takeNearby');

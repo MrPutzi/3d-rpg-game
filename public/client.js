@@ -606,10 +606,10 @@ socket.on('nearbyLoot',drops=>{
  for(const g of drops){
   let row=lootRows.get(g.id);
   if(!row){row=elem('button');row.style.cssText='display:block;width:100%;text-align:left;margin:5px 0;font-size:11px';row.onclick=()=>emit('pickup',g.id);lootRows.set(g.id,row);box.append(row);}
-  row.disabled=g.access==='reserved';
+  row.disabled=g.access==='reserved'||g.fitQty===0;
   const access=g.access==='reserved'?'Reserved '+Math.ceil(g.unlockIn/1000)+'s':g.access==='yours'?'Yours':'Public';
-  row.textContent=named(g.item)+' ×'+g.qty+' · '+access+' · '+g.distance+'u · expires '+Math.ceil(g.expiresIn/1000)+'s';
-  row.title='Walk to and take this drop. Inventory space and ownership are checked by the server.';
+  row.textContent=named(g.item)+' ×'+g.qty+' · '+access+' · fits '+g.fitQty+'/'+g.qty+' · '+g.distance+'u · expires '+Math.ceil(g.expiresIn/1000)+'s';
+  row.title='Walk to and take this drop. Take the amount that fits; the remainder stays on the ground. The server checks space and ownership.';
  }
 });
 socket.on('disconnect',()=>{$('take-nearby').disabled=true;lootRows.clear();$('nearby-loot').replaceChildren(elem('p','helper','Reconnect to see nearby drops.'));});
