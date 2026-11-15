@@ -297,6 +297,13 @@ function renderBuilding(){
  }else if(modalId==='bank'){
   box.append(elem('p','shop-description','Registered accounts save bank contents with character progress. Guest progress is temporary.'));
   box.append(elem('p','helper','Backpack '+profile.inventory.length+'/28 slots · Bank '+profile.bank.length+'/200 slots. All transfers the complete amount or leaves it unchanged.'));
+  const batch=elem('div','modal-actions');
+  for(const [mode,label] of [['all','Deposit inventory'],['spare','Deposit except equipped']]){
+   const button=elem('button','',label);button.disabled=!profile.inventory.length||tradeBusy||!socket.connected;
+   button.title=mode==='all'?'Store everything, including worn equipment. All or nothing.':'Keep one of each worn item and all equipped ammunition. All or nothing.';
+   button.onclick=()=>emit('bankDepositInventory',mode);batch.append(button);
+  }
+  box.append(batch);
   const amounts=elem('div');
   for(const qty of [1,5,10,50,'all']){const b=elem('button',bankQuantity===qty?'active':'',String(qty));b.style.margin='3px';b.onclick=()=>{bankQuantity=qty;renderBuilding();};amounts.append(b);}
   box.append(amounts);
