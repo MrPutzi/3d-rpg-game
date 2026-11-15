@@ -59,6 +59,7 @@ for(const [id,name,icon,category,price,extra] of [
  ['mind_rune','Mind runes','🔮','resource',2,{stackable:true}],['raw_rabbit','Raw rabbit','🐇','resource',6,{}],
  ['plank','Plank','🪵','resource',14,{}],['cooked_shrimp','Cooked shrimp','🍤','food',8,{heal:3}],
  ['cooked_rabbit','Roast rabbit','🍗','food',12,{heal:6}],
+ ['herbal_tonic','Herbal tonic','🍵','food',10,{heal:4}],
  ['healing_potion','Healing potion','🧪','food',40,{heal:12}],
  ['leather_gloves','Leather gloves','🧤','armor',42,{slot:'hands',defenceBonus:2,level:1,skill:'defence'}],
  ['leather_boots','Leather boots','🥾','armor',45,{slot:'feet',defenceBonus:2,level:1,skill:'defence'}],
