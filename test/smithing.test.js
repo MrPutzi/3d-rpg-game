@@ -22,7 +22,7 @@ test('guard quest unlocks after goblins, requires own crafting and delivery, and
  removeItem(p.inventory,'bronze_arrowtips',30);addItem(p.inventory,'bronze_bar',2);craft(p,'smith_arrowtips',2,1000);
  assert.equal(targetFor(p,'guard_supplies').kind,'npc');assert.equal(turnInQuest(p,'guard_supplies','elder'),null);
  removeItem(p.inventory,'bronze_arrowtips',1);assert.equal(turnInQuest(p,'guard_supplies','guard').ok,false);
- assert.equal(targetFor(p,'guard_supplies').kind,'station');addItem(p.inventory,'bronze_arrowtips');
+ assert.equal(targetFor(p,'guard_supplies').kind,'area');addItem(p.inventory,'bronze_arrowtips');
  assert.equal(turnInQuest(p,'guard_supplies','guard').ok,true);assert.equal(p.gold,65);assert.equal(count(p.inventory,'feathers'),30);
  assert.equal(count(p.inventory,'bronze_arrowtips'),0);assert.equal(turnInQuest(p,'guard_supplies','guard'),null);
 });

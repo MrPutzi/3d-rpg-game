@@ -6,8 +6,8 @@ test('all existing quests resolve real objective locations inside world bounds',
  const p=player();for(const id of Object.keys(QUESTS)){const t=targetFor(p,id);assert.ok(t,id);assert.ok(t.x>=0&&t.y>=0&&t.x<WORLD_SIZE&&t.y<WORLD_SIZE);}
  assert.equal(targetFor(p,'goblin_hunt').kind,'area');assert.equal(targetFor(p,'first_catch').bounds.y,1600);
 });
-test('completion redirects to giver; missing cooked deliveries retain the cooking station',()=>{
- const p=player();p.quests.cooked_supplies.progress=3;assert.equal(targetFor(p,'cooked_supplies').kind,'station');
+test('completion redirects to giver; missing cooked deliveries guide gathering first',()=>{
+ const p=player();p.quests.cooked_supplies.progress=3;assert.equal(targetFor(p,'cooked_supplies').kind,'area');
  p.inventory=[{id:'cooked_shrimp',qty:3}];assert.equal(targetFor(p,'cooked_supplies').kind,'npc');
  p.quests.goblin_hunt.progress=3;assert.match(targetFor(p,'goblin_hunt').label,/Elder/);
 });
@@ -16,4 +16,20 @@ test('locked/complete/invalid quests have no target and player progress is isola
  a.quests.goblin_hunt.progress=3;assert.equal(targetFor(a,'goblin_hunt').kind,'npc');assert.equal(targetFor(b,'goblin_hunt').kind,'area');
  for(const status of ['locked','complete']){a.quests.goblin_hunt.status=status;assert.equal(targetFor(a,'goblin_hunt'),null);}
  for(const id of ['__proto__','nope',null])assert.equal(targetFor(a,id),null);
+});
+test('iron delivery guide follows ore, smelting, forging and the Guard without changing state',()=>{
+ const p=player();let before=JSON.stringify(p);assert.match(targetFor(p,'iron_supplies').label,/Iron ore/);assert.equal(JSON.stringify(p),before);
+ p.inventory=[{id:'iron_ore',qty:1}];assert.match(targetFor(p,'iron_supplies').label,/Smelt iron bar/);
+ p.inventory=[{id:'iron_bar',qty:1}];assert.match(targetFor(p,'iron_supplies').label,/Smith iron dagger/);
+ p.quests.iron_supplies.progress=2;p.inventory=[{id:'iron_dagger',qty:2}];assert.equal(targetFor(p,'iron_supplies').kind,'npc');
+});
+test('banked ingredients and completed deliveries guide withdrawal but cannot bypass crafting',()=>{
+ const a=player(),b=player();a.bank=[{id:'iron_bar',qty:1}];assert.match(targetFor(a,'iron_supplies').label,/Withdraw Iron bar/);assert.equal(targetFor(b,'iron_supplies').kind,'area');
+ a.bank=[{id:'iron_dagger',qty:2}];assert.equal(targetFor(a,'iron_supplies').kind,'area');
+ a.quests.iron_supplies.progress=2;assert.match(targetFor(a,'iron_supplies').label,/Withdraw Iron Dagger/);
+ a.inventory=[{id:'iron_dagger',qty:2}];assert.equal(targetFor(a,'iron_supplies').kind,'npc');
+});
+test('leather quest distinguishes random drops from guaranteed gathering',()=>{
+ const p=player();assert.match(targetFor(p,'patrol_boots').label,/chance of Leather/);
+ p.inventory=[{id:'leather',qty:1}];assert.match(targetFor(p,'patrol_boots').label,/Craft leather boots/);
 });

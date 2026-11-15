@@ -24,11 +24,11 @@ function take(p,ground,id,now,canReach){
  // Synchronous transfer: the next player's request sees the item removed.
  delete ground[id];return {ok:true,message:'Picked up '+ITEMS[g.item].name+' ×'+g.qty+'.'};
 }
-function nearby(p,ground,now){
+function nearby(p,ground,now,canReach=(p,g,r)=>dist(p,g)<=r){
  if(!p.loggedIn)return [];
  return Object.values(ground).filter(g=>g.expires>now&&dist(p,g)<=160)
  .sort((a,b)=>dist(p,a)-dist(p,b)||a.id.localeCompare(b.id)).slice(0,20)
- .map(g=>({id:g.id,item:g.item,qty:g.qty,distance:Math.round(dist(p,g)),
+ .map(g=>({id:g.id,item:g.item,qty:g.qty,distance:Math.round(dist(p,g)),canTake:!reserved(g,p,now)&&canReach(p,g,48),
  access:reserved(g,p,now)?'reserved':owns(g,p)&&now<g.privateUntil?'yours':'public',
  unlockIn:Math.max(0,(g.privateUntil||0)-now),expiresIn:g.expires-now}));
 }
