@@ -46,7 +46,13 @@ function questJournal(p){
 function turnInQuest(p,id,npcId){
  const def=Object.hasOwn(QUESTS,id)?QUESTS[id]:null,q=p.quests[id];if(!def||!q||q.status!=='active'||q.progress<q.goal||def.giver!==npcId)return null;
  const ready=questReadiness(p,id);if(!ready.ok)return ready;
- p.inventory=ready.inventory;p.gold+=def.rewardGold||0;q.status='complete';activateAvailable(p,id);
+ p.inventory=ready.inventory;
+ // Delivery quests may consume equipped items; never retain their combat bonuses.
+ if(p.equipment){
+  for(const slot of Object.keys(p.equipment))if(p.equipment[slot]&&!count(p.inventory,p.equipment[slot]))p.equipment[slot]=null;
+  if(!p.equipment.weapon)p.combatStyle='accurate';
+ }
+ p.gold+=def.rewardGold||0;q.status='complete';activateAvailable(p,id);
  return {ok:true,message:'Quest completed: '+def.name+' · +'+(def.rewardGold||0)+' coins!'};
 }
 function processRecipe(p,id,now=Date.now()){
