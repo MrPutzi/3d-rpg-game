@@ -28,3 +28,28 @@ test('nearby view is bounded, excludes expired and distant drops and distinguish
  for(let i=0;i<30;i++)ground['z'+i]=drop({id:'z'+i});assert.equal(nearby(p,ground,100).length,20);
  p.loggedIn=false;assert.deepEqual(nearby(p,ground,100),[]);
 });
+
+test('private loot follows an account through reconnect without exposing its identity',()=>{
+ const {assignOwner}=require('../game/loot');
+ const old={...player('old'),accountId:'account-a'},reconnected={...player('new'),accountId:'account-a'},other={...player('other'),accountId:'account-b'};
+ const g=assignOwner(drop({privateUntil:100}),old),ground={a:g};
+ assert.equal(JSON.stringify(g).includes('account-a'),false);
+ assert.equal(nearby(reconnected,ground,1)[0].access,'yours');
+ assert.equal(take(other,ground,'a',1,reach).ok,false);assert.equal(take(reconnected,ground,'a',1,reach).ok,true);
+ const guest=assignOwner(drop({privateUntil:100}),player('guest'));
+ assert.equal(take(player('new-guest'),{a:guest},'a',1,reach).ok,false);
+});
+test('bounded nearby collection skips reserved, remote, expired and non-fitting drops',()=>{
+ const {takeNearby}=require('../game/loot');const p=player('me');
+ p.inventory=Array.from({length:28},()=>({id:'bones',qty:1}));p.inventory[0]={id:'feathers',qty:1};
+ const ground={a:drop(),b:drop({id:'b',item:'feathers',qty:3}),c:drop({id:'c',item:'feathers',ownerId:'other',privateUntil:100}),d:drop({id:'d',item:'feathers',x:49}),e:drop({id:'e',item:'feathers',expires:1})};
+ const r=takeNearby(p,ground,1,reach);assert.equal(r.taken,1);assert.equal(p.inventory[0].qty,4);assert.deepEqual(Object.keys(ground),['a','c','d','e']);
+ assert.equal(takeNearby(p,ground,1,reach).taken,0);
+});
+test('two sweepers and repeated requests conserve all drops and cap per-call work',()=>{
+ const {takeNearby}=require('../game/loot');const a=player('one'),b=player('two'),ground={};
+ for(let i=0;i<25;i++)ground['drop'+i]=drop({id:'drop'+i,item:'feathers'});
+ assert.equal(takeNearby(a,ground,1,reach).taken,20);assert.equal(takeNearby(b,ground,1,reach).taken,5);assert.equal(takeNearby(a,ground,1,reach).taken,0);
+ assert.equal(a.inventory[0].qty+b.inventory[0].qty,25);
+ assert.equal(takeNearby({...player('anon'),loggedIn:false},{a:drop()},1,reach).taken,0);
+});
