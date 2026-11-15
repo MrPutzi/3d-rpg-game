@@ -25,7 +25,8 @@ function recipeEquipmentDetails(item){
   stats.push('Ammunition: '+item.ammo, 'Ranged strength +'+(item.rangedStrength||0));
   return stats.join(' · ');
  }
- if(item.attackBonus)stats.push('Attack +'+item.attackBonus);
+ if(item.ammo)stats.push('Uses '+item.ammo+' ammunition');
+ if(item.attackBonus)stats.push((item.type==='ranged'?'Ranged attack +':'Attack +')+item.attackBonus);
  if(item.strengthBonus)stats.push('Strength +'+item.strengthBonus);
  stats.push('Defence +'+(item.defenceBonus||0));
  if(item.speed)stats.push('Attack interval '+(item.speed*.6).toFixed(1)+'s');
