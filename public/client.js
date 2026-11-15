@@ -21,6 +21,10 @@ function emit(action,data){if(!socket.connected||!entered||tradeBusy)return;if(a
 function recipeEquipmentDetails(item){
  if(!item?.slot)return '';
  const stats=[item.slot+' slot'];
+ if(item.slot==='ammo'){
+  stats.push('Ammunition: '+item.ammo, 'Ranged strength +'+(item.rangedStrength||0));
+  return stats.join(' · ');
+ }
  if(item.attackBonus)stats.push('Attack +'+item.attackBonus);
  if(item.strengthBonus)stats.push('Strength +'+item.strengthBonus);
  stats.push('Defence +'+(item.defenceBonus||0));
