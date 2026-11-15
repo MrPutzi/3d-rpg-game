@@ -1,6 +1,7 @@
 'use strict';
 const {createEconomy}=require('./economy');
 const {ITEMS,SHOPS}=require('./content');
+const {count}=require('./rules');
 // Pure transaction planning. Inputs must be loaded and locked by the caller's
 // storage transaction. A successful plan is NOT a durable trade acknowledgement.
 function planTrade(profile,merchantStock,{shopId,itemId,qty,side}={}){
@@ -16,6 +17,7 @@ function planTrade(profile,merchantStock,{shopId,itemId,qty,side}={}){
  const result=economy[side](future,shopId,itemId,qty);
  if(!result.ok)return result;
  if(!Number.isSafeInteger(future.gold)||future.gold<0)return reject('Gold limit reached.');
+ if(future.equipment){for(const slot of Object.keys(future.equipment))if(future.equipment[slot]&&!count(future.inventory,future.equipment[slot]))future.equipment[slot]=null;if(!future.equipment.weapon)future.combatStyle='accurate';}
  return {...result,profile:future,stock:{...economy.stock[shopId]}};
 }
 module.exports={planTrade};

@@ -34,3 +34,11 @@ test('independent economy instances cannot leak stock changes',()=>{
  const initial={tavern:{cooked_rabbit:1}},a=createEconomy(initial),b=createEconomy(initial);
  a.buy(profile(),'tavern','cooked_rabbit',1);assert.equal(b.getStock('tavern','cooked_rabbit'),1);assert.equal(initial.tavern.cooked_rabbit,1);
 });
+
+test('selling the last equipped item clears durable equipment and combat style',()=>{
+ const {planTrade}=require('../game/merchant-plan');
+ const profile={gold:100,inventory:[{id:'shortbow',qty:1}],equipment:{weapon:'shortbow'},combatStyle:'rapid'};
+ const result=planTrade(profile,{}, {shopId:'market',itemId:'shortbow',qty:1,side:'sell'});
+ assert.equal(result.ok,true);assert.equal(result.profile.equipment.weapon,null);assert.equal(result.profile.combatStyle,'accurate');
+ assert.equal(profile.equipment.weapon,'shortbow');
+});

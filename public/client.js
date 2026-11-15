@@ -4,6 +4,7 @@ const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let bankQuantity=1,trackedQuest=null;
+let tradeBusy=false;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
 let SIZE=3600,authMode='signin';
@@ -16,7 +17,7 @@ const styleNames={
 };
 const names={welcome:'First Steps — Speak with the Elder',goblin_hunt:'Goblin Menace — Defeat 3 Goblins'};
 function notify(t){$('notice').textContent=String(t).slice(0,220);}
-function emit(action,data){if(socket.connected&&entered)socket.emit(action,data);}
+function emit(action,data){if(!socket.connected||!entered||tradeBusy)return;if(action==='buy'||action==='sell'){tradeBusy=true;renderBuilding();}socket.emit(action,data);}
 function named(id){return items[id]?.name||id||'None';}
 function gear(){return items[profile?.equipment.weapon]||{name:'Unarmed',icon:'👊',type:'crush',speed:4,styles:['accurate','aggressive','defensive']};}
 function elem(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
@@ -67,6 +68,8 @@ socket.on('catalog',data=>{
  recipes=data.recipes||{};questsCatalog=data.quests||{};regions=data.regions||[];stations=data.stations||{};
  SIZE=data.size||3600;
 });
+socket.on('tradeStatus',data=>{tradeBusy=data.state==='pending';if(data.message)notify(data.message);if(data.state==='unknown'){entered=false;profile=null;closeBuilding();$('login-overlay').hidden=false;$('login-error').textContent='Trade status unknown. Reload this page to restore saved progress.';}renderBuilding();});
+socket.on('disconnect',()=>{tradeBusy=false;});
 socket.on('shopState',data=>{if(data?.id){marketInfo[data.id]=data;if(modalId===data.id&&profile)renderBuilding();}});
 socket.on('serverMessage',text=>{notify(text);if(!entered)$('login-error').textContent=String(text).slice(0,100);});
 socket.on('authFailed',text=>{$('login-error').textContent=String(text).slice(0,140);localStorage.removeItem('miniscape_session');});
@@ -238,7 +241,7 @@ function shopEntry(id){
  const buy=elem('button','','Buy');buy.onclick=()=>emit('buy',{id,qty:1});
  const stock=marketInfo[modalId]?.stock?.[id]??20;
  const actualPrice=marketInfo[modalId]?.prices?.[id]?.buy??item.price;
- buy.disabled=stock<=0||profile.gold<actualPrice;
+ buy.disabled=tradeBusy||stock<=0||profile.gold<actualPrice;
  info.lastChild.textContent=actualPrice+' coins · stock '+stock+(!shops[modalId].items.includes(id)?' · Player supplied':'')+(item.level?' · lvl '+item.level:'');
  row.append(buy);
  row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
@@ -254,6 +257,8 @@ function renderBuilding(){
  const box=$('building-content');box.replaceChildren();
  box.append(elem('div','shop-coins','🪙 Your gold: '+profile.gold.toLocaleString()+' coins'));
  if(shops[modalId]){
+  if(tradeBusy)box.append(elem('p','helper','Saving trade… Please wait.'));
+  if(marketInfo[modalId]?.temporary)box.append(elem('p','helper','Guest market — temporary stock and progress.'));
   box.append(elem('p','shop-description',shops[modalId].greeting));
   const actions=elem('div','modal-actions');
   for(const tab of ['buy','sell']){
@@ -269,7 +274,7 @@ function renderBuilding(){
    const item=items[entry.id],row=elem('div','shop-entry');
    row.append(elem('span','shop-icon',item.icon));const info=elem('div');
    info.append(elem('strong','',item.name));info.append(elem('small','',(Math.max(1,Math.floor((marketInfo[modalId]?.prices?.[item.id]?.sell||item.price*.45))))+' coins each · '+entry.qty+' owned'));row.append(info);
-   const sell=elem('button','','Sell 1');sell.onclick=()=>emit('sell',{id:item.id,qty:1});row.append(sell);list.append(row);
+   const sell=elem('button','','Sell 1');sell.disabled=tradeBusy;sell.onclick=()=>emit('sell',{id:item.id,qty:1});row.append(sell);list.append(row);
    row.addEventListener('contextmenu',e=>{e.preventDefault();contextMenu(item.name,[
     {label:'Sell 1',action:()=>emit('sell',{id:item.id,qty:1})},{label:'Sell 5',action:()=>emit('sell',{id:item.id,qty:5})},
     {label:'Sell 10',action:()=>emit('sell',{id:item.id,qty:10})},{label:'Examine',action:()=>examineItem(item.id)}
