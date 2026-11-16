@@ -8,6 +8,7 @@ const {stationLocation,questProgress,turnInQuest,questJournal}=require('./game/a
 const Production=require('./game/production');
 const Encounters=require('./game/encounters');
 const Food=require('./game/food');
+const Magic=require('./game/magic');
 const Loot=require('./game/loot');
 const Bank=require('./game/bank');
 const {serialQueue}=require('./game/serial');
@@ -204,7 +205,7 @@ io.on('connection',socket=>{
    return handler(...args);
   });
  }
- socket.emit('catalog',{items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
+ socket.emit('catalog',{windStrike:Magic.WIND_STRIKE,items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
  let authAttempts=0,authWindow=Date.now(),authBusy=false,nextManualSave=0;
  async function authenticate(operation,data){
   if(p.loggedIn||authBusy)return;
@@ -304,14 +305,11 @@ io.on('connection',socket=>{
  onAction('castSpell',id=>{
   if(!p.loggedIn||!has(enemies,id))return;
   const n=enemies[id],now=Date.now();
-  if(Production.cancel(p))pushProfile(p);
-  if(n.hp<=0||!reachable(p,n,210)||now<p.nextAttack)return;
-  if(count(p.inventory,'air_rune')<1||count(p.inventory,'mind_rune')<1){send(p,'You need an Air rune and a Mind rune.');return;}
-  p.selectedEnemyId=id;
-  removeItem(p.inventory,'air_rune',1);removeItem(p.inventory,'mind_rune',1);
-  const damage=Math.min(n.hp,Math.floor(Math.random()*5));
-  n.hp-=damage;Encounters.record(n,p,damage,now);n.targetPlayer=p.id;p.nextAttack=now+TICK_MS*4;
-  addXp(p,'magic',6+damage*2);if(damage)addXp(p,'hitpoints',damage*4/3);
+  const result=Magic.cast(p,n,now);
+  if(!result.ok){if(result.message)send(p,result.message);return;}
+  Production.cancel(p);p.selectedEnemyId=id;
+  const damage=result.damage;
+  Encounters.record(n,p,damage,now);n.targetPlayer=p.id;
   effects.push({x:n.x,y:n.y,damage,style:'magic',fromX:p.x,fromY:p.y});
   if(n.hp===0)finishEnemy(n,now);
   pushProfile(p);
