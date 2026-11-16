@@ -1,10 +1,12 @@
 'use strict';
+const Campfires=require('./campfires');
 const {RECIPES,QUESTS}=require('./progression');
 const {targetFor}=require('./quest-targets');
 const {ITEMS,VILLAGE}=require('./content');
 const {dist,count,addItem,removeItem,addXp}=require('./rules');
 const {stationLocation}=require('./stations');
-function stationReady(p,station){
+function stationReady(p,station,now=Date.now()){
+ if(station==='cooking')return !!Campfires.nearby(p,now)||stationReady(p,'tavern',now);
  if(station==='any')return true;
  if(['forge','tavern','guild'].includes(station)){
   const b=VILLAGE.buildings.find(x=>x.id===station);
@@ -58,13 +60,14 @@ function turnInQuest(p,id,npcId){
 function processRecipe(p,id,now=Date.now()){
  const rec=typeof id==='string'&&Object.hasOwn(RECIPES,id)?RECIPES[id]:null;if(!rec)return {ok:false,message:'Unknown activity.'};
  if(p.nextSkillAction&&now<p.nextSkillAction)return {ok:false,message:'Wait for the next action tick.'};
- if(!stationReady(p,rec.station))return {ok:false,message:'Visit the required station or region first.'};
+ if(!stationReady(p,rec.station,now))return {ok:false,message:'Visit the required station or region first.'};
  if(!p.skills[rec.skill]||p.skills[rec.skill].level<rec.level)return {ok:false,message:'Requires '+rec.skill+' level '+rec.level+'.'};
  if(rec.requiresSlayerKills&&p.slayerKills<rec.requiresSlayerKills)return {ok:false,message:'Defeat '+rec.requiresSlayerKills+' creatures for the Slayer task first.'};
  for(const [item,qty] of Object.entries(rec.inputs))if(count(p.inventory,item)<qty)return {ok:false,message:'Missing '+ITEMS[item]?.name+'.'};
  const candidate=p.inventory.map(e=>({...e}));
  for(const [item,qty] of Object.entries(rec.inputs))removeItem(candidate,item,qty);
  for(const [item,qty] of Object.entries(rec.outputs))if(!addItem(candidate,item,qty))return{ok:false,message:'Inventory full.'};
+ if(id==='firemaking_logs')Campfires.light(p,now);
  p.inventory=candidate;p.gold+=rec.gold||0;
  addXp(p,rec.skill,rec.xp);
  p.nextSkillAction=now+1800;

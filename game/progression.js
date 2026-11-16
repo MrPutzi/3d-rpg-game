@@ -4,9 +4,9 @@ const SKILLS=['attack','strength','defence','ranging','hitpoints','woodcutting',
  'cooking','firemaking','smithing','crafting','fletching','magic','prayer','agility','thieving',
  'runecrafting','herblore','farming','construction','hunter','slayer'];
 const RECIPES={
- cook_shrimp:{name:'Cook shrimp',skill:'cooking',level:1,xp:30,inputs:{raw_shrimp:1},outputs:{cooked_shrimp:1},station:'tavern'},
- cook_rabbit:{name:'Roast rabbit',skill:'cooking',level:1,xp:35,inputs:{raw_rabbit:1},outputs:{cooked_rabbit:1},station:'tavern'},
- cook_trout:{name:'Cook trout',skill:'cooking',level:15,xp:70,inputs:{raw_trout:1},outputs:{trout_cooked:1},station:'tavern'},
+ cook_shrimp:{name:'Cook shrimp',skill:'cooking',level:1,xp:30,inputs:{raw_shrimp:1},outputs:{cooked_shrimp:1},station:'cooking'},
+ cook_rabbit:{name:'Roast rabbit',skill:'cooking',level:1,xp:35,inputs:{raw_rabbit:1},outputs:{cooked_rabbit:1},station:'cooking'},
+ cook_trout:{name:'Cook trout',skill:'cooking',level:15,xp:70,inputs:{raw_trout:1},outputs:{trout_cooked:1},station:'cooking'},
  firemaking_logs:{name:'Light logs',skill:'firemaking',level:1,xp:40,inputs:{logs:1},outputs:{},station:'any'},
  fletch_shortbow:{name:'Bind a shortbow',skill:'fletching',level:5,xp:50,inputs:{logs:2,leather:1},outputs:{shortbow:1},station:'guild'},
  fletch_oak_shortbow:{name:'Bind an oak shortbow',skill:'fletching',level:20,xp:100,inputs:{oak_logs:2,leather:2},outputs:{oak_shortbow:1},station:'guild'},

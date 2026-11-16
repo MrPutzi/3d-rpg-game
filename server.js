@@ -8,6 +8,7 @@ const {stationLocation,questProgress,turnInQuest,questJournal}=require('./game/a
 const Production=require('./game/production');
 const Encounters=require('./game/encounters');
 const Food=require('./game/food');
+const Campfires=require('./game/campfires');
 const Magic=require('./game/magic');
 const Loot=require('./game/loot');
 const Bank=require('./game/bank');
@@ -76,7 +77,7 @@ function persist(p){
 }
 function newPlayer(id){
  const inventory=[];for(const [item,qty] of [['bronze_scimitar',1],['shortbow',1],['bronze_arrow',120],['bronze_axe',1],['bronze_pickaxe',1],['small_net',1],['bread',2]])addItem(inventory,item,qty);
- return {id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
+ return {fireNearby:false,id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
  equipment:{head:null,cape:null,neck:null,weapon:'bronze_scimitar',body:null,offhand:null,legs:null,hands:null,feet:null,ring:null,ammo:'bronze_arrow'},bank:[],
  quests:Object.fromEntries(Object.entries(QUESTS).map(([id,q])=>[id,{status:q.after?'locked':'active',progress:0,goal:q.goal}])),
  skills:Object.fromEntries(SKILLS.map(k=>[k,skill(k==='hitpoints'?xpForLevel(10):0)])),
@@ -444,6 +445,8 @@ setInterval(()=>{
   if(wasWalking)stepMove(p);
   if(p.intent)actionDone(p,now);
   if(wasWalking&&!p.path.length&&!p.intent)pushProfile(p);
+  const fireNearby=!!Campfires.nearby(p,now);
+  if(p.fireNearby!==fireNearby){p.fireNearby=fireNearby;pushProfile(p);}
   const productionResult=Production.advance(p,now);
   if(productionResult){send(p,productionResult.message);ensureEquipped(p);pushProfile(p);}
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
@@ -455,7 +458,7 @@ setInterval(()=>{
   if(p.openBuilding&&!reachable(p,buildingById(p.openBuilding)?.door||SPAWN,130)){p.openBuilding=null;pushProfile(p);}
  }
  const state={players:Object.fromEntries(Object.values(players).filter(p=>p.loggedIn).map(p=>[p.id,{id:p.id,name:p.name,x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,combatStyle:p.combatStyle,weapon:p.equipment.weapon}])),
- npcs:enemies,nodes,groundItems,projectiles:effects};
+ npcs:enemies,nodes,groundItems,campfires:Campfires.snapshot(now),projectiles:effects};
  if(now-lastSnapshot>=STATE_MS){
   io.emit('state',state);
   for(const p of Object.values(players))if(p.loggedIn){
