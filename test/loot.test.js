@@ -84,3 +84,28 @@ test('discard protection follows account reconnect and releases at exactly fifte
  assert.equal(nearby({...a,id:'new'},ground,101)[0].access,'yours');
  assert.equal(take(b,ground,'a',15100,reach).ok,true);
 });
+
+test('twenty non-fitting drops cannot hide or starve a reachable stack',()=>{
+ const {takeNearby}=require('../game/loot'),p=player('me'),ground={};
+ p.inventory=[{id:'feathers',qty:1},...Array.from({length:27},()=>({id:'bread',qty:1}))];
+ for(let i=0;i<20;i++)ground['blocked'+i]=drop({id:'blocked'+i});
+ ground.stack=drop({id:'stack',item:'feathers',qty:5,x:10});
+ assert.equal(nearby(p,ground,1,reach)[0].id,'stack');assert.equal(nearby(p,ground,1,reach)[0].canTake,true);
+ assert.equal(takeNearby(p,ground,1,reach).taken,1);assert.equal(p.inventory[0].qty,6);assert.equal(Object.keys(ground).length,20);
+});
+test('category filtering precedes the row limit and preserves unrelated drops',()=>{
+ const {takeNearby}=require('../game/loot'),p=player('me'),ground={};
+ for(let i=0;i<25;i++)ground['bones'+i]=drop({id:'bones'+i});
+ ground.food=drop({id:'food',item:'bread',x:20});ground.ammo=drop({id:'ammo',item:'iron_arrow',qty:15});
+ assert.deepEqual(nearby(p,ground,1,reach,'food').map(g=>g.id),['food']);
+ assert.equal(takeNearby(p,ground,1,reach,'food').taken,1);assert.ok(ground.ammo);assert.equal(Object.keys(ground).length,26);
+ assert.equal(takeNearby(p,ground,1,reach,'ammo').taken,1);assert.equal(p.inventory.find(e=>e.id==='iron_arrow').qty,15);
+});
+test('filters reject forged values, preserve private loot and isolate competing collectors',()=>{
+ const {takeNearby,validFilter}=require('../game/loot'),a=player('a'),b=player('b');
+ for(const filter of [null,{},'__proto__','weapon']){assert.equal(validFilter(filter),false);assert.equal(takeNearby(a,{a:drop()},1,reach,filter).taken,0);}
+ const ground={a:drop({item:'iron_arrow',ownerId:'a',privateUntil:100}),b:drop({id:'b',item:'iron_dagger'})};
+ assert.equal(takeNearby(b,ground,1,reach,'ammo').taken,0);assert.equal(takeNearby(a,ground,1,reach,'ammo').taken,1);
+ assert.equal(takeNearby(b,ground,1,reach,'equipment').taken,1);assert.equal(takeNearby(a,ground,1,reach,'equipment').taken,0);
+ assert.equal(a.inventory[0].id,'iron_arrow');assert.equal(b.inventory[0].id,'iron_dagger');
+});

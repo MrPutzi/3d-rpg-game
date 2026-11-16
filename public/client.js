@@ -617,19 +617,23 @@ setInterval(updateFoodButton,100);
 // Stable rows keep focus and clicks intact across server snapshots.
 const lootRows=new Map();
 $('take-nearby').onclick=()=>emit('takeNearby');
+$('loot-filter').onchange=()=>{emit('setLootFilter',$('loot-filter').value);$('take-nearby').disabled=true;};
 socket.on('nearbyLoot',drops=>{
+ $('loot-filter').value=profile?.lootFilter||'all';
+ $('loot-filter').disabled=!entered||!socket.connected||tradeBusy;
  const available=drops.filter(g=>g.canTake===true).length;
  $('take-nearby').disabled=!entered||!socket.connected||!available||tradeBusy;
  $('take-nearby').textContent='Take nearby'+(available?' ('+available+')':'');
  $('take-nearby').title='Take up to 20 available drops within reach. Drops that do not fit stay on the ground.';
  const box=$('nearby-loot'),ids=new Set(drops.map(g=>g.id));
  for(const [id,row] of lootRows)if(!ids.has(id)){row.remove();lootRows.delete(id);}
- if(!drops.length){if(!box.querySelector('p'))box.append(elem('p','helper','No nearby drops.'));return;}
+ if(!drops.length){if(!box.querySelector('p'))box.append(elem('p','helper','No nearby drops in this category.'));return;}
  box.querySelector('p')?.remove();
- for(const g of drops){
+ for(const [index,g] of drops.entries()){
   let row=lootRows.get(g.id);
   if(!row){row=elem('button');row.style.cssText='display:block;width:100%;text-align:left;margin:5px 0;font-size:11px';row.onclick=()=>emit('pickup',g.id);lootRows.set(g.id,row);box.append(row);}
-  row.disabled=g.access==='reserved'||g.fitQty===0;
+  if(box.children[index]!==row)box.insertBefore(row,box.children[index]||null);
+  row.disabled=!entered||!socket.connected||tradeBusy||g.access==='reserved'||g.fitQty===0;
   const access=g.access==='reserved'?'Reserved '+Math.ceil(g.unlockIn/1000)+'s':g.access==='yours'?'Yours':'Public';
   row.textContent=named(g.item)+' ×'+g.qty+' · '+access+' · fits '+g.fitQty+'/'+g.qty+' · '+g.distance+'u · expires '+Math.ceil(g.expiresIn/1000)+'s';
   row.title='Walk to and take this drop. Take the amount that fits; the remainder stays on the ground. The server checks space and ownership.';
