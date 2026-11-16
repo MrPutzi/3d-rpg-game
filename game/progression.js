@@ -26,6 +26,7 @@ const RECIPES={
  bury_bones:{name:'Bury bones',skill:'prayer',level:1,xp:45,inputs:{bones:1},outputs:{},station:'any'},
  brew_tonic:{name:'Brew herbal tonic',skill:'herblore',level:1,xp:25,inputs:{guam_leaf:1,vial_of_water:1},outputs:{herbal_tonic:1},station:'tavern'},
  brew_potion:{name:'Brew healing potion',skill:'herblore',level:3,xp:60,inputs:{guam_leaf:1,vial_of_water:1},outputs:{healing_potion:1},station:'tavern'},
+ craft_mind_runes:{name:'Craft mind runes',skill:'runecrafting',level:2,xp:35,inputs:{rune_essence:1},outputs:{mind_rune:3},station:'altar'},
  craft_air_runes:{name:'Craft air runes',skill:'runecrafting',level:1,xp:30,inputs:{rune_essence:1},outputs:{air_rune:5},station:'altar'},
  build_stool:{name:'Build a stool',skill:'construction',level:1,xp:55,inputs:{plank:2},outputs:{},station:'guild'},
  farm_guam:{name:'Harvest herbs',skill:'farming',level:1,xp:55,inputs:{guam_seed:1},outputs:{guam_leaf:2},station:'farm'},

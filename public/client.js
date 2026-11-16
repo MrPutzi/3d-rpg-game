@@ -3,6 +3,7 @@ const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getCon
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
+let windStrike=null;
 let bankQuantity=1,bankSearch='',trackedQuest=null;
 let tradeBusy=false;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
@@ -34,6 +35,11 @@ function recipeEquipmentDetails(item){
  stats.push('Requires '+(item.skill||'defence')+' Lv'+(item.level||1));
  return stats.join(' · ');
 }
+function spellMenu(inventory,spell){
+ if(!spell)return {label:'Spell unavailable',disabled:true};
+ const costs=Object.entries(spell.inputs),owned=id=>inventory.reduce((n,e)=>n+(e.id===id?e.qty:0),0);
+ return {label:'✨ '+spell.name+' · '+costs.map(([id,qty])=>named(id)+' '+owned(id)+'/'+qty).join(' · '),disabled:costs.some(([id,qty])=>owned(id)<qty)};
+}
 function named(id){return items[id]?.name||id||'None';}
 function gear(){return items[profile?.equipment.weapon]||{name:'Unarmed',icon:'👊',type:'crush',speed:4,styles:['accurate','aggressive','defensive']};}
 function elem(tag,className,text){const e=document.createElement(tag);if(className)e.className=className;if(text!==undefined)e.textContent=text;return e;}
@@ -52,7 +58,7 @@ function contextMenu(title,options,x,y){
  const menu=$('context-menu');menu.replaceChildren();
  const head=elem('div','context-head',title);menu.append(head);
  for(const option of options){
-  const b=elem('button','',option.label);b.type='button';b.onclick=e=>{e.preventDefault();e.stopPropagation();menu.hidden=true;option.action();};menu.append(b);
+  const b=elem('button','',option.label);b.type='button';b.disabled=!!option.disabled;b.onclick=e=>{e.preventDefault();e.stopPropagation();menu.hidden=true;option.action();};menu.append(b);
  }
  menu.hidden=false;
  menu.style.left=Math.max(5,Math.min(x,innerWidth-menu.offsetWidth-8))+'px';
@@ -81,6 +87,7 @@ socket.on('connect',()=>{
 socket.on('disconnect',()=>{$('combat-target').hidden=true;$('connection').textContent='● Reconnecting…';});
 socket.on('catalog',data=>{
  items=data.items||{};shops=data.shops||{};village=data.village||village;
+ windStrike=data.windStrike||null;
  recipes=data.recipes||{};questsCatalog=data.quests||{};regions=data.regions||[];stations=data.stations||{};
  SIZE=data.size||3600;
 });
@@ -407,7 +414,7 @@ function hitMenu(hit,e){
  if(hit.kind==='enemy'){
   title=o.name+' (level '+o.level+')';
   options=[{label:'⚔ Attack '+o.name,action:()=>emit('attack',o.id)},
-   {label:'✨ Cast Wind Strike',action:()=>emit('castSpell',o.id)},
+   {...spellMenu(profile?.inventory||[],windStrike),action:()=>emit('castSpell',o.id)},
    {label:'Walk here',action:()=>walk(o)},{label:'Examine '+o.name,action:()=>detail(o.name,['Combat level: '+o.level,'Hitpoints: '+o.hp+'/'+o.maxHp,'Defence: '+o.defence,'Damage on retaliation: up to '+o.damage])}];
  }else if(hit.kind==='npc'){
   title=o.name;options=[{label:'Talk to '+o.name,action:()=>emit('interact',o.id)},

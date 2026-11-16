@@ -22,10 +22,14 @@ test('live max production exposes availability and respects cancellation',{timeo
   await walking;await arrived;
   assert.equal(profiles.get(sockets[1]).productionOptions.pickpocket.max,28);
 
+  const state=await event(sockets[1],'state',s=>Object.keys(s.npcs||{}).length>0);
+  const enemyId=Object.keys(state.npcs)[0];
   const started=sockets.map(s=>event(s,'profile',p=>p.production?.total===28));
   for(const s of sockets)s.emit('craft',{id:'pickpocket',qty:'max'});await Promise.all(started);
   for(const s of sockets){assert.equal(profiles.get(s).gold,130);assert.equal(profiles.get(s).productionOptions.pickpocket.max,0);}
   const cancelled=event(sockets[0],'profile',p=>!p.production);sockets[0].emit('cancelProduction');await cancelled;
+  // An out-of-range/no-runes spell must not cancel the second player's batch.
+  sockets[1].emit('castSpell',enemyId);
   const completed=event(sockets[1],'profile',p=>p.production?.completed===1);await completed;
   assert.equal(profiles.get(sockets[0]).gold,130);assert.equal(profiles.get(sockets[1]).gold,134);
   const stopped=event(sockets[1],'profile',p=>!p.production);sockets[1].emit('cancelProduction');await stopped;
