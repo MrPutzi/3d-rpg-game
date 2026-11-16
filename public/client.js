@@ -228,6 +228,7 @@ function updateUI(){
   const row=elem('div','recipe-row');
   const info=elem('div','recipe-info');
   info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
+  if(recipe.station==='cooking')info.append(elem('small','','Cook at the tavern or within 80 units of a campfire. Light logs to make a shared 60-second fire.'));
   const inputs=Object.entries(recipe.inputs||{}),outputs=Object.entries(recipe.outputs||{});
   const owned=k=>profile.inventory.reduce((n,e)=>n+(e.id===k?e.qty:0),0);
   info.append(elem('small','',inputs.length?inputs.map(([k,v])=>named(k)+' '+owned(k)+'/'+v).join(' · '):'No ingredients'));
@@ -242,7 +243,7 @@ function updateUI(){
    const b=elem('button','',qty==='max'?'Make max ('+(available?.max||0)+')':'Make '+qty);b.disabled=!!reason||(qty==='max'&&!available?.max);b.title=reason||'Stops if ingredients run out or you move.';
    b.onclick=()=>emit('craft',{id,qty});controls.append(b);
   }
-  const station=village.buildings.find(b=>b.id===recipe.station);
+  const station=village.buildings.find(b=>b.id===(recipe.station==='cooking'?'tavern':recipe.station));
   if(station){
    const go=elem('button','','Go to '+station.label);
    go.title='Walk to '+station.name+'. Movement cancels unfinished production.';
@@ -389,6 +390,7 @@ function resize(){
 new ResizeObserver(resize).observe(canvas);resize();
 function pointFromEvent(e){const rect=canvas.getBoundingClientRect();return{x:e.clientX-rect.left-viewport.w/2+camera.x,y:e.clientY-rect.top-viewport.h/2+camera.y};}
 function hitAt(pt){
+ const fire=(world.campfires||[]).find(f=>Math.hypot(f.x-pt.x,f.y-pt.y)<20);if(fire)return {kind:'station',object:{...fire,name:'Campfire cooking',station:'cooking'}};
  const ground=Object.values(world.groundItems||{}).find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<20);if(ground)return{kind:'loot',object:ground};
  const npc=Object.values(world.npcs||{}).find(n=>n.hp>0&&Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(npc)return{kind:'enemy',object:npc};
  const villager=village.villagers.find(n=>Math.hypot(n.x-pt.x,n.y-pt.y)<23);if(villager)return{kind:'npc',object:villager};
@@ -433,7 +435,7 @@ function hitMenu(hit,e){
     const b=document.querySelector('[data-tab=skills]');if(b)b.click();
     notify('Training location: '+o.name+'. Choose a recipe when you arrive.');
    }},{label:'Examine',action:()=>detail('Training site',[
-    'Skill activities here: '+Object.values(recipes).filter(x=>x.station===o.name).map(x=>x.name).join(', ')
+    'Skill activities here: '+Object.values(recipes).filter(x=>x.station===(o.station||o.name)).map(x=>x.name).join(', ')
    ])}];
  }else if(hit.kind==='loot'){
   title=named(o.item);options=[{label:'Take '+named(o.item),action:()=>emit('pickup',o.id)},{label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>examineItem(o.item)}];
@@ -499,6 +501,7 @@ function draw(){
   else{circle(n.x,n.y,16,'#5da7cf');label('≈',n.x,n.y+6,'#e1faff',17);}
   ctx.globalAlpha=1;
  }
+ for(const f of world.campfires||[]){if(!inView(f.x,f.y))continue;circle(f.x,f.y,16,'#b65328');circle(f.x,f.y,8,'#ffd779');label('Campfire · '+Math.ceil(f.remainingMs/1000)+'s',f.x,f.y-24,'#ffdc9b',11);}
  for(const g of Object.values(world.groundItems||{})){if(!inView(g.x,g.y))continue;circle(g.x,g.y,12,'#d2a85c');label(items[g.item]?.icon||'📦',g.x,g.y+5,'#fff',16);}
  for(const n of Object.values(world.npcs||{})){
   if(!n.hp||!inView(n.x,n.y))continue;

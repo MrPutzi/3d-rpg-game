@@ -1,4 +1,5 @@
 'use strict';
+const Campfires=require('./campfires');
 const {QUESTS,RECIPES,DROPS}=require('./progression');
 const {VILLAGE,ENEMY_TEMPLATES,RESOURCE_TEMPLATES,ITEMS}=require('./content');
 const {count}=require('./rules');
@@ -27,9 +28,10 @@ function recipeTarget(p,id,visited=new Set()){
   if(enemy)return area(enemy,'Defeat '+enemy.name+' for a chance of '+ITEMS[item].name);
  }
  if(recipe.station==='any'&&Number.isFinite(p.x)&&Number.isFinite(p.y))return {x:p.x,y:p.y,kind:'activity',label:recipe.name+' here · '+recipe.skill+' Lv'+recipe.level};
+ if(recipe.station==='cooking'){const fire=Campfires.nearby(p);if(fire)return {x:fire.x,y:fire.y,kind:'station',label:recipe.name+' at the campfire'};}
  const site=Object.hasOwn(stationLocation,recipe.station)?stationLocation[recipe.station]:null;
  if(site)return {...site,kind:'station',label:recipe.name+' at '+recipe.station+' · '+recipe.skill+' Lv'+recipe.level};
- const building=VILLAGE.buildings.find(b=>b.id===recipe.station);
+ const building=VILLAGE.buildings.find(b=>b.id===(recipe.station==='cooking'?'tavern':recipe.station));
  return building?{x:building.door.x,y:building.door.y,label:recipe.name+' at '+building.name+' · '+recipe.skill+' Lv'+recipe.level,kind:'station'}:null;
 }
 function targetFor(p,id){
