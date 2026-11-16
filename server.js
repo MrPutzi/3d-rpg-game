@@ -40,7 +40,7 @@ const safeId=id=>typeof id==='string'&&id.length<80;
 const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
- return {id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
+ return {lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
  bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
@@ -364,9 +364,10 @@ io.on('connection',socket=>{
   }));
  }
  let nextLootSweep=0;
+ onAction('setLootFilter',filter=>{if(p.loggedIn&&Loot.validFilter(filter)){p.lootFilter=filter;pushProfile(p);}});
  onAction('takeNearby',()=>{
   const now=Date.now();if(!p.loggedIn||now<nextLootSweep)return;nextLootSweep=now+600;
-  stop(p);const result=Loot.takeNearby(p,groundItems,now,reachable);send(p,result.message);if(result.ok)pushProfile(p);
+  stop(p);const result=Loot.takeNearby(p,groundItems,now,reachable,p.lootFilter||'all');send(p,result.message);if(result.ok)pushProfile(p);
  });
  onAction('buy',data=>trade('buy',data));
  onAction('sell',data=>trade('sell',data));
@@ -459,7 +460,7 @@ setInterval(()=>{
   io.emit('state',state);
   for(const p of Object.values(players))if(p.loggedIn){
    io.to(p.id).emit('combatTarget',Encounters.target(enemies[p.selectedEnemyId],p,players,now));
-   io.to(p.id).emit('nearbyLoot',Loot.nearby(p,groundItems,now,reachable));
+   io.to(p.id).emit('nearbyLoot',Loot.nearby(p,groundItems,now,reachable,p.lootFilter||'all'));
   }
   effects=[];lastSnapshot=now;
  }
