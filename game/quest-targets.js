@@ -1,7 +1,7 @@
 'use strict';
 const Campfires=require('./campfires');
 const {QUESTS,RECIPES,DROPS}=require('./progression');
-const {VILLAGE,ENEMY_TEMPLATES,RESOURCE_TEMPLATES,ITEMS}=require('./content');
+const {VILLAGE,ENEMY_TEMPLATES,RESOURCE_TEMPLATES,ITEMS,SHOPS}=require('./content');
 const {count}=require('./rules');
 const {stationLocation}=require('./stations');
 function area(template,label){
@@ -14,7 +14,7 @@ function bankTarget(p,item){
  return bank?{x:bank.door.x,y:bank.door.y,kind:'station',label:'Withdraw '+ITEMS[item].name+' from '+bank.name}:null;
 }
 function recipeTarget(p,id,visited=new Set()){
- if(visited.has(id)||visited.size>=8)return null;
+ if(typeof id!=='string'||!Object.hasOwn(RECIPES,id)||visited.has(id)||visited.size>=8)return null;
  const recipe=RECIPES[id];if(!recipe)return null;
  visited.add(id);
  for(const [item,qty] of Object.entries(recipe.inputs)){
@@ -26,6 +26,9 @@ function recipeTarget(p,id,visited=new Set()){
   if(intermediate){const target=recipeTarget(p,intermediate,new Set(visited));if(target)return target;}
   const enemy=ENEMY_TEMPLATES.find(e=>DROPS[e.kind]?.some(d=>d.id===item));
   if(enemy)return area(enemy,'Defeat '+enemy.name+' for a chance of '+ITEMS[item].name);
+  const shop=Object.entries(SHOPS).find(([,s])=>s.items.includes(item));
+  const vendor=shop&&VILLAGE.buildings.find(b=>b.id===shop[0]);
+  if(vendor)return {x:vendor.door.x,y:vendor.door.y,kind:'station',label:'Check '+vendor.name+' for '+ITEMS[item].name+' · price and stock shown in shop'};
  }
  if(recipe.station==='any'&&Number.isFinite(p.x)&&Number.isFinite(p.y))return {x:p.x,y:p.y,kind:'activity',label:recipe.name+' here · '+recipe.skill+' Lv'+recipe.level};
  if(recipe.station==='cooking'){const fire=Campfires.nearby(p);if(fire)return {x:fire.x,y:fire.y,kind:'station',label:recipe.name+' at the campfire'};}
@@ -52,4 +55,4 @@ function targetFor(p,id){
  const [x1,y1,x2,y2]=template.region;
  return {x:(x1+x2)/2,y:(y1+y2)/2,bounds:{x:x1,y:y1,w:x2-x1,h:y2-y1},kind:'area',label:(d.type==='kill'?'Defeat ':'Gather from ')+template.name+' in the highlighted area'};
 }
-module.exports={targetFor};
+module.exports={targetFor,recipeTarget};

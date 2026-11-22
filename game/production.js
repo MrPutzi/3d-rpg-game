@@ -1,4 +1,5 @@
 'use strict';
+const {recipeTarget}=require('./quest-targets');
 const {RECIPES}=require('./progression');
 const {stationReady,processRecipe}=require('./activities');
 const {count,addItem,removeItem}=require('./rules');
@@ -25,7 +26,7 @@ function availability(p,id,now=Date.now()){
  }
  return {max,reason:max?'':'Inventory cannot hold the output.'};
 }
-function options(p){return Object.fromEntries(Object.keys(RECIPES).map(id=>[id,availability(p,id)]));}
+function options(p){return Object.fromEntries(Object.keys(RECIPES).map(id=>[id,{...availability(p,id),target:recipeTarget(p,id)}]));}
 function start(p,id,qty=1,now=Date.now()){
  if(p.production)return {ok:false,message:'Already producing. Cancel the current batch first.'};
  if(qty!=='max'&&(!Number.isSafeInteger(qty)||qty<1||qty>MAX_BATCH))return {ok:false,message:'Choose 1–28 actions.'};

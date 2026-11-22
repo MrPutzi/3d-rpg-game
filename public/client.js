@@ -4,7 +4,7 @@ const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let windStrike=null;
-let bankQuantity=1,bankSearch='',trackedQuest=null;
+let bankQuantity=1,bankSearch='',trackedQuest=null,trackedRecipe=null;
 let recipeSearch='';
 let tradeBusy=false;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
@@ -251,6 +251,12 @@ function updateUI(){
   const available=profile.productionOptions?.[id];
   const reason=active?'Batch in progress':available?available.reason:(profile.skills[recipe.skill]?.level||0)<recipe.level?'Level too low':missing?'Missing ingredients':'';
   const controls=elem('div','recipe-controls');
+  if(available?.target){
+   info.append(elem('small','',available.target.label));
+   const guide=elem('button','',trackedRecipe===id?'Stop tracking recipe':'Show next step');
+   guide.onclick=()=>{trackedRecipe=trackedRecipe===id?null:id;trackedQuest=null;updateUI();if(trackedRecipe)openMap();};
+   controls.append(guide);
+  }
   for(const qty of [1,5,28,'max']){
    const b=elem('button','',qty==='max'?'Make max ('+(available?.max||0)+')':'Make '+qty);b.disabled=!!reason||(qty==='max'&&!available?.max);b.title=reason||'Stops if ingredients run out or you move.';
    b.onclick=()=>emit('craft',{id,qty});controls.append(b);
@@ -273,7 +279,8 @@ function updateUI(){
  }
  $('recipe-search-status').textContent=visibleRecipes?visibleRecipes+' recipes':'No matching recipes. Clear the search to see all activities.';
  const pinned=$('tracked-quest');if(trackedQuest&&profile.quests[trackedQuest]?.status!=='active')trackedQuest=null;
- pinned.hidden=!trackedQuest;if(trackedQuest)pinned.textContent=(questsCatalog[trackedQuest]?.name||trackedQuest)+' · '+(profile.questJournal?.[trackedQuest]?.message||'')+' · '+(profile.questJournal?.[trackedQuest]?.giverName||'');
+ if(trackedRecipe&&!recipes[trackedRecipe])trackedRecipe=null;
+ pinned.hidden=!trackedQuest&&!trackedRecipe;if(trackedRecipe)pinned.textContent=namedRecipe(trackedRecipe)+' · '+(profile.productionOptions?.[trackedRecipe]?.target?.label||'Choose your next activity.');if(trackedQuest)pinned.textContent=(questsCatalog[trackedQuest]?.name||trackedQuest)+' · '+(profile.questJournal?.[trackedQuest]?.message||'')+' · '+(profile.questJournal?.[trackedQuest]?.giverName||'');
  const quests=$('quests');quests.replaceChildren();
  for(const [id,q] of Object.entries(profile.quests)){
   const row=elem('div','quest-row');const el=elem('div');
@@ -286,8 +293,8 @@ function updateUI(){
    el.append(elem('small','',questDeliveryDetails(profile.inventory,item,qty)));
   }
   if(q.status==='active'){
-   if(guidance?.target){el.append(elem('small','',guidance.target.label));const show=elem('button','','Show objective');show.onclick=()=>{trackedQuest=id;updateUI();openMap();};el.append(show);}
-   const track=elem('button','',trackedQuest===id?'Untrack':'Track');track.onclick=()=>{trackedQuest=trackedQuest===id?null:id;updateUI();};el.append(track);
+   if(guidance?.target){el.append(elem('small','',guidance.target.label));const show=elem('button','','Show objective');show.onclick=()=>{trackedRecipe=null;trackedQuest=id;updateUI();openMap();};el.append(show);}
+   const track=elem('button','',trackedQuest===id?'Untrack':'Track');track.onclick=()=>{trackedRecipe=null;trackedQuest=trackedQuest===id?null:id;updateUI();};el.append(track);
    if(guidance?.giver){const go=elem('button','','Go to '+guidance.giverName);go.onclick=()=>emit('interact',guidance.giver);el.append(go);}
   }
   row.append(el);quests.append(row);
@@ -583,12 +590,12 @@ function drawAtlas(canvas){
  for(const n of village.villagers){
   context.fillStyle='#fae190';context.beginPath();context.arc(n.x*ratioX,n.y*ratioY,canvas.id==='world-map'?4:2.1,0,Math.PI*2);context.fill();
  }
- const target=profile?.questJournal?.[trackedQuest]?.target;
+ const target=trackedTarget();
  if(target){
   context.strokeStyle='#64fff1';context.fillStyle='#64fff122';context.lineWidth=2;
   if(target.bounds){const b=target.bounds;context.fillRect(b.x*ratioX,b.y*ratioY,b.w*ratioX,b.h*ratioY);context.strokeRect(b.x*ratioX,b.y*ratioY,b.w*ratioX,b.h*ratioY);}
   context.beginPath();context.arc(target.x*ratioX,target.y*ratioY,canvas.id==='world-map'?9:5,0,Math.PI*2);context.stroke();
-  if(canvas.id==='world-map'){context.fillStyle='#64fff1';context.font='bold 12px sans-serif';context.textAlign='left';context.fillText('Quest target',Math.min(canvas.width-85,target.x*ratioX+12),Math.max(14,target.y*ratioY-12));}
+  if(canvas.id==='world-map'){context.fillStyle='#64fff1';context.font='bold 12px sans-serif';context.textAlign='left';context.fillText(trackedRecipe?'Recipe target':'Quest target',Math.min(canvas.width-85,target.x*ratioX+12),Math.max(14,target.y*ratioY-12));}
  }
  const me=world.players?.[socket.id];
  if(me){
@@ -671,7 +678,8 @@ $('save-progress').onclick=()=>{if(!registeredSave||!socket.connected)return;sav
 setInterval(()=>{$('save-progress').disabled=!socket.connected||Date.now()<saveButtonUntil;},250);
 socket.on('disconnect',()=>{$('save-status').textContent=registeredSave?'Disconnected — save status unknown':'Guest progress is temporary';});
 
-socket.on('loginSuccess',()=>{trackedQuest=null;$('tracked-quest').hidden=true;});
+socket.on('loginSuccess',()=>{trackedRecipe=null;trackedQuest=null;$('tracked-quest').hidden=true;});
 
-function updateQuestMapLabel(){const target=profile?.questJournal?.[trackedQuest]?.target;$('quest-map-label').textContent=target?(questsCatalog[trackedQuest]?.name||'Quest')+' — '+target.label:'Track a quest to highlight its objective.';}
+function trackedTarget(){return trackedRecipe?profile?.productionOptions?.[trackedRecipe]?.target:profile?.questJournal?.[trackedQuest]?.target;}
+function updateQuestMapLabel(){const target=trackedTarget();$('quest-map-label').textContent=target?(trackedRecipe?namedRecipe(trackedRecipe):(questsCatalog[trackedQuest]?.name||'Quest'))+' — '+target.label:'Track a quest or recipe to highlight its next step.';}
 socket.on('profile',updateQuestMapLabel);
