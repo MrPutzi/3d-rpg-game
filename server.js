@@ -9,6 +9,7 @@ const Production=require('./game/production');
 const Encounters=require('./game/encounters');
 const Food=require('./game/food');
 const Campfires=require('./game/campfires');
+const Gathering=require('./game/gathering');
 const Magic=require('./game/magic');
 const Loot=require('./game/loot');
 const Bank=require('./game/bank');
@@ -110,7 +111,7 @@ function ensureEquipped(p){
 }
 function handleElder(p,id){
  const npc=VILLAGE.villagers.find(v=>v.id===id);if(!npc||!reachable(p,npc,90))return;
- const messages={guard:p.quests.watch_arrows?.status==='complete'?'Guard: Forge two iron shields for the watch at Oakvale Forge (Smithing 20, two iron bars each). Bring both here. Bronze shields at Smithing 5 can help you train; equip spare shields with one-handed weapons or sell them.':p.quests.iron_supplies?.status==='complete'?'Guard: Smithing/Fletching 15: forge iron tips in Oakvale; add shafts from logs and feathers from the market or goblins. Fletch two batches and bring 30 iron arrows for the watch.':p.quests.guard_supplies?.status==='complete'?'Guard: Train Smithing to level 15. Smelt iron from Southstone Quarry at Oakvale Forge, smith two iron daggers and bring them for the watch.':'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
+ const messages={elder:'Elder: After Goblin Menace, mine essence rocks beside the altar southeast of Oakvale with a pickaxe. Craft air runes to reach Runecrafting 2, then personally craft and bring six mind runes. Keep spare air and mind runes for Wind Strike.',guard:p.quests.watch_arrows?.status==='complete'?'Guard: Forge two iron shields for the watch at Oakvale Forge (Smithing 20, two iron bars each). Bring both here. Bronze shields at Smithing 5 can help you train; equip spare shields with one-handed weapons or sell them.':p.quests.iron_supplies?.status==='complete'?'Guard: Smithing/Fletching 15: forge iron tips in Oakvale; add shafts from logs and feathers from the market or goblins. Fletch two batches and bring 30 iron arrows for the watch.':p.quests.guard_supplies?.status==='complete'?'Guard: Train Smithing to level 15. Smelt iron from Southstone Quarry at Oakvale Forge, smith two iron daggers and bring them for the watch.':'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
  forester:p.quests.herbal_supplies?.status==='complete'&&p.quests.woodland_furniture?.status!=='complete'?'Thorin: Westwood needs two wooden stools. At the Oakvale guild, saw two logs into each plank, then build each stool from two planks. Build and deliver two stools here; spare furniture can be sold.':p.quests.herbal_supplies?.status==='complete'?'Thorin: At the Oakvale guild, bind logs with leather into shortbows (Fletching 5). Oak shortbows need oak logs and Fletching 20. Wolves drop leather; use your bow with arrows or sell it.':p.quests.forest_supplies?.status==='complete'?'Thorin: Grow the guam seeds at the herb patch east of Oakvale. Buy water vials at the tavern, brew two herbal tonics there and bring them to Westwood.':'Thorin: Chop five logs and return for seeds. Then we can prepare herbal tonics for Westwood.',
  fisher:'Mara: Catch three shrimp at Moonwater Lake. After your first catch, cook three at the Oakvale tavern and bring the meals for our frontier patrol.',
  ranger:p.quests.patrol_provisions?.status==='complete'?'Captain Rusk: Craft two pairs of leather boots at the Oakvale guild and bring them here. Wolves and bandits drop leather.':'Captain Rusk: Defeat two wolves to keep the frontier safe. Then hunt rabbits southwest of Newhaven, roast three at the Oakvale tavern and bring the meals for our patrol.'};
@@ -141,12 +142,8 @@ function actionDone(p,now){
   if(!reachable(p,n,65))return;
   if(now<p.nextGather)return;
   p.nextGather=now+TICK_MS*3;
-  if(p.skills[n.skill].level<n.level){send(p,'Requires '+n.skill+' level '+n.level+'.');stop(p);return;}
-  const toolId=n.tool==='axe'?(count(p.inventory,'iron_axe')?'iron_axe':'bronze_axe'):n.tool==='pickaxe'?(count(p.inventory,'iron_pickaxe')?'iron_pickaxe':'bronze_pickaxe'):n.tool;
-  if(!count(p.inventory,toolId)){send(p,'You need a '+(ITEMS[toolId]?.name||'tool')+'.');stop(p);return;}
-  if(now<n.readyAt){send(p,'This resource has been depleted.');stop(p);return;}
-  if(!addItem(p.inventory,n.item)){send(p,'Inventory full (28 slots).');stop(p);return;}
-  addXp(p,n.skill,n.xp);questProgress(p,'gather',n.item,1);n.readyAt=now+7500;send(p,'Gathered '+ITEMS[n.item].name+' · +'+n.xp+' '+n.skill+' XP');
+  const result=Gathering.gather(p,n,now);
+  send(p,result.message);
   stop(p);pushProfile(p);
  }else if(action.type==='attack'){
   const n=enemies[action.id];if(!n||n.hp<=0){stop(p);return;}

@@ -40,6 +40,7 @@ const RECIPES={
 };
 const QUESTS={
  welcome:{giver:'elder',name:'Welcome to Oakvale',type:'talk',target:'elder',goal:1,rewardGold:10},
+ altar_supplies:{giver:'elder',name:'Runes for Oakvale',type:'craft',target:'craft_mind_runes',goal:2,deliverItems:{mind_rune:6},rewardGold:15,after:'goblin_hunt'},
  goblin_hunt:{giver:'elder',name:'Goblin Menace',type:'kill',target:'goblin',goal:3,rewardGold:40,rewardItems:{bronze_shield:1,bread:1},after:'welcome'},
  forest_supplies:{giver:'forester',name:'Forest Supplies',type:'gather',target:'logs',goal:5,rewardGold:45,rewardItems:{guam_seed:2},after:'welcome'},
  woodland_furniture:{name:'Seats for Westwood',giver:'forester',type:'craft',target:'build_stool',goal:2,deliverItems:{wooden_stool:2},rewardGold:20,after:'herbal_supplies'},
