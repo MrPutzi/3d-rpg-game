@@ -228,6 +228,7 @@ function updateUI(){
   const row=elem('div','recipe-row');
   const info=elem('div','recipe-info');
   info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
+  if(id==='saw_plank'||id==='build_stool')info.append(elem('small','','Westwood timber → guild planks → wooden stools. Deliver two personally built stools to Thorin after his tonic quest, or sell spare furniture.'));
   if(recipe.station==='cooking')info.append(elem('small','','Cook at the tavern or within 80 units of a campfire. Light logs to make a shared 60-second fire.'));
   const inputs=Object.entries(recipe.inputs||{}),outputs=Object.entries(recipe.outputs||{});
   const owned=k=>profile.inventory.reduce((n,e)=>n+(e.id===k?e.qty:0),0);
