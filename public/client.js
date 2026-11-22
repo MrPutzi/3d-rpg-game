@@ -5,6 +5,7 @@ let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let windStrike=null;
 let bankQuantity=1,bankSearch='',trackedQuest=null;
+let recipeSearch='';
 let tradeBusy=false;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
@@ -17,6 +18,12 @@ const styleNames={
  controlled:['Controlled','Shared XP'],range_accurate:['Accurate','Ranged XP'],rapid:['Rapid','Faster attacks'],longrange:['Longrange','Ranged + Defence XP']
 };
 const names={welcome:'First Steps — Speak with the Elder',goblin_hunt:'Goblin Menace — Defeat 3 Goblins'};
+function recipeMatches(recipe,query){
+ const terms=query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+ const text=[recipe.name,recipe.skill,recipe.station,...Object.keys(recipe.inputs||{}).map(named),...Object.keys(recipe.outputs||{}).map(named)].join(' ').toLowerCase();
+ return terms.every(term=>text.includes(term));
+}
+$('recipe-search').oninput=e=>{recipeSearch=e.target.value;updateUI();};
 function notify(t){$('notice').textContent=String(t).slice(0,220);}
 function emit(action,data){if(!socket.connected||!entered||tradeBusy)return;if(action==='buy'||action==='sell'){tradeBusy=true;renderBuilding();}socket.emit(action,data);}
 function recipeEquipmentDetails(item){
@@ -224,7 +231,10 @@ function updateUI(){
  $('production-status').textContent=active?namedRecipe(active.id)+' · '+active.completed+'/'+active.total+' complete':'Choose a recipe. Each action takes 1.8 seconds.';
  $('cancel-production').hidden=!active;
  $('production-progress').hidden=!active;
+ let visibleRecipes=0;
  for(const [id,recipe] of Object.entries(recipes)){
+  if(!recipeMatches(recipe,recipeSearch))continue;
+  visibleRecipes++;
   const row=elem('div','recipe-row');
   const info=elem('div','recipe-info');
   info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
@@ -260,6 +270,7 @@ function updateUI(){
   if(reason)info.append(elem('small','',reason));
   row.append(info,controls);activity.append(row);
  }
+ $('recipe-search-status').textContent=visibleRecipes?visibleRecipes+' recipes':'No matching recipes. Clear the search to see all activities.';
  const pinned=$('tracked-quest');if(trackedQuest&&profile.quests[trackedQuest]?.status!=='active')trackedQuest=null;
  pinned.hidden=!trackedQuest;if(trackedQuest)pinned.textContent=(questsCatalog[trackedQuest]?.name||trackedQuest)+' · '+(profile.questJournal?.[trackedQuest]?.message||'')+' · '+(profile.questJournal?.[trackedQuest]?.giverName||'');
  const quests=$('quests');quests.replaceChildren();
