@@ -34,7 +34,7 @@ function start(p,id,qty=1,now=Date.now()){
  const available=availability(p,id,now);if(!available.max)return {ok:false,message:available.reason};
  if(qty==='max')qty=available.max;
  // No ingredients/XP are changed before a full action duration elapses.
- p.production={id,total:qty,remaining:qty,completed:0,startedAt:now,endsAt:Math.max(now+DURATION,p.nextSkillAction||0)};
+ p.production={id,total:qty,remaining:qty,completed:0,startedAt:now,endsAt:Math.max(now+(RECIPES[id].duration||DURATION),p.nextSkillAction||0)};
  return {ok:true,message:'Started '+RECIPES[id].name+' ×'+qty+'.'};
 }
 function cancel(p){if(!p.production)return false;p.production=null;return true;}
@@ -48,7 +48,7 @@ function advance(p,now=Date.now()){
  if(!result.ok){cancel(p);return result;}
  job.remaining--;job.completed++;
  if(job.remaining===0)cancel(p);
- else {job.startedAt=now;job.endsAt=now+DURATION;}
+ else {job.startedAt=now;job.endsAt=now+(RECIPES[job.id].duration||DURATION);}
  // At most one completion per tick, even after long server stalls.
  return result;
 }

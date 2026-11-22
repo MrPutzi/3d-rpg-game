@@ -35,7 +35,8 @@ const RECIPES={
  saw_plank:{name:'Saw a plank',skill:'construction',level:1,xp:10,inputs:{logs:2},outputs:{plank:1},station:'guild'},
  build_stool:{name:'Build a stool',skill:'construction',level:1,xp:55,inputs:{plank:2},outputs:{wooden_stool:1},station:'guild'},
  farm_guam:{name:'Harvest herbs',skill:'farming',level:1,xp:55,inputs:{guam_seed:1},outputs:{guam_leaf:2},station:'farm'},
- hunt_rabbit:{name:'Set a rabbit snare',skill:'hunter',level:1,xp:45,inputs:{},outputs:{raw_rabbit:1},station:'hunt'},
+ craft_rabbit_snare:{name:'Weave rabbit snares',skill:'crafting',level:1,xp:10,inputs:{logs:1},outputs:{rabbit_snare:2},station:'any'},
+ hunt_rabbit:{name:'Set a rabbit snare',skill:'hunter',level:1,xp:45,duration:6000,inputs:{rabbit_snare:1},outputs:{raw_rabbit:1},station:'hunt'},
  run_course:{name:'Run beginner agility course',skill:'agility',level:1,xp:40,inputs:{},outputs:{},station:'course'},
  pickpocket:{name:'Pickpocket a villager',skill:'thieving',level:1,xp:25,inputs:{},outputs:{},gold:4,station:'village'},
  slayer_contract:{name:'Claim Slayer training',skill:'slayer',level:1,xp:65,inputs:{},outputs:{},station:'guild',requiresSlayerKills:3}

@@ -242,7 +242,7 @@ function updateUI(){
  $('equipment-bonuses').textContent='Attack +'+attack+' · Strength +'+strength+' · Defence +'+defence;
  const activity=$('recipes');activity.replaceChildren();
  const active=profile.production;
- $('production-status').textContent=active?namedRecipe(active.id)+' · '+active.completed+'/'+active.total+' complete':'Choose a recipe. Each action takes 1.8 seconds.';
+ $('production-status').textContent=active?namedRecipe(active.id)+' · '+active.completed+'/'+active.total+' complete':'Choose a recipe. Action duration is shown below.';
  $('cancel-production').hidden=!active;
  $('production-progress').hidden=!active;
  let visibleRecipes=0;
@@ -252,6 +252,8 @@ function updateUI(){
   const row=elem('div','recipe-row');
   const info=elem('div','recipe-info');
   info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
+  info.append(elem('small','',((recipe.duration||1800)/1000)+' seconds per action'));
+  if(id==='craft_rabbit_snare'||id==='hunt_rabbit')info.append(elem('small','','One log makes two single-use snares. Each completed hunt consumes one snare. Roast the catch for food or deliver three personally roasted rabbits to Captain Rusk after Eastern Wilds Patrol. Moving cancels unfinished hunts without consuming a snare.'));
   if(id==='smelt_steel'||id==='smith_steel_dagger')info.append(elem('small','','Southstone iron + coal (Mining 30) → Oakvale Forge steel → daggers. Bring two personally forged daggers to the Guard after Shields for the Watch. Spare daggers require Attack 5 or can be sold.'));
   if(id==='saw_plank'||id==='build_stool')info.append(elem('small','','Westwood timber → guild planks → wooden stools. Deliver two personally built stools to Thorin after his tonic quest, or sell spare furniture.'));
   if(recipe.station==='cooking')info.append(elem('small','','Cook at the tavern or within 80 units of a campfire. Light logs to make a shared 60-second fire.'));
