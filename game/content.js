@@ -38,6 +38,8 @@ item('trout_cooked',{name:'Cooked trout',icon:'🐟',category:'food',heal:9,pric
 item('logs',{name:'Logs',icon:'🪵',category:'resource',price:4});
 item('oak_logs',{name:'Oak logs',icon:'🪵',category:'resource',price:15});
 item('copper_ore',{name:'Copper ore',icon:'🟠',category:'resource',price:5});
+item('coal',{name:'Coal',icon:'⬛',category:'resource',price:20});
+item('steel_bar',{name:'Steel bar',icon:'🔩',category:'resource',price:75});
 item('iron_bar',{name:'Iron bar',icon:'⬜',category:'resource',price:32});
 item('iron_ore',{name:'Iron ore',icon:'🪨',category:'resource',price:18});
 item('raw_shrimp',{name:'Raw shrimp',icon:'🦐',category:'resource',price:4});
@@ -104,6 +106,7 @@ const ENEMY_TEMPLATES=[
  {kind:'mountain_golem',name:'Stone Golem',level:45,hp:220,count:5,region:[2630,120,3470,750],color:'#8293a4',damage:19,defence:72,weakness:'crush',aggressive:true}
 ];
 const RESOURCE_TEMPLATES=[
+ {kind:'coal',name:'Coal Rock',skill:'mining',item:'coal',level:30,xp:50,region:[1800,1900,2150,2300],count:6,tool:'pickaxe'},
  {kind:'essence',name:'Essence Rock',skill:'mining',item:'rune_essence',level:1,xp:10,region:[1250,1280,1460,1450],count:5,tool:'pickaxe'},
  {kind:'tree',name:'Tree',skill:'woodcutting',item:'logs',level:1,xp:25,region:[150,800,950,1420],count:15,tool:'axe'},
  {kind:'oak',name:'Oak Tree',skill:'woodcutting',item:'oak_logs',level:15,xp:55,region:[1000,1180,1750,1660],count:12,tool:'axe'},

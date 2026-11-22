@@ -4,6 +4,8 @@ const SKILLS=['attack','strength','defence','ranging','hitpoints','woodcutting',
  'cooking','firemaking','smithing','crafting','fletching','magic','prayer','agility','thieving',
  'runecrafting','herblore','farming','construction','hunter','slayer'];
 const RECIPES={
+ smelt_steel:{name:'Smelt steel bar',skill:'smithing',level:30,xp:90,inputs:{iron_ore:1,coal:2},outputs:{steel_bar:1},station:'forge'},
+ smith_steel_dagger:{name:'Smith steel dagger',skill:'smithing',level:30,xp:85,inputs:{steel_bar:1},outputs:{steel_dagger:1},station:'forge'},
  cook_shrimp:{name:'Cook shrimp',skill:'cooking',level:1,xp:30,inputs:{raw_shrimp:1},outputs:{cooked_shrimp:1},station:'cooking'},
  cook_rabbit:{name:'Roast rabbit',skill:'cooking',level:1,xp:35,inputs:{raw_rabbit:1},outputs:{cooked_rabbit:1},station:'cooking'},
  cook_trout:{name:'Cook trout',skill:'cooking',level:15,xp:70,inputs:{raw_trout:1},outputs:{trout_cooked:1},station:'cooking'},
@@ -39,6 +41,7 @@ const RECIPES={
  slayer_contract:{name:'Claim Slayer training',skill:'slayer',level:1,xp:65,inputs:{},outputs:{},station:'guild',requiresSlayerKills:3}
 };
 const QUESTS={
+ watch_steel:{giver:'guard',name:'Steel for the Watch',type:'craft',target:'smith_steel_dagger',goal:2,deliverItems:{steel_dagger:2},rewardGold:50,after:'watch_shields'},
  welcome:{giver:'elder',name:'Welcome to Oakvale',type:'talk',target:'elder',goal:1,rewardGold:10},
  altar_supplies:{giver:'elder',name:'Runes for Oakvale',type:'craft',target:'craft_mind_runes',goal:2,deliverItems:{mind_rune:6},rewardGold:15,after:'goblin_hunt'},
  goblin_hunt:{giver:'elder',name:'Goblin Menace',type:'kill',target:'goblin',goal:3,rewardGold:40,rewardItems:{bronze_shield:1,bread:1},after:'welcome'},
