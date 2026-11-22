@@ -218,6 +218,10 @@ function updateUI(){
   }
   inv.append(cell);
  }
+ const lap=profile.agility;
+ $('agility-status').textContent=lap?lap.completed+'/'+lap.total+' checkpoints · '+lap.target.label:'Walk four checkpoints in order for 40 XP. Start near the course marker; leaving or fighting cancels the lap.';
+ $('agility-go').textContent=lap?'Walk to next checkpoint':'Go to course';
+ $('agility-start').disabled=!!lap; $('agility-cancel').hidden=!lap;
  const skills=$('skills-list');skills.replaceChildren();
  for(const [id,stat] of Object.entries(profile.skills)){
   const row=elem('div','skill',(iconFor[id]||'✦')+' '+id[0].toUpperCase()+id.slice(1));
@@ -530,6 +534,8 @@ function draw(){
   circle(site.x,site.y,17,'#927b50');label('✦',site.x,site.y+5,'#ffe4a3',17);
   label(id.toUpperCase(),site.x,site.y-25,'#f3dbb3',11);
  }
+ const gate=profile?.agility?.target;
+ if(gate&&inView(gate.x,gate.y)){circle(gate.x,gate.y,20,'#74d4a866');label(gate.label,gate.x,gate.y-28,'#b9ffcf',12);}
  for(const n of Object.values(world.nodes||{})){
   if(!inView(n.x,n.y))continue;const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
   if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,20,'#74513a');circle(n.x,n.y-8,n.kind==='oak'?22:18,n.kind==='oak'?'#357844':'#308751');circle(n.x-6,n.y-14,7,'#5ea86a');}
@@ -697,6 +703,10 @@ socket.on('disconnect',()=>{$('save-status').textContent=registeredSave?'Disconn
 
 socket.on('loginSuccess',()=>{trackedRecipe=null;trackedQuest=null;$('tracked-quest').hidden=true;});
 
-function trackedTarget(){return trackedRecipe?profile?.productionOptions?.[trackedRecipe]?.target:profile?.questJournal?.[trackedQuest]?.target;}
-function updateQuestMapLabel(){const target=trackedTarget();$('quest-map-label').textContent=target?(trackedRecipe?namedRecipe(trackedRecipe):(questsCatalog[trackedQuest]?.name||'Quest'))+' — '+target.label:'Track a quest or recipe to highlight its next step.';}
+function trackedTarget(){return profile?.agility?.target||(trackedRecipe?profile?.productionOptions?.[trackedRecipe]?.target:profile?.questJournal?.[trackedQuest]?.target);}
+function updateQuestMapLabel(){const target=trackedTarget();$('quest-map-label').textContent=target?(profile?.agility?'Agility':trackedRecipe?namedRecipe(trackedRecipe):(questsCatalog[trackedQuest]?.name||'Quest'))+' — '+target.label:'Track a quest or recipe to highlight its next step.';}
 socket.on('profile',updateQuestMapLabel);
+
+$('agility-start').onclick=()=>emit('startAgility');
+$('agility-cancel').onclick=()=>emit('cancelAgility');
+$('agility-go').onclick=()=>{const target=profile?.agility?.target||stations.course;if(target){closeBuilding();emit('move',{x:target.x,y:target.y});}};

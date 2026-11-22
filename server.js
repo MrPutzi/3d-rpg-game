@@ -6,6 +6,7 @@ const {xpForLevel,skill,addXp,dist,clamp,count,addItem,removeItem,weaponOf,allow
 const {SKILLS,RECIPES,QUESTS,REGIONS,rollDrops}=require('./game/progression');
 const {stationLocation,questProgress,turnInQuest,questJournal}=require('./game/activities');
 const Production=require('./game/production');
+const Agility=require('./game/agility');
 const Encounters=require('./game/encounters');
 const Food=require('./game/food');
 const Campfires=require('./game/campfires');
@@ -43,7 +44,7 @@ const safeId=id=>typeof id==='string'&&id.length<80;
 const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
- return {lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
+ return {agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
  bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextAttack:p.nextAttack||0,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
@@ -79,7 +80,7 @@ function persist(p){
 }
 function newPlayer(id){
  const inventory=[];for(const [item,qty] of [['bronze_scimitar',1],['shortbow',1],['bronze_arrow',120],['bronze_axe',1],['bronze_pickaxe',1],['small_net',1],['bread',2]])addItem(inventory,item,qty);
- return {fireNearby:false,id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
+ return {agility:null,fireNearby:false,id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
  equipment:{head:null,cape:null,neck:null,weapon:'bronze_scimitar',body:null,offhand:null,legs:null,hands:null,feet:null,ring:null,ammo:'bronze_arrow'},bank:[],
  quests:Object.fromEntries(Object.entries(QUESTS).map(([id,q])=>[id,{status:q.after?'locked':'active',progress:0,goal:q.goal}])),
  skills:Object.fromEntries(SKILLS.map(k=>[k,skill(k==='hitpoints'?xpForLevel(10):0)])),
@@ -112,7 +113,7 @@ function ensureEquipped(p){
 }
 function handleElder(p,id){
  const npc=VILLAGE.villagers.find(v=>v.id===id);if(!npc||!reachable(p,npc,90))return;
- const messages={elder:'Elder: After Goblin Menace, mine essence rocks beside the altar southeast of Oakvale with a pickaxe. Craft air runes to reach Runecrafting 2, then personally craft and bring six mind runes. Keep spare air and mind runes for Wind Strike.',guard:p.quests.watch_shields?.status==='complete'?'Guard: Mine coal at southern Southstone Quarry (Mining 30). At Oakvale Forge, smelt one iron ore and two coal into steel (Smithing 30). Forge two steel daggers and bring them here; spare daggers require Attack 5 or can be sold.':p.quests.watch_arrows?.status==='complete'?'Guard: Forge two iron shields for the watch at Oakvale Forge (Smithing 20, two iron bars each). Bring both here. Bronze shields at Smithing 5 can help you train; equip spare shields with one-handed weapons or sell them.':p.quests.iron_supplies?.status==='complete'?'Guard: Smithing/Fletching 15: forge iron tips in Oakvale; add shafts from logs and feathers from the market or goblins. Fletch two batches and bring 30 iron arrows for the watch.':p.quests.guard_supplies?.status==='complete'?'Guard: Train Smithing to level 15. Smelt iron from Southstone Quarry at Oakvale Forge, smith two iron daggers and bring them for the watch.':'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
+ const messages={elder:'Elder: After Goblin Menace, mine essence rocks beside the altar southeast of Oakvale with a pickaxe. Craft air runes to reach Runecrafting 2, then personally craft and bring six mind runes. Keep spare air and mind runes for Wind Strike. After Welcome to Oakvale, complete three agility laps south of the village for scout training; start each lap from the Skills tab.',guard:p.quests.watch_shields?.status==='complete'?'Guard: Mine coal at southern Southstone Quarry (Mining 30). At Oakvale Forge, smelt one iron ore and two coal into steel (Smithing 30). Forge two steel daggers and bring them here; spare daggers require Attack 5 or can be sold.':p.quests.watch_arrows?.status==='complete'?'Guard: Forge two iron shields for the watch at Oakvale Forge (Smithing 20, two iron bars each). Bring both here. Bronze shields at Smithing 5 can help you train; equip spare shields with one-handed weapons or sell them.':p.quests.iron_supplies?.status==='complete'?'Guard: Smithing/Fletching 15: forge iron tips in Oakvale; add shafts from logs and feathers from the market or goblins. Fletch two batches and bring 30 iron arrows for the watch.':p.quests.guard_supplies?.status==='complete'?'Guard: Train Smithing to level 15. Smelt iron from Southstone Quarry at Oakvale Forge, smith two iron daggers and bring them for the watch.':'Guard: After Goblin Menace, smelt copper and tin from Southstone Quarry at Oakvale Forge. Smith two batches of bronze arrowtips and bring me 30. I will supply feathers for your next arrows.',
  forester:p.quests.herbal_supplies?.status==='complete'&&p.quests.woodland_furniture?.status!=='complete'?'Thorin: Westwood needs two wooden stools. At the Oakvale guild, saw two logs into each plank, then build each stool from two planks. Build and deliver two stools here; spare furniture can be sold.':p.quests.herbal_supplies?.status==='complete'?'Thorin: At the Oakvale guild, bind logs with leather into shortbows (Fletching 5). Oak shortbows need oak logs and Fletching 20. Wolves drop leather; use your bow with arrows or sell it.':p.quests.forest_supplies?.status==='complete'?'Thorin: Grow the guam seeds at the herb patch east of Oakvale. Buy water vials at the tavern, brew two herbal tonics there and bring them to Westwood.':'Thorin: Chop five logs and return for seeds. Then we can prepare herbal tonics for Westwood.',
  fisher:'Mara: Catch three shrimp at Moonwater Lake. After your first catch, cook three at the Oakvale tavern and bring the meals for our frontier patrol.',
  ranger:p.quests.patrol_provisions?.status==='complete'?'Captain Rusk: Craft two pairs of leather boots at the Oakvale guild and bring them here. Wolves and bandits drop leather.':'Captain Rusk: Defeat two wolves to keep the frontier safe. Weave two single-use snares from each log (Crafting 1). Bring snares southwest of Newhaven; each six-second hunt consumes one. Roast three rabbits at the tavern or a campfire and bring the meals for our patrol.'};
@@ -294,6 +295,8 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
+ onAction('startAgility',()=>{const result=Agility.start(p);send(p,result.message);if(result.ok)pushProfile(p);});
+ onAction('cancelAgility',()=>{if(p.loggedIn&&Agility.cancel(p)){send(p,'Agility lap cancelled.');pushProfile(p);}});
  onAction('craft',data=>{
   if(!p.loggedIn)return;
   const id=typeof data==='string'?data:data?.id,qty=typeof data==='string'?1:data?.qty;
@@ -306,7 +309,7 @@ io.on('connection',socket=>{
   const n=enemies[id],now=Date.now();
   const result=Magic.cast(p,n,now);
   if(!result.ok){if(result.message)send(p,result.message);return;}
-  Production.cancel(p);p.selectedEnemyId=id;
+  Production.cancel(p);Agility.cancel(p);p.selectedEnemyId=id;
   const damage=result.damage;
   Encounters.record(n,p,damage,now);n.targetPlayer=p.id;
   effects.push({x:n.x,y:n.y,damage,style:'magic',fromX:p.x,fromY:p.y});
@@ -445,10 +448,12 @@ setInterval(()=>{
   if(wasWalking&&!p.path.length&&!p.intent)pushProfile(p);
   const fireNearby=!!Campfires.nearby(p,now);
   if(p.fireNearby!==fireNearby){p.fireNearby=fireNearby;pushProfile(p);}
+  const lapResult=Agility.advance(p,now);
+  if(lapResult){if(lapResult.completed)questProgress(p,'course','oakvale_lap',1);send(p,lapResult.message);pushProfile(p);}
   const productionResult=Production.advance(p,now);
   if(productionResult){send(p,productionResult.message);ensureEquipped(p);pushProfile(p);}
   for(const n of Object.values(enemies))if(n.hp>0&&(n.aggressive||n.targetPlayer===p.id)&&reachable(p,n,48)&&now-n.lastHit>=2400){
-   Production.cancel(p);n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6)));
+   Production.cancel(p);Agility.cancel(p);n.lastHit=now;p.hp=Math.max(0,p.hp-Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6)));
    if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.selectedEnemyId=n.id;p.path=[];}
    if(!p.hp){for(const enemy of Object.values(enemies))Encounters.forget(enemy,p.id);p.selectedEnemyId=null;p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);
