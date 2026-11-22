@@ -5,7 +5,7 @@ let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
 let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let windStrike=null;
 let bankQuantity=1,bankSearch='',trackedQuest=null,trackedRecipe=null;
-let recipeSearch='';
+let recipeSearch='',recipeIngredient=null;
 let tradeBusy=false;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
@@ -23,7 +23,7 @@ function recipeMatches(recipe,query){
  const text=[recipe.name,recipe.skill,recipe.station,...Object.keys(recipe.inputs||{}).map(named),...Object.keys(recipe.outputs||{}).map(named)].join(' ').toLowerCase();
  return terms.every(term=>text.includes(term));
 }
-$('recipe-search').oninput=e=>{recipeSearch=e.target.value;updateUI();};
+$('recipe-search').oninput=e=>{recipeIngredient=null;recipeSearch=e.target.value;updateUI();};
 function notify(t){$('notice').textContent=String(t).slice(0,220);}
 function emit(action,data){if(!socket.connected||!entered||tradeBusy)return;if(action==='buy'||action==='sell'){tradeBusy=true;renderBuilding();}socket.emit(action,data);}
 function recipeEquipmentDetails(item){
@@ -71,6 +71,19 @@ function contextMenu(title,options,x,y){
  menu.style.left=Math.max(5,Math.min(x,innerWidth-menu.offsetWidth-8))+'px';
  menu.style.top=Math.max(5,Math.min(y,innerHeight-menu.offsetHeight-8))+'px';
 }
+function ingredientRecipes(itemId){
+ return Object.entries(recipes).filter(([,recipe])=>Object.hasOwn(recipe.inputs||{},itemId)).map(([id])=>id);
+}
+function showIngredientRecipes(itemId){
+ recipeIngredient=itemId;recipeSearch=items[itemId]?.name||itemId;$('recipe-search').value=recipeSearch;
+ document.querySelector('[data-tab=skills]')?.click();updateUI();
+ $('recipe-search').focus();$('recipe-search').scrollIntoView({block:'nearest'});
+}
+function attackReadiness(p,connected,now){
+ if(!p||!connected)return 'Attack status unavailable';
+ const remaining=Math.max(0,(p.nextAttack||0)-now);
+ return remaining?'Next attack in '+(remaining/1000).toFixed(1)+'s':'Attack ready · target and range required';
+}
 function itemMenu(entry,event){
  const item=items[entry.id];if(!item)return;
  const options=[];
@@ -80,6 +93,7 @@ function itemMenu(entry,event){
  }
  if(item.category==='food')options.push({label:'Eat '+item.name,action:()=>emit('useItem',entry.id)});
  if(entry.id==='bones')options.push({label:'Bury Bones (+Prayer XP)',action:()=>emit('craft','bury_bones')});
+ if(ingredientRecipes(entry.id).length)options.push({label:'Show recipes using '+item.name,action:()=>showIngredientRecipes(entry.id)});
  options.push({label:'Drop 1 × '+item.name,action:()=>emit('dropItem',entry.id)});
  options.push({label:'Examine '+item.name,action:()=>examineItem(entry.id)});
  options.push({label:'Cancel',action:()=>{}});
@@ -233,7 +247,7 @@ function updateUI(){
  $('production-progress').hidden=!active;
  let visibleRecipes=0;
  for(const [id,recipe] of Object.entries(recipes)){
-  if(!recipeMatches(recipe,recipeSearch))continue;
+  if(recipeIngredient?!Object.hasOwn(recipe.inputs||{},recipeIngredient):!recipeMatches(recipe,recipeSearch))continue;
   visibleRecipes++;
   const row=elem('div','recipe-row');
   const info=elem('div','recipe-info');
@@ -629,6 +643,7 @@ function quickFood(){
 function updateFoodButton(){
  const button=$('quick-eat'),entry=quickFood();
  const now=(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt);
+ $('attack-readiness').textContent=attackReadiness(profile,entered&&socket.connected,now);
  const remaining=Math.max(0,(profile?.nextEat||0)-now);
  button.disabled=!entered||!socket.connected||!entry||profile.hp>=profile.maxHp||remaining>0;
  button.textContent=remaining>0?'Eat in '+(remaining/1000).toFixed(1)+'s':entry?'Eat '+items[entry.id].name:'No food';

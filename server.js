@@ -11,6 +11,7 @@ const Food=require('./game/food');
 const Campfires=require('./game/campfires');
 const Gathering=require('./game/gathering');
 const Magic=require('./game/magic');
+const ActionTimers=require('./game/action-timers');
 const Loot=require('./game/loot');
 const Bank=require('./game/bank');
 const {serialQueue}=require('./game/serial');
@@ -43,10 +44,10 @@ const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
  return {lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
- bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextEat:p.nextEat||0,serverNow:Date.now()};
+ bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextAttack:p.nextAttack||0,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
-function storedProfile(p){return{x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
+function storedProfile(p){return{...ActionTimers.snapshot(p),x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
  equipment:p.equipment,bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,
  autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,nextEat:p.nextEat||0};}
 function hydrate(p,account){
@@ -64,7 +65,7 @@ function hydrate(p,account){
  if(!Array.isArray(fresh.bank))fresh.bank=[];
  if(fresh.inventory.length>BAG_SLOTS)fresh.inventory=fresh.inventory.slice(0,BAG_SLOTS);
  if(collides(fresh)){fresh.x=SPAWN.x;fresh.y=SPAWN.y;}
- Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,tradeRevision:account.tradeRevision||0,path:[],intent:null,openBuilding:null,nextEat:Food.restoreDeadline(d.nextEat),nextAttack:Food.restoreDeadline(d.nextEat)});
+ Object.assign(p,fresh,{id:p.id,name:account.username,loggedIn:true,accountId:account.id,tradeRevision:account.tradeRevision||0,path:[],intent:null,openBuilding:null,nextEat:Food.restoreDeadline(d.nextEat),...ActionTimers.restore(d)});
 }
 function persist(p){
  if(!p.accountId||p.tradeFailed)return Promise.resolve();
