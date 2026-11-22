@@ -2,7 +2,7 @@
 const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
-let items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
+let agilityCourse=[],items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let windStrike=null;
 let bankQuantity=1,bankSearch='',trackedQuest=null,trackedRecipe=null;
 let recipeSearch='',recipeIngredient=null;
@@ -108,7 +108,7 @@ socket.on('connect',()=>{
 socket.on('disconnect',()=>{$('combat-target').hidden=true;$('connection').textContent='● Reconnecting…';});
 socket.on('catalog',data=>{
  items=data.items||{};shops=data.shops||{};village=data.village||village;
- windStrike=data.windStrike||null;
+ windStrike=data.windStrike||null;agilityCourse=data.agilityCourse||[];
  recipes=data.recipes||{};questsCatalog=data.quests||{};regions=data.regions||[];stations=data.stations||{};
  SIZE=data.size||3600;
 });
@@ -219,8 +219,10 @@ function updateUI(){
   inv.append(cell);
  }
  const lap=profile.agility;
- $('agility-status').textContent=lap?lap.completed+'/'+lap.total+' checkpoints · '+lap.target.label:'Walk four checkpoints in order for 40 XP. Start near the course marker; leaving or fighting cancels the lap.';
+ $('agility-status').textContent=lap?lap.completed+'/'+lap.total+' checkpoints · '+lap.target.label:'Train at four obstacles in order for 40 XP. Stop at each marker until its timer completes. Moving interrupts the current obstacle; fighting cancels the lap.';
  $('agility-go').textContent=lap?'Walk to next checkpoint':'Go to course';
+ $('agility-progress').hidden=!lap?.action;
+ $('agility-go').disabled=!!lap?.action;
  $('agility-start').disabled=!!lap; $('agility-cancel').hidden=!lap;
  const skills=$('skills-list');skills.replaceChildren();
  for(const [id,stat] of Object.entries(profile.skills)){
@@ -534,8 +536,18 @@ function draw(){
   circle(site.x,site.y,17,'#927b50');label('✦',site.x,site.y+5,'#ffe4a3',17);
   label(id.toUpperCase(),site.x,site.y-25,'#f3dbb3',11);
  }
+ for(const [i,obstacle] of agilityCourse.entries()){
+  if(!inView(obstacle.x,obstacle.y))continue;
+  const active=profile?.agility?.completed===i;
+  rect(obstacle.x-20,obstacle.y-7,40,14,active?'#d4b77a':'#806648');
+  for(let j=0;j<3;j++)rect(obstacle.x-15+j*12,obstacle.y-10,5,20,'#b8a58a');
+  label((i+1)+'. '+obstacle.name,obstacle.x,obstacle.y+30,active?'#fff0b8':'#cdbf9e',11);
+ }
  const gate=profile?.agility?.target;
- if(gate&&inView(gate.x,gate.y)){circle(gate.x,gate.y,20,'#74d4a866');label(gate.label,gate.x,gate.y-28,'#b9ffcf',12);}
+ if(gate&&inView(gate.x,gate.y)){
+  circle(gate.x,gate.y,20,'#74d4a866');label(gate.label,gate.x,gate.y-28,'#b9ffcf',12);
+  if(profile.agility.action){const now=profile.serverNow+Math.max(0,Date.now()-profileReceivedAt);ctx.beginPath();ctx.arc(gate.x,gate.y,24,-Math.PI/2,-Math.PI/2+Math.PI*2*obstacleProgress(profile.agility,now));ctx.strokeStyle='#b9ffcf';ctx.lineWidth=3;ctx.stroke();}
+ }
  for(const n of Object.values(world.nodes||{})){
   if(!inView(n.x,n.y))continue;const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
   if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,20,'#74513a');circle(n.x,n.y-8,n.kind==='oak'?22:18,n.kind==='oak'?'#357844':'#308751');circle(n.x-6,n.y-14,7,'#5ea86a');}
@@ -570,7 +582,11 @@ $('cancel-production').onclick=()=>emit('cancelProduction');
 function namedRecipe(id){return recipes[id]?.name||id;}
 let profileReceivedAt=Date.now();
 socket.on('profile',()=>{profileReceivedAt=Date.now();});
+function obstacleProgress(lap,now){return lap?.action?Math.max(0,Math.min(1,(now-lap.action.startedAt)/(lap.action.endsAt-lap.action.startedAt))):0;}
 function frame(){
+ const lap=profile?.agility,now=(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt);
+ $('agility-progress').value=obstacleProgress(lap,now);
+ $('agility-timer').textContent=lap?(lap.action?lap.obstacle.name+' · '+Math.max(0,(lap.action.endsAt-now)/1000).toFixed(1)+'s · ':'')+'Lap time left: '+Math.max(0,Math.ceil((lap.expires-now)/1000))+'s':'';
  const job=profile?.production;
  if(job){const estimated=profile.serverNow+(Date.now()-profileReceivedAt);$('production-progress').value=Math.max(0,Math.min(1,(estimated-job.startedAt)/(job.endsAt-job.startedAt)));}
  requestAnimationFrame(frame);
