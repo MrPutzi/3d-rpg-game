@@ -72,7 +72,7 @@ test('registered player can create account, restore session, and see expanded ca
   const confirmed=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Save acknowledgement missing')),3000);const listener=value=>{if(value.state==='saved'){clearTimeout(timer);sock.off('saveStatus',listener);resolve(value);}};sock.on('saveStatus',listener);});
   for(let i=0;i<20;i++)sock.emit('saveProgress');
   assert.ok((await confirmed).at>0);
-  const disk=JSON.parse(fs.readFileSync(path.join(dir,'profiles.json'),'utf8'));assert.equal(disk.accounts[0].profile.gold,134);
+  const disk=JSON.parse(fs.readFileSync(path.join(dir,'profiles.json'),'utf8'));assert.equal(disk.accounts[0].profile.gold,134);assert.ok(disk.accounts[0].profile.nextSkillAction>0);
   assert.equal(saved.skills.fishing.level,1);
   assert.equal(saved.quests.guard_supplies.status,'locked');
   // Invalid tokens are tested on a separate unauthenticated socket.
