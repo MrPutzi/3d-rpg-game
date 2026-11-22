@@ -35,6 +35,7 @@ item('iron_arrow',{name:'Iron arrows',icon:'➶',category:'ammo',slot:'ammo',sta
 item('bronze_bolt',{name:'Bronze bolts',icon:'➶',category:'ammo',slot:'ammo',stackable:true,ammo:'bolt',rangedStrength:5,price:5,color:'#bcb4a3'});
 item('bread',{name:'Bread',icon:'🍞',category:'food',heal:7,price:8,color:'#e8b877'});
 item('trout_cooked',{name:'Cooked trout',icon:'🐟',category:'food',heal:9,price:19,color:'#f0a574'});
+item('rabbit_snare',{name:'Rabbit snare',icon:'🪤',category:'resource',price:3});
 item('logs',{name:'Logs',icon:'🪵',category:'resource',price:4});
 item('oak_logs',{name:'Oak logs',icon:'🪵',category:'resource',price:15});
 item('copper_ore',{name:'Copper ore',icon:'🟠',category:'resource',price:5});

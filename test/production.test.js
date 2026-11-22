@@ -56,7 +56,7 @@ test('max planning is read-only and consumes only completed timed actions',()=>{
  assert.equal(P.advance(p,7200),null);assert.equal(count(p.inventory,'cooked_shrimp'),3);assert.equal(p.skills.cooking.xp,90);
 });
 test('max respects output capacity, consumed input slots and stack overflow',()=>{
- const p=player();p.x=2520;p.y=2050;addItem(p.inventory,'bread',26);assert.equal(P.availability(p,'hunt_rabbit').max,2);
+ const p=player();p.x=2520;p.y=2050;addItem(p.inventory,'bread',26);addItem(p.inventory,'rabbit_snare',2);assert.equal(P.availability(p,'hunt_rabbit').max,2);
  const q=player();addItem(q.inventory,'logs',2);addItem(q.inventory,'bread',25);addItem(q.inventory,'arrow_shafts',999980);
  assert.equal(P.availability(q,'fletch_shafts').max,1);assert.equal(q.inventory.length,28);
  const r=player();addItem(r.inventory,'raw_shrimp',28);assert.equal(P.availability(r,'cook_shrimp').max,28);
