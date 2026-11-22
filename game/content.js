@@ -58,6 +58,7 @@ for(const [id,name,icon,category,price,extra] of [
  ['feathers','Feathers','🪶','resource',1,{stackable:true}],['bronze_arrowtips','Bronze arrowtips','➶','resource',2,{stackable:true}],
  ['rune_essence','Rune essence','💠','resource',7,{}],['air_rune','Air runes','💨','resource',2,{stackable:true}],
  ['mind_rune','Mind runes','🔮','resource',2,{stackable:true}],['raw_rabbit','Raw rabbit','🐇','resource',6,{}],
+ ['wooden_stool','Wooden stool','🪑','resource',24,{}],
  ['plank','Plank','🪵','resource',14,{}],['cooked_shrimp','Cooked shrimp','🍤','food',8,{heal:3}],
  ['cooked_rabbit','Roast rabbit','🍗','food',12,{heal:6}],
  ['herbal_tonic','Herbal tonic','🍵','food',10,{heal:4}],
