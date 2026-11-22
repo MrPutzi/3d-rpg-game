@@ -104,6 +104,7 @@ const ENEMY_TEMPLATES=[
  {kind:'mountain_golem',name:'Stone Golem',level:45,hp:220,count:5,region:[2630,120,3470,750],color:'#8293a4',damage:19,defence:72,weakness:'crush',aggressive:true}
 ];
 const RESOURCE_TEMPLATES=[
+ {kind:'essence',name:'Essence Rock',skill:'mining',item:'rune_essence',level:1,xp:10,region:[1250,1280,1460,1450],count:5,tool:'pickaxe'},
  {kind:'tree',name:'Tree',skill:'woodcutting',item:'logs',level:1,xp:25,region:[150,800,950,1420],count:15,tool:'axe'},
  {kind:'oak',name:'Oak Tree',skill:'woodcutting',item:'oak_logs',level:15,xp:55,region:[1000,1180,1750,1660],count:12,tool:'axe'},
  {kind:'copper',name:'Copper Rock',skill:'mining',item:'copper_ore',level:1,xp:18,region:[850,1450,1400,2180],count:12,tool:'pickaxe'},
