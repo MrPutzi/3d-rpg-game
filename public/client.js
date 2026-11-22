@@ -12,7 +12,7 @@ let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
 let SIZE=3600,authMode='signin';
 const iconFor={attack:'⚔️',strength:'💪',defence:'🛡️',ranging:'🏹',hitpoints:'❤️',woodcutting:'🪓',mining:'⛏️',fishing:'🎣'};
 const zoneName=p=>[...regions].reverse().find(r=>p.x>=r.x&&p.x<r.x+r.w&&p.y>=r.y&&p.y<r.y+r.h)?.name||'The Frontier';
-const iconNode={tree:'🌳',oak:'🌲',copper:'🟠',iron:'🪨',tin:'🪨',essence:'💠',shrimp:'🐟',trout:'🎣'};
+const iconNode={tree:'🌳',oak:'🌲',copper:'🟠',iron:'🪨',tin:'🪨',coal:'⬛',essence:'💠',shrimp:'🐟',trout:'🎣'};
 const styleNames={
  accurate:['Accurate','Attack XP'],aggressive:['Aggressive','Strength XP'],defensive:['Defensive','Defence XP'],
  controlled:['Controlled','Shared XP'],range_accurate:['Accurate','Ranged XP'],rapid:['Rapid','Faster attacks'],longrange:['Longrange','Ranged + Defence XP']
@@ -238,6 +238,7 @@ function updateUI(){
   const row=elem('div','recipe-row');
   const info=elem('div','recipe-info');
   info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
+  if(id==='smelt_steel'||id==='smith_steel_dagger')info.append(elem('small','','Southstone iron + coal (Mining 30) → Oakvale Forge steel → daggers. Bring two personally forged daggers to the Guard after Shields for the Watch. Spare daggers require Attack 5 or can be sold.'));
   if(id==='saw_plank'||id==='build_stool')info.append(elem('small','','Westwood timber → guild planks → wooden stools. Deliver two personally built stools to Thorin after his tonic quest, or sell spare furniture.'));
   if(recipe.station==='cooking')info.append(elem('small','','Cook at the tavern or within 80 units of a campfire. Light logs to make a shared 60-second fire.'));
   const inputs=Object.entries(recipe.inputs||{}),outputs=Object.entries(recipe.outputs||{});
@@ -509,7 +510,7 @@ function draw(){
  for(const n of Object.values(world.nodes||{})){
   if(!inView(n.x,n.y))continue;const ready=Date.now()>=n.readyAt;ctx.globalAlpha=ready?1:.35;
   if(n.kind==='tree'||n.kind==='oak'){rect(n.x-4,n.y,8,20,'#74513a');circle(n.x,n.y-8,n.kind==='oak'?22:18,n.kind==='oak'?'#357844':'#308751');circle(n.x-6,n.y-14,7,'#5ea86a');}
-  else if(n.skill==='mining'){circle(n.x,n.y,18,'#637478');circle(n.x-3,n.y-5,12,n.kind==='copper'?'#c88750':n.kind==='essence'?'#bca4ef':'#8aa2b0');}
+  else if(n.skill==='mining'){circle(n.x,n.y,18,'#637478');circle(n.x-3,n.y-5,12,n.kind==='copper'?'#c88750':n.kind==='coal'?'#30343b':n.kind==='essence'?'#bca4ef':'#8aa2b0');}
   else{circle(n.x,n.y,16,'#5da7cf');label('≈',n.x,n.y+6,'#e1faff',17);}
   ctx.globalAlpha=1;
  }
