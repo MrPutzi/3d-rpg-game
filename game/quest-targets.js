@@ -1,5 +1,6 @@
 'use strict';
 const Campfires=require('./campfires');
+const Agility=require('./agility');
 const {QUESTS,RECIPES,DROPS}=require('./progression');
 const {VILLAGE,ENEMY_TEMPLATES,RESOURCE_TEMPLATES,ITEMS,SHOPS}=require('./content');
 const {count}=require('./rules');
@@ -44,6 +45,7 @@ function targetFor(p,id){
  if(q.progress>=q.goal&&!missing||d.type==='talk'){
   const npc=VILLAGE.villagers.find(n=>n.id===d.giver);return npc?{x:npc.x,y:npc.y,label:'Return to '+npc.name,kind:'npc'}:null;
  }
+ if(d.type==='course')return Agility.status(p)?.target||{...Agility.START,kind:'station',label:'Start an Oakvale agility lap · Skills tab'};
  if(d.type==='craft'){
   if(q.progress>=q.goal)for(const [item,qty] of Object.entries(d.deliverItems||{})){
    if(count(p.inventory,item)<qty){const bank=bankTarget(p,item);if(bank)return bank;}
