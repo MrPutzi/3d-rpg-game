@@ -1,0 +1,11 @@
+# Level-gated Slayer targets
+
+Audit baseline main 17b3b51: PR49 supplies a persisted fixed wolf assignment; PR48 steel shields and PR47 agility are complete. Open PR7 remains unchanged and no standalone issues were found. This extends the existing task model rather than introducing a competing one.
+
+1. Server catalogue: wolves at Slayer 1 (3 kills, 65 XP), skeletons at Slayer 5 (3 kills, 100 XP), bandits at Slayer 10 (3 kills, 140 XP). Accepting validates the explicit kind and level at the guild. Existing wolf tasks retain their exact semantics. Skeleton rune drops support Oakvale's altar/Wind Strike progression; bandit leather supports Rusk's border equipment loop around Newhaven. No extra gold or items are awarded by contracts.
+2. Settlement and persistence: all enemy kinds reach Slayer credit routing, not only wolves. Wrong species cannot advance a task. Existing contribution rules still determine eligible multiplayer participants. Canonical goal/reward values come from the server, not saved/client fields. Existing wolf snapshots restore unchanged; skeleton and bandit tasks use the same save path. Wolf kills outside a matching wolf task still earn legacy credit, but a single kill never earns both. Crash persistence limitations remain as documented in SLAYER_CONTRACTS.md.
+3. Skills/guild selection: show target, required level, kill count and XP; disable locked choices and changing an active contract. Navigate to the selected species' actual existing region, then back to the guild. UI depends on server catalogue and status; no client XP awards.
+
+Tests cover level boundaries, unknown/prototype/object identifiers, active-task replacement rejection, independent targets/players, region coordinates, canonical restoration, exact rewards and duplicate claims. Live socket persistence test now restores and claims a skeleton task, alongside an unfinished legacy-compatible wolf task. Full npm test and syntax checks are required; PostgreSQL integration is verified by CI. Browser visuals and Render deployment remain unverified.
+
+Next: persistent Farming growth and a broader range of balanced Slayer assignments. No destructive migrations, content copying, map expansion or changes to existing quest rewards in this increment.
