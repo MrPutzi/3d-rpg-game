@@ -50,14 +50,8 @@ test('registered player can create account, restore session, and see expanded ca
   assert.ok(profile.skills.slayer);
   assert.equal(Object.keys(profile.equipment).length,11);
   assert.equal(profile.gold,130);
-  let changed=event(sock,'profile');sock.emit('craft',{id:'pickpocket',qty:2});
-  const queued=await changed;assert.equal(queued.gold,130);assert.equal(queued.production.remaining,2);
   const denied=event(sock,'serverMessage');sock.emit('craft',{id:'pickpocket',qty:2});
-  assert.match(await denied,/Already producing/);
-  changed=event(sock,'profile');sock.emit('cancelProduction');
-  assert.equal((await changed).production,null);
-  changed=event(sock,'profile');sock.emit('craft',{id:'pickpocket',qty:1});await changed;
-  const completed=await event(sock,'profile');assert.equal(completed.gold,134);assert.equal(completed.production,null);
+  assert.match(await denied,/Unknown/);
 
   const old=sock;const replaced=event(old,'sessionReplaced');
   sock=await connected(url);
@@ -68,11 +62,11 @@ test('registered player can create account, restore session, and see expanded ca
   const saved=await resumedProfile;
   assert.equal(resumed.username,'TestKnight_98');
   await replaced;assert.equal(old.connected,false);
-  assert.equal(saved.gold,134);
+  assert.equal(saved.gold,130);
   const confirmed=new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Save acknowledgement missing')),3000);const listener=value=>{if(value.state==='saved'){clearTimeout(timer);sock.off('saveStatus',listener);resolve(value);}};sock.on('saveStatus',listener);});
   for(let i=0;i<20;i++)sock.emit('saveProgress');
   assert.ok((await confirmed).at>0);
-  const disk=JSON.parse(fs.readFileSync(path.join(dir,'profiles.json'),'utf8'));assert.equal(disk.accounts[0].profile.gold,134);assert.ok(disk.accounts[0].profile.nextSkillAction>0);
+  const disk=JSON.parse(fs.readFileSync(path.join(dir,'profiles.json'),'utf8'));assert.equal(disk.accounts[0].profile.gold,130);assert.equal(disk.accounts[0].profile.nextThieve,0);
   assert.equal(saved.skills.fishing.level,1);
   assert.equal(saved.quests.guard_supplies.status,'locked');
   // Invalid tokens are tested on a separate unauthenticated socket.

@@ -480,6 +480,7 @@ function hitMenu(hit,e){
  }else if(hit.kind==='npc'){
   title=o.name;options=[{label:'Talk to '+o.name,action:()=>emit('interact',o.id)},
   {label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>detail(o.name,[o.id==='elder'?'The village quest giver.':'A watchful guardian of Oakvale.'])}];
+  if(o.id==='guard')options.splice(1,0,{label:'Pickpocket guard · Thieving',action:()=>emit('pickpocket',o.id)});
  }else if(hit.kind==='building'){
   title=o.name;options=[{label:'Enter '+o.name,action:()=>emit('visitBuilding',o.id)},{label:'Walk to entrance',action:()=>walk(o.door)},
   {label:'Examine',action:()=>detail(o.name,[o.id==='bank'?'Deposit or withdraw your items.':o.id==='guild'?'Quest journal and training information.':'Trade, relax or browse the shop.'])}];
@@ -607,6 +608,9 @@ socket.on('profile',()=>{profileReceivedAt=Date.now();});
 function obstacleProgress(lap,now){return lap?.action?Math.max(0,Math.min(1,(now-lap.action.startedAt)/(lap.action.endsAt-lap.action.startedAt))):0;}
 function frame(){
  const lap=profile?.agility,now=(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt);
+ const thieveWait=Math.max(0,Math.ceil(((profile?.nextThieve||0)-now)/1000));
+ $('thieving-status').textContent=thieveWait?'Next attempt in '+thieveWait+'s':'Ready · stand beside the guard and stop moving.';
+ $('thieving-attempt').disabled=!profile||thieveWait>0;
  const patch=profile?.farmPatch,remaining=patch?Math.max(0,Math.ceil((patch.readyAt-now)/1000)):0;
  $('farm-status').textContent=patch?(remaining?'Guam growing · '+remaining+'s remaining. You may leave or log out.':'Guam ready · harvest 2 leaves and 55 XP.'):'Empty · plant one seed, wait 60s, then harvest. Use leaves for tonics at the tavern and Thorin’s supplies.';
  $('farm-harvest').disabled=!patch||remaining>0;
@@ -761,3 +765,6 @@ function herbPatchView(patch,now){
  const seconds=Math.max(0,Math.ceil((patch.readyAt-now)/1000));
  return seconds?{text:'Your guam: '+seconds+'s',color:'#9fd6aa'}:{text:'Your guam: ready to harvest',color:'#f5d96e'};
 }
+
+$('thieving-attempt').onclick=()=>emit('pickpocket','guard');
+$('thieving-go').onclick=()=>{const guard=village.villagers.find(n=>n.id==='guard');if(guard){closeBuilding();emit('move',{x:guard.x,y:guard.y});}};
