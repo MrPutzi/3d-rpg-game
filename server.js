@@ -45,7 +45,7 @@ const safeId=id=>typeof id==='string'&&id.length<80;
 const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
- return {slayerTask:Slayer.status(p),agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
+ return {slayerOptions:Slayer.options(p),slayerTask:Slayer.status(p),agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
  bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextAttack:p.nextAttack||0,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
@@ -173,7 +173,7 @@ function finishEnemy(n,now){
  for(const reward of outcome.rewards){
   const p=players[reward.id];p.gold+=reward.gold;
   questProgress(p,'kill',n.kind,1);
-  if(n.kind==='wolf'&&!Slayer.record(p,n.kind))p.slayerKills++;
+  if(!Slayer.record(p,n.kind)&&n.kind==='wolf')p.slayerKills++;
   io.to(p.id).emit('combatReward',{name:n.name,gold:reward.gold,damage:reward.damage,lootOwner:outcome.ownerId===p.id});
   pushProfile(p);
  }
@@ -297,7 +297,7 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
- for(const [event,action] of [['acceptSlayer',Slayer.accept],['claimSlayer',Slayer.claim]])onAction(event,()=>{const result=action(p);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
+ for(const [event,action] of [['acceptSlayer',Slayer.accept],['claimSlayer',Slayer.claim]])onAction(event,kind=>{const result=action(p,kind);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
  onAction('startAgility',()=>{const result=Agility.start(p);send(p,result.message);if(result.ok)pushProfile(p);});
  onAction('cancelAgility',()=>{if(p.loggedIn&&Agility.cancel(p)){send(p,'Agility lap cancelled.');pushProfile(p);}});
  onAction('craft',data=>{

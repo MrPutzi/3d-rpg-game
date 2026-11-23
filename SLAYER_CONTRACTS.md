@@ -1,3 +1,5 @@
+> Updated by SLAYER_TIERS.md: selectable level-gated targets now extend the original wolf contract.
+
 # Assigned wolf contracts
 
 Audit baseline: main 8c2c5ad (PR48); PR47 agility and PR48 steel shields are complete. Only legacy PR7 remains open, unchanged; no standalone open issues. Farming still uses a short recipe rather than persistent growth. Slayer previously only exchanged banked wolf kills through a recipe; it had no accepted task.
