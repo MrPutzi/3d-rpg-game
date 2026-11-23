@@ -21,6 +21,7 @@ function recipeTarget(p,id,visited=new Set()){
  for(const [item,qty] of Object.entries(recipe.inputs)){
   if(count(p.inventory,item)>=qty)continue;
   const bank=bankTarget(p,item);if(bank)return bank;
+  if(item==='guam_leaf'&&(p.farmPatch||count(p.inventory,'guam_seed')>0))return {...stationLocation.farm,kind:'station',label:'Grow and harvest guam at the herb patch · Skills tab'};
   const resource=RESOURCE_TEMPLATES.find(r=>r.item===item);
   if(resource)return area(resource,'Gather '+ITEMS[item].name+' from '+resource.name+' · '+resource.skill+' Lv'+resource.level);
   const intermediate=Object.keys(RECIPES).find(key=>RECIPES[key].outputs[item]>0);

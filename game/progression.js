@@ -35,7 +35,6 @@ const RECIPES={
  craft_air_runes:{name:'Craft air runes',skill:'runecrafting',level:1,xp:30,inputs:{rune_essence:1},outputs:{air_rune:5},station:'altar'},
  saw_plank:{name:'Saw a plank',skill:'construction',level:1,xp:10,inputs:{logs:2},outputs:{plank:1},station:'guild'},
  build_stool:{name:'Build a stool',skill:'construction',level:1,xp:55,inputs:{plank:2},outputs:{wooden_stool:1},station:'guild'},
- farm_guam:{name:'Harvest herbs',skill:'farming',level:1,xp:55,inputs:{guam_seed:1},outputs:{guam_leaf:2},station:'farm'},
  craft_rabbit_snare:{name:'Weave rabbit snares',skill:'crafting',level:1,xp:10,inputs:{logs:1},outputs:{rabbit_snare:2},station:'any'},
  hunt_rabbit:{name:'Set a rabbit snare',skill:'hunter',level:1,xp:45,duration:6000,inputs:{rabbit_snare:1},outputs:{raw_rabbit:1},station:'hunt'},
  pickpocket:{name:'Pickpocket a villager',skill:'thieving',level:1,xp:25,inputs:{},outputs:{},gold:4,station:'village'},
