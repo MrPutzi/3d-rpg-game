@@ -1,5 +1,6 @@
 'use strict';
 const Slayer=require('./game/slayer');
+const Farming=require('./game/farming');
 const express=require('express'),http=require('http'),path=require('path'),crypto=require('crypto');
 const {Server}=require('socket.io');
 const {TICK_MS,WORLD_SIZE,BAG_SLOTS,ITEMS,VILLAGE,SHOPS,ENEMY_TEMPLATES,RESOURCE_TEMPLATES}=require('./game/content');
@@ -45,11 +46,11 @@ const safeId=id=>typeof id==='string'&&id.length<80;
 const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
- return {slayerOptions:Slayer.options(p),slayerTask:Slayer.status(p),agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
+ return {farmPatch:Farming.restore(p.farmPatch),slayerOptions:Slayer.options(p),slayerTask:Slayer.status(p),agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
  bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextAttack:p.nextAttack||0,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
-function storedProfile(p){return{slayerTask:Slayer.restore(p.slayerTask),...ActionTimers.snapshot(p),x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
+function storedProfile(p){return{farmPatch:Farming.restore(p.farmPatch),slayerTask:Slayer.restore(p.slayerTask),...ActionTimers.snapshot(p),x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
  equipment:p.equipment,bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,
  autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,nextEat:p.nextEat||0};}
 function hydrate(p,account){
@@ -60,6 +61,7 @@ function hydrate(p,account){
  for(const k of SKILLS)fresh.skills[k]=fresh.skills[k]||skill(k==='hitpoints'?xpForLevel(10):0);
  for(const [id,def] of Object.entries(QUESTS))fresh.quests[id]=fresh.quests[id]||{status:def.after&&fresh.quests[def.after]?.status!=='complete'?'locked':'active',progress:0,goal:def.goal};
  fresh.slayerTask=Slayer.restore(d.slayerTask);
+ fresh.farmPatch=Farming.restore(d.farmPatch);
  fresh.equipment={...newPlayer(p.id).equipment,...fresh.equipment};
  fresh.x=Number.isFinite(fresh.x)?clamp(fresh.x,30,WORLD_SIZE-30):SPAWN.x;
  fresh.y=Number.isFinite(fresh.y)?clamp(fresh.y,30,WORLD_SIZE-30):SPAWN.y;
@@ -82,7 +84,7 @@ function persist(p){
 }
 function newPlayer(id){
  const inventory=[];for(const [item,qty] of [['bronze_scimitar',1],['shortbow',1],['bronze_arrow',120],['bronze_axe',1],['bronze_pickaxe',1],['small_net',1],['bread',2]])addItem(inventory,item,qty);
- return {slayerTask:null,agility:null,fireNearby:false,id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
+ return {farmPatch:null,slayerTask:null,agility:null,fireNearby:false,id,name:'Adventurer',loggedIn:false,x:SPAWN.x,y:SPAWN.y,hp:20,maxHp:20,gold:130,inventory,
  equipment:{head:null,cape:null,neck:null,weapon:'bronze_scimitar',body:null,offhand:null,legs:null,hands:null,feet:null,ring:null,ammo:'bronze_arrow'},bank:[],
  quests:Object.fromEntries(Object.entries(QUESTS).map(([id,q])=>[id,{status:q.after?'locked':'active',progress:0,goal:q.goal}])),
  skills:Object.fromEntries(SKILLS.map(k=>[k,skill(k==='hitpoints'?xpForLevel(10):0)])),
@@ -297,6 +299,7 @@ io.on('connection',socket=>{
   if(!p.loggedIn||!has(ITEMS,id))return;
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
+ for(const [event,action] of [['plantGuam',Farming.plant],['harvestGuam',Farming.harvest]])onAction(event,()=>{const result=action(p);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
  for(const [event,action] of [['acceptSlayer',Slayer.accept],['claimSlayer',Slayer.claim]])onAction(event,kind=>{const result=action(p,kind);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
  onAction('startAgility',()=>{const result=Agility.start(p);send(p,result.message);if(result.ok)pushProfile(p);});
  onAction('cancelAgility',()=>{if(p.loggedIn&&Agility.cancel(p)){send(p,'Agility lap cancelled.');pushProfile(p);}});

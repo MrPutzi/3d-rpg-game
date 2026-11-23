@@ -226,6 +226,7 @@ function updateUI(){
   }
   inv.append(cell);
  }
+ $('farm-plant').disabled=!!profile.farmPatch;
  const task=profile.slayerTask;
  const choice=$('slayer-choice'),selected=choice.value;choice.replaceChildren();for(const option of profile.slayerOptions||[]){const el=elem('option','',option.name+' · Slayer '+option.level+' · '+option.goal+' kills · '+option.xp+' XP');el.value=option.kind;el.disabled=!option.available;choice.append(el);}if([...choice.options].some(o=>o.value===selected&&!o.disabled))choice.value=selected;choice.disabled=!!task;
  $('slayer-status').textContent=slayerText(task,profile.slayerKills);
@@ -605,6 +606,9 @@ socket.on('profile',()=>{profileReceivedAt=Date.now();});
 function obstacleProgress(lap,now){return lap?.action?Math.max(0,Math.min(1,(now-lap.action.startedAt)/(lap.action.endsAt-lap.action.startedAt))):0;}
 function frame(){
  const lap=profile?.agility,now=(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt);
+ const patch=profile?.farmPatch,remaining=patch?Math.max(0,Math.ceil((patch.readyAt-now)/1000)):0;
+ $('farm-status').textContent=patch?(remaining?'Guam growing · '+remaining+'s remaining. You may leave or log out.':'Guam ready · harvest 2 leaves and 55 XP.'):'Empty · plant one seed, wait 60s, then harvest. Use leaves for tonics at the tavern and Thorin’s supplies.';
+ $('farm-harvest').disabled=!patch||remaining>0;
  $('agility-progress').value=obstacleProgress(lap,now);
  $('agility-timer').textContent=lap?(lap.action?lap.obstacle.name+' · '+Math.max(0,(lap.action.endsAt-now)/1000).toFixed(1)+'s · ':'')+'Lap time left: '+Math.max(0,Math.ceil((lap.expires-now)/1000))+'s':'';
  const job=profile?.production;
@@ -746,3 +750,7 @@ socket.on('profile',updateQuestMapLabel);
 $('agility-start').onclick=()=>emit('startAgility');
 $('agility-cancel').onclick=()=>emit('cancelAgility');
 $('agility-go').onclick=()=>{const target=profile?.agility?.target||stations.course;if(target){closeBuilding();emit('move',{x:target.x,y:target.y});}};
+
+$('farm-plant').onclick=()=>emit('plantGuam');
+$('farm-harvest').onclick=()=>emit('harvestGuam');
+$('farm-go').onclick=()=>{if(stations.farm){closeBuilding();emit('move',{x:stations.farm.x,y:stations.farm.y});}};
