@@ -226,6 +226,10 @@ function updateUI(){
   }
   inv.append(cell);
  }
+ const task=profile.slayerTask;
+ $('slayer-status').textContent=slayerText(task,profile.slayerKills);
+ $('slayer-accept').disabled=!!task;$('slayer-claim').disabled=!task?.ready;
+ $('slayer-go').textContent=task&&!task.ready?'Go to wolf territory':'Go to guild';
  const lap=profile.agility;
  $('agility-status').textContent=lap?lap.completed+'/'+lap.total+' checkpoints · '+lap.target.label:'Train at four obstacles in order for 40 XP. Stop at each marker until its timer completes. Moving interrupts the current obstacle; fighting cancels the lap.';
  $('agility-go').textContent=lap?'Walk to next checkpoint':'Go to course';
@@ -411,6 +415,8 @@ function renderBuilding(){
   }
   box.append(cols);
  }else if(modalId==='guild'){
+  box.append(elem('p','helper',slayerText(profile.slayerTask,profile.slayerKills)));
+  const contract=elem('button','',profile.slayerTask?'Claim Slayer XP':'Accept wolf contract');contract.disabled=!!profile.slayerTask&&!profile.slayerTask.ready;contract.onclick=()=>emit(profile.slayerTask?'claimSlayer':'acceptSlayer');box.append(contract);
   box.append(elem('p','shop-description','Adventurers Guild — contracts, training notes and progress.'));
   for(const [id,q] of Object.entries(profile.quests)){
    box.append(elem('div','quest-row',guildQuestDetails(id,q)));
@@ -586,6 +592,10 @@ function draw(){
  if(marker&&Date.now()<marker.expires){ctx.strokeStyle='#ffe1a1';ctx.lineWidth=3;ctx.beginPath();ctx.arc(marker.x,marker.y,16,0,Math.PI*2);ctx.stroke();}
 }
 let frameCount=0;
+function slayerText(task,legacy){return (task?'Wolves '+task.kills+'/'+task.goal+' · '+(task.ready?'Return to the guild to claim '+task.xp+' XP.':'Only kills credited to you after accepting count.'):'Accept a three-wolf contract at the guild for 65 Slayer XP.')+' Legacy wolf credits: '+(legacy||0)+'. Redeem these through Claim Slayer training.';}
+$('slayer-accept').onclick=()=>emit('acceptSlayer');
+$('slayer-claim').onclick=()=>emit('claimSlayer');
+$('slayer-go').onclick=()=>{const task=profile?.slayerTask,guild=village.buildings.find(b=>b.id==='guild');if(task&&!task.ready){closeBuilding();emit('move',task.target);}else if(guild)emit('visitBuilding',guild.id);};
 $('cancel-production').onclick=()=>emit('cancelProduction');
 function namedRecipe(id){return recipes[id]?.name||id;}
 let profileReceivedAt=Date.now();
