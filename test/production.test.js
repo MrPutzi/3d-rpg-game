@@ -61,13 +61,13 @@ test('max respects output capacity, consumed input slots and stack overflow',()=
  assert.equal(P.availability(q,'fletch_shafts').max,1);assert.equal(q.inventory.length,28);
  const r=player();addItem(r.inventory,'raw_shrimp',28);assert.equal(P.availability(r,'cook_shrimp').max,28);
 });
-test('max caps free activities and accounts for Slayer credits',()=>{
- const p=player();assert.equal(P.availability(p,'pickpocket').max,28);
+test('max rejects removed activities and accounts for Slayer credits',()=>{
+ const p=player();assert.equal(P.availability(p,'pickpocket').max,0);
  p.x=540;p.y=467;p.openBuilding='guild';p.slayerKills=7;assert.equal(P.availability(p,'slayer_contract').max,2);assert.equal(p.slayerKills,7);
 });
 test('max remains isolated and revalidates changed inputs after start',()=>{
  const a=player(),b=player();addItem(a.inventory,'raw_shrimp',2);addItem(b.inventory,'raw_shrimp',1);
  P.start(a,'cook_shrimp','max',0);P.start(b,'cook_shrimp','max',0);a.inventory=[];
  assert.equal(P.advance(a,1800).ok,false);assert.equal(a.skills.cooking.xp,0);assert.equal(P.advance(b,1800).ok,true);assert.equal(b.skills.cooking.xp,30);
- assert.equal(P.availability(a,'constructor').max,0);a.path=[{x:1,y:1}];assert.match(P.availability(a,'pickpocket').reason,/moving/);
+ assert.equal(P.availability(a,'constructor').max,0);a.path=[{x:1,y:1}];assert.match(P.availability(a,'cook_shrimp').reason,/moving/);
 });
