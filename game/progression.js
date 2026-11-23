@@ -48,6 +48,7 @@ const QUESTS={
  altar_supplies:{giver:'elder',name:'Runes for Oakvale',type:'craft',target:'craft_mind_runes',goal:2,deliverItems:{mind_rune:6},rewardGold:15,after:'goblin_hunt'},
  goblin_hunt:{giver:'elder',name:'Goblin Menace',type:'kill',target:'goblin',goal:3,rewardGold:40,rewardItems:{bronze_shield:1,bread:1},after:'welcome'},
  forest_supplies:{giver:'forester',name:'Forest Supplies',type:'gather',target:'logs',goal:5,rewardGold:45,rewardItems:{guam_seed:2},after:'welcome'},
+ westwood_harvest:{name:'A Fresh Westwood Harvest',giver:'forester',type:'harvest',target:'guam',goal:2,deliverItems:{guam_leaf:4},rewardGold:20,rewardItems:{guam_seed:1},after:'herbal_supplies'},
  woodland_furniture:{name:'Seats for Westwood',giver:'forester',type:'craft',target:'build_stool',goal:2,deliverItems:{wooden_stool:2},rewardGold:20,after:'herbal_supplies'},
  herbal_supplies:{name:'Tonics for Westwood',giver:'forester',type:'craft',target:'brew_tonic',goal:2,deliverItems:{herbal_tonic:2},rewardGold:10,after:'forest_supplies'},
  cooked_supplies:{name:'Meals for the Frontier',giver:'fisher',type:'craft',target:'cook_shrimp',goal:3,deliverItems:{cooked_shrimp:3},rewardGold:20,after:'first_catch'},
