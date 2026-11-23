@@ -4,6 +4,7 @@ const SKILLS=['attack','strength','defence','ranging','hitpoints','woodcutting',
  'cooking','firemaking','smithing','crafting','fletching','magic','prayer','agility','thieving',
  'runecrafting','herblore','farming','construction','hunter','slayer'];
 const RECIPES={
+ smith_steel_shield:{name:'Smith steel shield',skill:'smithing',level:35,xp:120,inputs:{steel_bar:2},outputs:{steel_shield:1},station:'forge'},
  smelt_steel:{name:'Smelt steel bar',skill:'smithing',level:30,xp:90,inputs:{iron_ore:1,coal:2},outputs:{steel_bar:1},station:'forge'},
  smith_steel_dagger:{name:'Smith steel dagger',skill:'smithing',level:30,xp:85,inputs:{steel_bar:1},outputs:{steel_dagger:1},station:'forge'},
  cook_shrimp:{name:'Cook shrimp',skill:'cooking',level:1,xp:30,inputs:{raw_shrimp:1},outputs:{cooked_shrimp:1},station:'cooking'},
@@ -41,6 +42,7 @@ const RECIPES={
  slayer_contract:{name:'Claim Slayer training',skill:'slayer',level:1,xp:65,inputs:{},outputs:{},station:'guild',requiresSlayerKills:3}
 };
 const QUESTS={
+ watch_steel_shields:{giver:'guard',name:'A Stronger Watch',type:'craft',target:'smith_steel_shield',goal:2,deliverItems:{steel_shield:2},rewardGold:60,after:'watch_steel'},
  oakvale_laps:{giver:'elder',name:'A Scout’s Footwork',type:'course',target:'oakvale_lap',goal:3,rewardGold:20,after:'welcome'},
  watch_steel:{giver:'guard',name:'Steel for the Watch',type:'craft',target:'smith_steel_dagger',goal:2,deliverItems:{steel_dagger:2},rewardGold:50,after:'watch_shields'},
  welcome:{giver:'elder',name:'Welcome to Oakvale',type:'talk',target:'elder',goal:1,rewardGold:10},
