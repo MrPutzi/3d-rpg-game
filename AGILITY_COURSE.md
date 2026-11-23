@@ -1,5 +1,7 @@
 # Oakvale agility course
 
+Update: checkpoints now require timed stationary obstacle training and expose server deadlines to the UI. See AGILITY_OBSTACLES.md for current timing and interruption behavior.
+
 Audited main 582b1cb (PR #45), with only legacy PR #7 open and no standalone open issues. Existing Agility was a stationary 1.8-second production recipe. This increment replaces it, preserving earned XP.
 
 1. **Authoritative laps** (`game/agility.js`, `server.js`, `game/progression.js`): start within 24 units of (530,760), then visit (650,760), (650,650), (530,650), and the start, in order within 20 units. Four checkpoints grant 40 XP once. Server positions drive progress; clients cannot submit checkpoint completion. A 600ms gate prevents same-tick advances. Combat, other production, building interaction, death, distance over 300 from start, or 120 seconds cancels without partial XP. Ordinary walking is allowed. The old `run_course` recipe is removed.

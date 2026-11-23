@@ -1,0 +1,10 @@
+# Timed agility obstacles
+
+Audit baseline: main 659380c / PR #46 already provides ordered laps, map tracking and A Scout’s Footwork. Only legacy PR #7 remains open; no standalone open issues. This update extends that existing course rather than adding duplicate quests or rewards.
+
+Priorities:
+1. **Server timing** — `game/agility.js`: balance beam 1.8s, stepping stones 2.4s, low hurdle 1.8s, landing practice 1.2s. Training starts only after the player stops within 20 units of the next checkpoint. A path or leaving the radius resets the current obstacle timer; earlier checkpoints remain. Full lap cancellation rules and the two-minute deadline remain. No intermediate XP, extra items or gold; 40 XP per complete lap and the existing one-time Elder reward remain unchanged.
+2. **World visibility** — server catalog exposes the four public obstacle locations/names/durations. `public/client.js` renders original geometric training markers, highlights the current obstacle and animates a progress ring. These are non-colliding training stations, not physical obstacle traversal or character jump animations.
+3. **Readable progress** — `public/index.html` and `public/client.js` show a labeled progress bar, obstacle countdown and lap time remaining. The next-leg button is disabled during training; ordinary map movement still interrupts it. Timers interpolate the last server timestamp for display only; rewards and checkpoint transitions require a server profile update. Reconnect still discards incomplete laps and retains saved completed progress.
+
+Tests cover exact completion boundaries, repeated ticks/stalls, movement inside/outside the marker, concurrent isolated timers, copied status snapshots, deadline expiry and bounded client progress. Existing live socket integration must still walk all four points, wait for server-confirmed completion and verify session replacement persistence. No database migration or progression reset. Browser visuals and Render deployment are not verified by these tests.

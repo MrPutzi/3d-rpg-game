@@ -91,7 +91,7 @@ function navigate(p,point,intent=null){
  const dest={x:clamp(point.x,18,WORLD_SIZE-18),y:clamp(point.y,18,WORLD_SIZE-18)};
  const path=makePath(p,dest);
  if(!path.length&&dist(p,dest)>24){send(p,'That location is unreachable.');return false;}
- Production.cancel(p);p.path=path;p.intent=intent;p.openBuilding=null;pushProfile(p);return true;
+ Production.cancel(p);if(Agility.interrupt(p))send(p,'Obstacle interrupted by movement.');p.path=path;p.intent=intent;p.openBuilding=null;pushProfile(p);return true;
 }
 function reachable(p,entity,radius=85){return dist(p,entity)<=radius;}
 function buildingById(id){return VILLAGE.buildings.find(b=>b.id===id);}
@@ -205,7 +205,7 @@ io.on('connection',socket=>{
    return handler(...args);
   });
  }
- socket.emit('catalog',{windStrike:Magic.WIND_STRIKE,items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
+ socket.emit('catalog',{agilityCourse:Agility.POINTS.map((point,i)=>({...point,...Agility.OBSTACLES[i]})),windStrike:Magic.WIND_STRIKE,items:ITEMS,shops:SHOPS,village:VILLAGE,regions:REGIONS,recipes:RECIPES,quests:QUESTS,stations:stationLocation,size:WORLD_SIZE,tickMs:TICK_MS,accountsMode:accountDb.mode});
  let authAttempts=0,authWindow=Date.now(),authBusy=false,nextManualSave=0;
  async function authenticate(operation,data){
   if(p.loggedIn||authBusy)return;

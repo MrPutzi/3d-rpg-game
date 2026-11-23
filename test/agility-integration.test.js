@@ -20,7 +20,14 @@ test('live authoritative movement completes a lap, saves quest credit and drops 
   for(let i=0;i<A.POINTS.length;i++){
    pending=event(a,'profile',p=>i===3?p.skills.agility.xp===40:p.agility?.completed===i+1);
    // No client completion event: only ordinary move requests.
-   a.emit('move',A.POINTS[i]);const p=await pending;
+   const begun=i===0?event(a,'profile',p=>!!p.agility?.action):null;
+   a.emit('move',A.POINTS[i]);
+   if(begun){
+    const first=await begun;const reset=event(a,'profile',p=>p.agility?.completed===0&&!p.agility.action);
+    const restarted=event(a,'profile',p=>p.agility?.action?.startedAt>first.agility.action.startedAt);
+    a.emit('move',{x:A.POINTS[i].x+1,y:A.POINTS[i].y});await reset;await restarted;
+   }
+   const p=await pending;
    if(i===3){assert.equal(p.agility,null);assert.equal(p.quests.oakvale_laps.progress,3);assert.equal(p.questJournal.oakvale_laps.ready,true);}
   }
   await event(a,'state',s=>{const p=s.players[a.id];return p&&Math.hypot(p.x-A.START.x,p.y-A.START.y)<2;});
