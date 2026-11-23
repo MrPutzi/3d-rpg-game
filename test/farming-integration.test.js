@@ -10,7 +10,7 @@ test('live crops persist across replacement and harvest once for their owner',{t
   const db=accountStore({filename,databaseUrl:''});await db.init();
   const door={x:1010,y:890};
   const pendingTask=await db.register('FarmerPending','TestOnlyPassword2026',{...door,inventory:[{id:'guam_seed',qty:1}]});
-  const finishedTask=await db.register('FarmerReady','TestOnlyPassword2026',{...door,farmPatch:{kind:'guam',readyAt:Date.now()-1000}});await db.close();
+  const finishedTask=await db.register('FarmerReady','TestOnlyPassword2026',{...door,quests:{herbal_supplies:{status:'complete',progress:2,goal:2}},farmPatch:{kind:'guam',readyAt:Date.now()-1000}});await db.close();
   const probe=net.createServer();await new Promise(r=>probe.listen(0,'127.0.0.1',r));const port=probe.address().port;await new Promise(r=>probe.close(r));const url='http://127.0.0.1:'+port;
   child=spawn(process.execPath,['server.js'],{cwd:path.join(__dirname,'..'),env:{...process.env,DATABASE_URL:'',LOCAL_DB_PATH:filename,PORT:String(port)},stdio:'ignore'});
   let ready=false;for(let i=0;i<70;i++){try{if((await fetch(url+'/health')).ok){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}assert.ok(ready);
@@ -20,9 +20,9 @@ test('live crops persist across replacement and harvest once for their owner',{t
   a=await resume(pendingTask.token);assert.deepEqual(a.p.farmPatch,planted.farmPatch);
   done=event(a.s,'serverMessage',m=>m.includes('not ready'));a.s.emit('harvestGuam',{now:Date.now()+999999});await done;
   const b=await resume(finishedTask.token);assert.ok(b.p.farmPatch);
-  saved=event(b.s,'saveStatus',v=>v.state==='saved');done=event(b.s,'profile',p=>p.skills.farming.xp===55);b.s.emit('harvestGuam');const result=await done;await saved;assert.equal(result.farmPatch,null);
+  saved=event(b.s,'saveStatus',v=>v.state==='saved');done=event(b.s,'profile',p=>p.skills.farming.xp===55);b.s.emit('harvestGuam');const result=await done;await saved;assert.equal(result.farmPatch,null);assert.equal(result.quests.westwood_harvest.progress,1);
   done=event(b.s,'serverMessage',m=>m.includes('not ready'));b.s.emit('harvestGuam');await done;
-  const c=await resume(finishedTask.token);assert.equal(c.p.skills.farming.xp,55);assert.equal(c.p.farmPatch,null);
+  const c=await resume(finishedTask.token);assert.equal(c.p.skills.farming.xp,55);assert.equal(c.p.farmPatch,null);assert.equal(c.p.quests.westwood_harvest.progress,1);
   const d=await resume(pendingTask.token);assert.deepEqual(d.p.farmPatch,planted.farmPatch);
  }finally{for(const s of sockets)s.close();if(child){const exited=new Promise(r=>child.once('exit',r));child.kill();await exited;}fs.rmSync(dir,{recursive:true,force:true});}
 });

@@ -1,6 +1,7 @@
 'use strict';
 const {stationLocation}=require('./stations');
 const {dist,count,removeItem,addItem,addXp}=require('./rules');
+const {questProgress}=require('./activities');
 const GROW_MS=60000;
 function restore(value){return value?.kind==='guam'&&Number.isSafeInteger(value.readyAt)&&value.readyAt>0?{kind:'guam',readyAt:value.readyAt}:null;}
 function available(p){return p.loggedIn&&p.hp>0&&dist(p,stationLocation.farm)<=120&&!p.path?.length&&!p.intent&&!p.production&&!p.agility;}
@@ -18,6 +19,7 @@ function harvest(p,now=Date.now()){
  const inventory=p.inventory.map(e=>({...e}));
  if(!addItem(inventory,'guam_leaf',2))return {ok:false,message:'Make room for two guam leaves. Your crop is kept.'};
  p.inventory=inventory;p.farmPatch=null;addXp(p,'farming',55);
+ if(p.quests)questProgress(p,'harvest','guam',1);
  return {ok:true,message:'Harvested 2 guam leaves · +55 Farming XP.'};
 }
 module.exports={GROW_MS,restore,plant,harvest};

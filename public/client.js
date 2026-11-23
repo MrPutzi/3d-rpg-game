@@ -552,6 +552,7 @@ function draw(){
   if(!inView(site.x,site.y))continue;
   circle(site.x,site.y,17,'#927b50');label('✦',site.x,site.y+5,'#ffe4a3',17);
   label(id.toUpperCase(),site.x,site.y-25,'#f3dbb3',11);
+  if(id==='farm'){const view=herbPatchView(profile?.farmPatch,(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt));circle(site.x,site.y,11,view.color);label(view.text,site.x,site.y+35,view.color,11);}
  }
  for(const [i,obstacle] of agilityCourse.entries()){
   if(!inView(obstacle.x,obstacle.y))continue;
@@ -754,3 +755,9 @@ $('agility-go').onclick=()=>{const target=profile?.agility?.target||stations.cou
 $('farm-plant').onclick=()=>emit('plantGuam');
 $('farm-harvest').onclick=()=>emit('harvestGuam');
 $('farm-go').onclick=()=>{if(stations.farm){closeBuilding();emit('move',{x:stations.farm.x,y:stations.farm.y});}};
+
+function herbPatchView(patch,now){
+ if(!patch)return {text:'Your patch: empty',color:'#e3c99a'};
+ const seconds=Math.max(0,Math.ceil((patch.readyAt-now)/1000));
+ return seconds?{text:'Your guam: '+seconds+'s',color:'#9fd6aa'}:{text:'Your guam: ready to harvest',color:'#f5d96e'};
+}
