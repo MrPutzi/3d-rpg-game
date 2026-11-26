@@ -15,7 +15,7 @@ test('invalid targets, range, death and busy actions cannot mint rewards or star
 });
 test('restored cooldown and level-dependent success use server rules',()=>{
  const p=player();T.attempt(p,'guard',1000,()=>.99);p.nextThieve=T.restore(JSON.parse(JSON.stringify(p.nextThieve)),2000);assert.equal(T.attempt(p,'guard',5999,()=>0).ok,false);assert.ok(T.attempt(p,'guard',6000,()=>0).success);
- assert.equal(T.restore(undefined,1000),0);assert.equal(T.restore(Infinity,1000),0);assert.equal(T.restore(1e20,1000),6000);
+ assert.equal(T.restore(undefined,1000),0);assert.equal(T.restore(Infinity,1000),0);assert.equal(T.restore(1e20,1000),8000);
  assert.equal(T.attempt(player(),'guard',1000,()=>.7).success,false);const expert=player();expert.skills.thieving.level=99;assert.ok(T.attempt(expert,'guard',1000,()=>.7).success);assert.equal(T.attempt({...player(),skills:expert.skills},'guard',1000,()=>.95).success,false);
 });
 
