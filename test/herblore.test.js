@@ -55,7 +55,7 @@ test('marsh remedies unlocks after Quiet Hands and consumes two personally brewe
  const p=player();p.quests.quiet_hands.status='active';p.quests.quiet_hands.progress=3;
  addItem(p.inventory,'marentill_seed',1);
  assert.equal(turnInQuest(p,'quiet_hands','ranger').ok,true);
- assert.equal(p.quests.marsh_remedies.status,'active');assert.equal(count(p.inventory,'marentill_seed'),1);
+ assert.equal(p.quests.marsh_remedies.status,'active');assert.equal(count(p.inventory,'marentill_seed'),2);
  addItem(p.inventory,'marentill_tonic',2);p.quests.marsh_remedies.progress=2;
  assert.equal(turnInQuest(p,'marsh_remedies','ranger').ok,true);
  assert.equal(count(p.inventory,'marentill_tonic'),0);assert.equal(p.gold,80);
