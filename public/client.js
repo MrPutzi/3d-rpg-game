@@ -6,7 +6,7 @@ let agilityCourse=[],items={},shops={},recipes={},questsCatalog={},thievingTarge
 let windStrike=null;
 let bankQuantity=1,bankSearch='',trackedQuest=null,trackedRecipe=null;
 let recipeSearch='',recipeIngredient=null;
-let tradeBusy=false;
+let tradeBusy=false,playerTrade=null,incomingTradeInvite=null;
 let profile=null,entered=false,modalId=null,shopTab='buy',camera={x:380,y:380};
 let viewport={w:1000,h:720},marker=null,lastProfileSignature='';
 let SIZE=3600,authMode='signin';
@@ -113,7 +113,7 @@ socket.on('connect',()=>{
  const token=localStorage.getItem('miniscape_session');
  if(token)socket.emit('resumeSession',{token});
 });
-socket.on('disconnect',()=>{$('combat-target').hidden=true;$('connection').textContent='● Reconnecting…';});
+socket.on('disconnect',()=>{$('combat-target').hidden=true;$('connection').textContent='● Reconnecting…';playerTrade=null;incomingTradeInvite=null;$('player-trade-backdrop').hidden=true;$('trade-invite-backdrop').hidden=true;});
 socket.on('catalog',data=>{
  items=data.items||{};shops=data.shops||{};village=data.village||village;
  windStrike=data.windStrike||null;agilityCourse=data.agilityCourse||[];
@@ -121,6 +121,52 @@ socket.on('catalog',data=>{
  SIZE=data.size||3600;
 });
 socket.on('tradeStatus',data=>{tradeBusy=data.state==='pending';if(data.message)notify(data.message);if(data.state==='unknown'){entered=false;profile=null;closeBuilding();$('login-overlay').hidden=false;$('login-error').textContent='Trade status unknown. Reload this page to restore saved progress.';}renderBuilding();});
+function playerTradeOfferText(offer){
+ const parts=[];if(offer?.gold)parts.push(offer.gold.toLocaleString()+' coins');
+ for(const entry of offer?.items||[])parts.push(named(entry.id)+' ×'+entry.qty);
+ return parts.join(' + ')||'Nothing offered';
+}
+function renderPlayerTrade(data){
+ playerTrade=data;$('player-trade-title').textContent='Trade with '+data.partnerName;
+ $('player-trade-own').textContent=playerTradeOfferText(data.ownOffer);
+ $('player-trade-other').textContent=playerTradeOfferText(data.otherOffer);
+ $('player-trade-status').textContent=(data.ownConfirmed?'You confirmed. ':'Waiting for your confirmation. ')+(data.otherConfirmed?'Partner confirmed.':'Waiting for partner confirmation.');
+ const select=$('player-trade-item'),selected=select.value;select.replaceChildren();
+ const none=elem('option','','No item');none.value='';select.append(none);
+ for(const entry of profile?.inventory||[]){const option=elem('option','',named(entry.id)+' · '+entry.qty+' owned');option.value=entry.id;select.append(option);}
+ if([...select.options].some(option=>option.value===selected))select.value=selected;
+ $('player-trade-confirm').disabled=!!data.ownConfirmed||!socket.connected;
+ $('player-trade-confirm').textContent=data.ownConfirmed?'Confirmed':'Confirm trade';
+ $('player-trade-backdrop').hidden=false;
+}
+socket.on('playerTradeWaiting',data=>notify('Trade request sent to '+data.partnerName+'.'));
+socket.on('playerTradeInvite',data=>{
+ incomingTradeInvite=data;$('trade-invite-text').textContent=data.fromName+' wants to trade with you.';
+ $('trade-invite-backdrop').hidden=false;
+});
+socket.on('playerTradeState',renderPlayerTrade);
+socket.on('playerTradeClosed',data=>{
+ playerTrade=null;incomingTradeInvite=null;$('player-trade-backdrop').hidden=true;$('trade-invite-backdrop').hidden=true;
+ if(data?.message)notify(data.message);
+});
+$('trade-invite-accept').onclick=()=>{if(incomingTradeInvite)socket.emit('respondPlayerTrade',{tradeId:incomingTradeInvite.tradeId,accept:true});$('trade-invite-backdrop').hidden=true;};
+$('trade-invite-decline').onclick=()=>{if(incomingTradeInvite)socket.emit('respondPlayerTrade',{tradeId:incomingTradeInvite.tradeId,accept:false});incomingTradeInvite=null;$('trade-invite-backdrop').hidden=true;};
+$('player-trade-update').onclick=()=>{
+ if(!playerTrade)return;
+ const itemId=$('player-trade-item').value;
+ socket.emit('updatePlayerTradeOffer',{tradeId:playerTrade.tradeId,gold:Number($('player-trade-gold').value||0),itemId,qty:itemId?Number($('player-trade-qty').value):0});
+};
+$('player-trade-confirm').onclick=()=>{if(playerTrade)socket.emit('confirmPlayerTrade',{tradeId:playerTrade.tradeId});};
+$('player-trade-cancel').onclick=()=>{if(playerTrade)socket.emit('cancelPlayerTrade',{tradeId:playerTrade.tradeId});};
+$('player-trade-open').onclick=e=>{
+ if(!entered||!socket.connected)return;
+ const me=world.players[socket.id];if(!me)return;
+ const options=Object.entries(world.players).filter(([id,p])=>id!==socket.id&&Math.hypot(p.x-me.x,p.y-me.y)<=160)
+  .map(([id,p])=>({label:'Trade with '+p.name,action:()=>socket.emit('requestPlayerTrade',id)}));
+ if(!options.length){notify('No registered players are nearby.');return;}
+ contextMenu('Nearby players',options,e.clientX,e.clientY);
+};
+
 socket.on('disconnect',()=>{tradeBusy=false;});
 socket.on('shopState',data=>{if(data?.id){marketInfo[data.id]=data;if(modalId===data.id&&profile)renderBuilding();}});
 socket.on('serverMessage',text=>{notify(text);if(!entered)$('login-error').textContent=String(text).slice(0,100);});
@@ -171,7 +217,7 @@ function closeBuilding(){modalId=null;$('building-backdrop').hidden=true;}
 $('close-building').onclick=closeBuilding;$('close-detail').onclick=()=>$('detail-backdrop').hidden=true;
 document.querySelectorAll('.modal-backdrop').forEach(b=>b.addEventListener('pointerdown',e=>{if(e.target===b)b.hidden=true;if(b.id==='building-backdrop'&&b.hidden)modalId=null;}));
 document.addEventListener('pointerdown',e=>{if(!$('context-menu').contains(e.target))$('context-menu').hidden=true;});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;$('map-backdrop').hidden=true;closeBuilding();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('context-menu').hidden=true;$('detail-backdrop').hidden=true;$('map-backdrop').hidden=true;closeBuilding();if(playerTrade)socket.emit('cancelPlayerTrade',{tradeId:playerTrade.tradeId});if(incomingTradeInvite)socket.emit('respondPlayerTrade',{tradeId:incomingTradeInvite.tradeId,accept:false});}});
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
  document.querySelectorAll('.tab-pane').forEach(p=>p.hidden=p.id!=='pane-'+b.dataset.tab);
@@ -193,6 +239,7 @@ function updateUI(){
  $('health').textContent=profile.hp+' / '+profile.maxHp;
  $('hp-bar').style.width=(profile.hp/profile.maxHp*100)+'%';
  $('gold').textContent=profile.gold;
+ $('player-trade-open').disabled=!entered||!socket.connected;
  const w=gear();$('weapon-name').textContent=w.name;$('weapon-icon').textContent=w.icon;
  $('weapon-info').textContent=(w.type||'crush').toUpperCase()+' · '+(w.speed||4)+' ticks';
  const s=profile.skills;

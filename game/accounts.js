@@ -3,6 +3,8 @@ const crypto=require('node:crypto');
 const {openSnapshot}=require('./atomic-snapshot');
 const {planTrade}=require('./merchant-plan');
 const {postgresTrade}=require('./postgres-trade');
+const {planPlayerTrade}=require('./player-trade');
+const {postgresPlayerTrade}=require('./postgres-player-trade');
 const {planRestock,postgresRestock}=require('./merchant-stock');
 const {createEconomy}=require('./economy');
 const path=require('node:path');
@@ -164,6 +166,23 @@ function accountStore({filename=STORE_PATH,databaseUrl=process.env.DATABASE_URL}
    return {...plan,tradeRevision:a.tradeRevision};
   });
  }
+ async function playerTrade(accountAId,expectedRevisionA,accountBId,expectedRevisionB,offerA,offerB){
+  if(!accountAId||!accountBId||accountAId===accountBId||!Number.isSafeInteger(expectedRevisionA)||expectedRevisionA<0||!Number.isSafeInteger(expectedRevisionB)||expectedRevisionB<0)
+   throw Error('Invalid player trade request');
+  if(usesPostgres)return postgresPlayerTrade(pool,accountAId,expectedRevisionA,accountBId,expectedRevisionB,offerA,offerB);
+  return mutateDisk(disk=>{
+   const a=disk.accounts.find(x=>x.id===accountAId),b=disk.accounts.find(x=>x.id===accountBId);
+   if(!a||!b)throw Error('Trading account not found');
+   const revisionA=a.tradeRevision||0,revisionB=b.tradeRevision||0;
+   if(revisionA!==expectedRevisionA||revisionB!==expectedRevisionB)throw Error('Stale account trade revision');
+   if(!Number.isSafeInteger(revisionA+1)||!Number.isSafeInteger(revisionB+1))throw Error('Account trade revision exhausted');
+   const plan=planPlayerTrade(a.profile,b.profile,offerA,offerB);
+   if(!plan.ok)return plan;
+   a.profile=plan.profileA;b.profile=plan.profileB;
+   a.tradeRevision=revisionA+1;b.tradeRevision=revisionB+1;
+   return {...plan,tradeRevisionA:a.tradeRevision,tradeRevisionB:b.tradeRevision};
+  });
+ }
  async function merchantStock(){
   if(pool){
    const result=await pool.query('SELECT id,stock FROM game_merchants');
@@ -180,6 +199,6 @@ function accountStore({filename=STORE_PATH,databaseUrl=process.env.DATABASE_URL}
   });
  }
  async function close(){if(pool)await pool.end();else await writeQueue;}
- return{init,register,login,resume,logout,save,trade,merchantStock,restockMerchants,close,mode:usesPostgres?'postgres':'local-file'};
+ return{init,register,login,resume,logout,save,trade,playerTrade,merchantStock,restockMerchants,close,mode:usesPostgres?'postgres':'local-file'};
 }
 module.exports={accountStore,usernameValid,passwordValid,hashPassword,checkPassword};

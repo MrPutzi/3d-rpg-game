@@ -28,7 +28,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: PostgreSQL transaction integration
-        run: node --test test/postgres-trade.test.js
+        run: node --test test/postgres-trade.test.js test/postgres-player-trade.test.js
         env:
           TEST_DATABASE_URL: postgres://test:test@localhost:5432/miniscape_test
       - run: npm test
