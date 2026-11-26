@@ -21,6 +21,8 @@ test('offers reject insufficient items, gold, duplicate types and malformed quan
  assert.equal(validateOffer(p,{gold:0,items:[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}]}).ok,false);
  assert.equal(validateOffer(p,{gold:0,items:[{id:'__proto__',qty:1}]}).ok,false);
  assert.equal(validateOffer(p,{gold:0,items:[{id:'iron_ore',qty:0}]}).ok,false);
+ const seven=['iron_ore','bread','logs','oak_logs','copper_ore','coal','steel_bar'].map(id=>({id,qty:1}));
+ const fullOffer=profile(10,seven);assert.equal(validateOffer(fullOffer,{gold:0,items:seven}).ok,false);
 });
 test('trade rejects a full recipient bag without changing either side',()=>{
  const a=profile(10,[{id:'iron_ore',qty:1}]);
