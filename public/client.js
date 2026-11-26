@@ -2,7 +2,7 @@
 const socket=io(),canvas=document.getElementById('gameCanvas'),ctx=canvas.getContext('2d');
 const $=id=>document.getElementById(id);
 let world={players:{},npcs:{},nodes:{},groundItems:{},projectiles:[]};
-let agilityCourse=[],items={},shops={},recipes={},questsCatalog={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
+let agilityCourse=[],items={},shops={},recipes={},questsCatalog={},thievingTargets={},regions=[],stations={},marketInfo={},village={buildings:[],roads:[],villagers:[],fountain:{x:390,y:390}};
 let windStrike=null;
 let bankQuantity=1,bankSearch='',trackedQuest=null,trackedRecipe=null;
 let recipeSearch='',recipeIngredient=null;
@@ -117,7 +117,7 @@ socket.on('disconnect',()=>{$('combat-target').hidden=true;$('connection').textC
 socket.on('catalog',data=>{
  items=data.items||{};shops=data.shops||{};village=data.village||village;
  windStrike=data.windStrike||null;agilityCourse=data.agilityCourse||[];
- recipes=data.recipes||{};questsCatalog=data.quests||{};regions=data.regions||[];stations=data.stations||{};
+ recipes=data.recipes||{};questsCatalog=data.quests||{};thievingTargets=data.thievingTargets||{};regions=data.regions||[];stations=data.stations||{};
  SIZE=data.size||3600;
 });
 socket.on('tradeStatus',data=>{tradeBusy=data.state==='pending';if(data.message)notify(data.message);if(data.state==='unknown'){entered=false;profile=null;closeBuilding();$('login-overlay').hidden=false;$('login-error').textContent='Trade status unknown. Reload this page to restore saved progress.';}renderBuilding();});
@@ -226,7 +226,17 @@ function updateUI(){
   }
   inv.append(cell);
  }
- $('farm-plant').disabled=!!profile.farmPatch;
+ const selectedCrop=$('farm-crop').value||'guam',seedId=selectedCrop+'_seed';
+ const seedCount=profile.inventory.reduce((n,e)=>n+(e.id===seedId?e.qty:0),0),cropLevel=selectedCrop==='marentill'?5:1;
+ $('farm-plant').disabled=!!profile.farmPatch||seedCount<1||profile.skills.farming.level<cropLevel;
+ const prayerMax=profile.maxPrayerPoints||profile.skills.prayer.level;
+ $('prayer-status').textContent=profile.prayerPoints+'/'+prayerMax+' Prayer points · '+(profile.activePrayer?'Stone Ward active · 40% less melee damage':'No active prayer');
+ $('prayer-toggle').textContent=profile.activePrayer?'Deactivate Stone Ward':'Activate Stone Ward';
+ $('prayer-toggle').disabled=!profile.activePrayer&&profile.prayerPoints<1;
+ $('prayer-recharge').disabled=profile.prayerPoints>=prayerMax;
+ const thiefSelect=$('thieving-target'),oldThief=thiefSelect.value;thiefSelect.replaceChildren();
+ for(const [id,target] of Object.entries(thievingTargets)){const option=elem('option','',target.name+' · Thieving '+target.level);option.value=id;option.disabled=profile.skills.thieving.level<target.level;thiefSelect.append(option);}
+ if([...thiefSelect.options].some(o=>o.value===oldThief&&!o.disabled))thiefSelect.value=oldThief;else{const first=[...thiefSelect.options].find(o=>!o.disabled);if(first)thiefSelect.value=first.value;}
  const task=profile.slayerTask;
  const choice=$('slayer-choice'),selected=choice.value;choice.replaceChildren();for(const option of profile.slayerOptions||[]){const el=elem('option','',option.name+' · Slayer '+option.level+' · '+option.goal+' kills · '+option.xp+' XP');el.value=option.kind;el.disabled=!option.available;choice.append(el);}if([...choice.options].some(o=>o.value===selected&&!o.disabled))choice.value=selected;choice.disabled=!!task;
  $('slayer-status').textContent=slayerText(task,profile.slayerKills);
@@ -274,6 +284,7 @@ function updateUI(){
   info.append(elem('strong','',recipe.name+' · '+recipe.skill+' Lv'+recipe.level));
   info.append(elem('small','',((recipe.duration||1800)/1000)+' seconds per action'));
   if(id==='craft_rabbit_snare'||id==='hunt_rabbit')info.append(elem('small','','One log makes two single-use snares. Each completed hunt consumes one snare. Roast the catch for food or deliver three personally roasted rabbits to Captain Rusk after Eastern Wilds Patrol. Moving cancels unfinished hunts without consuming a snare.'));
+  if(id==='brew_marentill_tonic')info.append(elem('small','','Misty Marsh seeds → personal herb patch (Farming 5, 90 seconds) → two leaves → tavern tonic (Herblore 5). Captain Rusk requests two tonics after Quiet Hands.'));
   if(id==='smelt_steel'||id==='smith_steel_dagger')info.append(elem('small','','Southstone iron + coal (Mining 30) → Oakvale Forge steel → daggers. Bring two personally forged daggers to the Guard after Shields for the Watch. Spare daggers require Attack 5 or can be sold.'));
   if(id==='saw_plank'||id==='build_stool')info.append(elem('small','','Westwood timber → guild planks → wooden stools. Deliver two personally built stools to Thorin after his tonic quest, or sell spare furniture.'));
   if(recipe.station==='cooking')info.append(elem('small','','Cook at the tavern or within 80 units of a campfire. Light logs to make a shared 60-second fire.'));
@@ -479,8 +490,8 @@ function hitMenu(hit,e){
    {label:'Walk here',action:()=>walk(o)},{label:'Examine '+o.name,action:()=>detail(o.name,['Combat level: '+o.level,'Hitpoints: '+o.hp+'/'+o.maxHp,'Defence: '+o.defence,'Damage on retaliation: up to '+o.damage])}];
  }else if(hit.kind==='npc'){
   title=o.name;options=[{label:'Talk to '+o.name,action:()=>emit('interact',o.id)},
-  {label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>detail(o.name,[o.id==='elder'?'The village quest giver.':'A watchful guardian of Oakvale.'])}];
-  if(o.id==='guard')options.splice(1,0,{label:'Pickpocket guard · Thieving',action:()=>emit('pickpocket',o.id)});
+  {label:'Walk here',action:()=>walk(o)},{label:'Examine',action:()=>detail(o.name,[o.id==='elder'?'The village quest giver.':'A local resident of the frontier.'])}];
+  const thief=thievingTargets[o.id];if(thief)options.splice(1,0,{label:'Pickpocket · Thieving '+thief.level,action:()=>emit('pickpocket',o.id)});
  }else if(hit.kind==='building'){
   title=o.name;options=[{label:'Enter '+o.name,action:()=>emit('visitBuilding',o.id)},{label:'Walk to entrance',action:()=>walk(o.door)},
   {label:'Examine',action:()=>detail(o.name,[o.id==='bank'?'Deposit or withdraw your items.':o.id==='guild'?'Quest journal and training information.':'Trade, relax or browse the shop.'])}];
@@ -608,11 +619,11 @@ socket.on('profile',()=>{profileReceivedAt=Date.now();});
 function obstacleProgress(lap,now){return lap?.action?Math.max(0,Math.min(1,(now-lap.action.startedAt)/(lap.action.endsAt-lap.action.startedAt))):0;}
 function frame(){
  const lap=profile?.agility,now=(profile?.serverNow||0)+Math.max(0,Date.now()-profileReceivedAt);
- const thieveWait=Math.max(0,Math.ceil(((profile?.nextThieve||0)-now)/1000));
- $('thieving-status').textContent=thieveWait?'Next attempt in '+thieveWait+'s':'Ready · stand beside the guard and stop moving.';
- $('thieving-attempt').disabled=!profile||thieveWait>0;
- const patch=profile?.farmPatch,remaining=patch?Math.max(0,Math.ceil((patch.readyAt-now)/1000)):0;
- $('farm-status').textContent=patch?(remaining?'Guam growing · '+remaining+'s remaining. You may leave or log out.':'Guam ready · harvest 2 leaves and 55 XP.'):'Empty · plant one seed, wait 60s, then harvest. Use leaves for tonics at the tavern and Thorin’s supplies.';
+ const thieveWait=Math.max(0,Math.ceil(((profile?.nextThieve||0)-now)/1000)),thief=thievingTargets[$('thieving-target').value],thiefLevel=profile?.skills?.thieving?.level||1;
+ $('thieving-status').textContent=thieveWait?'Next attempt in '+thieveWait+'s':thief&&thiefLevel<thief.level?'Requires Thieving level '+thief.level:'Ready · stand beside '+(thief?.name||'the target')+' and stop moving.';
+ $('thieving-attempt').disabled=!profile||thieveWait>0||!thief||thiefLevel<thief.level;
+ const patch=profile?.farmPatch,remaining=patch?Math.max(0,Math.ceil((patch.readyAt-now)/1000)):0,cropName=patch?.kind==='marentill'?'Marentill':'Guam';
+ $('farm-status').textContent=patch?(remaining?cropName+' growing · '+remaining+'s remaining. You may leave or log out.':cropName+' ready · harvest 2 leaves and '+(cropName==='Marentill'?75:55)+' Farming XP.'):'Empty · choose a seed, wait for the crop, then harvest. Marentill requires Farming 5.';
  $('farm-harvest').disabled=!patch||remaining>0;
  $('agility-progress').value=obstacleProgress(lap,now);
  $('agility-timer').textContent=lap?(lap.action?lap.obstacle.name+' · '+Math.max(0,(lap.action.endsAt-now)/1000).toFixed(1)+'s · ':'')+'Lap time left: '+Math.max(0,Math.ceil((lap.expires-now)/1000))+'s':'';
@@ -756,15 +767,20 @@ $('agility-start').onclick=()=>emit('startAgility');
 $('agility-cancel').onclick=()=>emit('cancelAgility');
 $('agility-go').onclick=()=>{const target=profile?.agility?.target||stations.course;if(target){closeBuilding();emit('move',{x:target.x,y:target.y});}};
 
-$('farm-plant').onclick=()=>emit('plantGuam');
+$('farm-plant').onclick=()=>emit('plantHerb',$('farm-crop').value||'guam');
+$('farm-crop').onchange=()=>{if(profile)updateUI();};
 $('farm-harvest').onclick=()=>emit('harvestGuam');
 $('farm-go').onclick=()=>{if(stations.farm){closeBuilding();emit('move',{x:stations.farm.x,y:stations.farm.y});}};
 
 function herbPatchView(patch,now){
  if(!patch)return {text:'Your patch: empty',color:'#e3c99a'};
  const seconds=Math.max(0,Math.ceil((patch.readyAt-now)/1000));
- return seconds?{text:'Your guam: '+seconds+'s',color:'#9fd6aa'}:{text:'Your guam: ready to harvest',color:'#f5d96e'};
+ const name=patch.kind==='marentill'?'marentill':'guam';
+ return seconds?{text:'Your '+name+': '+seconds+'s',color:'#9fd6aa'}:{text:'Your '+name+': ready to harvest',color:'#f5d96e'};
 }
 
-$('thieving-attempt').onclick=()=>emit('pickpocket','guard');
-$('thieving-go').onclick=()=>{const guard=village.villagers.find(n=>n.id==='guard');if(guard){closeBuilding();emit('move',{x:guard.x,y:guard.y});}};
+$('thieving-attempt').onclick=()=>emit('pickpocket',$('thieving-target').value||'guard');
+$('thieving-go').onclick=()=>{const target=village.villagers.find(n=>n.id===$('thieving-target').value);if(target){closeBuilding();emit('move',{x:target.x,y:target.y});}};
+$('prayer-toggle').onclick=()=>emit('togglePrayer','stone_ward');
+$('prayer-recharge').onclick=()=>emit('rechargePrayer');
+$('prayer-go').onclick=()=>{if(stations.prayer){closeBuilding();emit('move',{x:stations.prayer.x,y:stations.prayer.y});}};

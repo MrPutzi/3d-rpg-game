@@ -42,3 +42,22 @@ test('delivery UI counts separate slots and updates after consuming a tonic',()=
  assert.match(vm.runInContext("questDeliveryDetails(inventory,'herbal_tonic',2)",ctx),/2\/2 · consumed/);
  ctx.inventory.pop();assert.match(vm.runInContext("questDeliveryDetails(inventory,'herbal_tonic',2)",ctx),/1\/2/);
 });
+
+test('marentill tonic completes the level-five herb loop and heals through the shared food rules',()=>{
+ const p=player();p.skills.herblore={level:5,xp:0};
+ addItem(p.inventory,'marentill_leaf',1);addItem(p.inventory,'vial_of_water',1);
+ assert.equal(P.start(p,'brew_marentill_tonic',1,0).ok,true);
+ assert.equal(P.advance(p,1800).ok,true);assert.equal(count(p.inventory,'marentill_tonic'),1);
+ p.hp=10;assert.equal(eat(p,'marentill_tonic',2000).healed,7);
+ assert.equal(p.skills.herblore.xp,65);
+});
+test('marsh remedies unlocks after Quiet Hands and consumes two personally brewed tonics once',()=>{
+ const p=player();p.quests.quiet_hands.status='active';p.quests.quiet_hands.progress=3;
+ addItem(p.inventory,'marentill_seed',1);
+ assert.equal(turnInQuest(p,'quiet_hands','ranger').ok,true);
+ assert.equal(p.quests.marsh_remedies.status,'active');assert.equal(count(p.inventory,'marentill_seed'),1);
+ addItem(p.inventory,'marentill_tonic',2);p.quests.marsh_remedies.progress=2;
+ assert.equal(turnInQuest(p,'marsh_remedies','ranger').ok,true);
+ assert.equal(count(p.inventory,'marentill_tonic'),0);assert.equal(p.gold,80);
+ assert.equal(turnInQuest(p,'marsh_remedies','ranger'),null);
+});

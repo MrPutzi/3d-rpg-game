@@ -17,3 +17,16 @@ test('restore rejects invalid patches and herbal guidance points to growing crop
  for(const v of [null,{}, {kind:'other',readyAt:1},{kind:'guam',readyAt:-1},{kind:'guam',readyAt:Infinity}])assert.equal(F.restore(v),null);
  const p=player();assert.equal(recipeTarget(p,'brew_tonic').x,1010);F.plant(p,1000);p.inventory=[];assert.equal(recipeTarget(p,'brew_tonic').x,1010);
 });
+
+test('marentill requires Farming 5, grows independently and preserves the crop when inventory is full',()=>{
+ const p=player();p.inventory=[{id:'marentill_seed',qty:1}];
+ assert.equal(F.plant(p,'marentill',1000).ok,false);
+ p.skills.farming.level=5;
+ assert.ok(F.plant(p,'marentill',1000).ok);assert.equal(p.farmPatch.readyAt,91000);
+ assert.equal(F.harvest(p,90999).ok,false);
+ p.inventory=Array.from({length:28},()=>({id:'bronze_dagger',qty:1}));
+ assert.equal(F.harvest(p,91000).ok,false);assert.equal(p.farmPatch.kind,'marentill');
+ p.inventory=[];assert.ok(F.harvest(p,91000).ok);
+ assert.equal(p.skills.farming.xp,75);assert.equal(p.inventory[0].id,'marentill_leaf');assert.equal(p.inventory[0].qty,2);
+ assert.equal(F.restore({kind:'marentill',readyAt:91000}).kind,'marentill');
+});

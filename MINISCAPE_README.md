@@ -93,8 +93,9 @@ meals are removed. Existing accounts whose First Catch is complete unlock this n
 login without changing their previous quests. This links Moonwater fishing, Cooking, food
 consumption and the frontier provisioning story. No database migration is required.
 
-Next priorities: robust per-action persistence across shared economy mutations; fair
-multiplayer kill credit; richer recipe tools and station animations. The old account/UI
+Next priorities: crash-safe persistence for every inventory/loot/production mutation; durable
+player-to-player trade with account locks; richer recipe tools and station animations. Shared
+kill credit is already server-authoritative and tested. The old account/UI
 rewrite PR #7 is not part of this change: phase 2 already supplied the current account system.
 
 ## Shared encounters and target feedback
@@ -202,3 +203,11 @@ point back to the giver, except missing delivery meals still point to the cookin
 station. Bring ingredients separately. Locked/completed quests have no marker.
 Tracking remains session-local. Map clicks retain existing server movement checks;
 showing an objective does not teleport, attack, gather or award quest credit.
+
+
+## Active Prayer, expanded Thieving and marsh herbs
+
+- Prayer points equal the current Prayer level and are saved with the character. The Oakvale fountain shrine recharges them; Stone Ward reduces incoming NPC melee damage by 40% and drains one point every five seconds. Active prayers are session-only and turn off on logout or death. Client coordinates never authorize a recharge.
+- Thieving now supports the Oakvale guard and Newhaven's Outpost Quartermaster. Each target has a server-side level requirement, success chance, reward and failure cooldown. The Quiet Hands quest unlocks after Eastern Wilds Patrol; successful quartermaster attempts count toward its objective and its reward supplies a marentill seed.
+- Swamp trolls can drop marentill seeds. Farming level 5 grows a personal marentill crop in 90 seconds for two leaves and 75 XP. Herblore level 5 turns a leaf and water vial into a seven-HP tonic; Remedies for the Marsh asks for two tonics after Quiet Hands. The loop connects Misty Marsh combat, farming, Herblore, Captain Rusk and merchant resale.
+- No database migration or reset is required: Prayer points and crop state use the existing profile JSON. The current autosave/checkpoint durability limits still apply to most gameplay mutations; this does not claim crash-safe per-action persistence.
