@@ -127,15 +127,19 @@ function playerTradeOfferText(offer){
  return parts.join(' + ')||'Nothing offered';
 }
 function renderPlayerTrade(data){
- playerTrade=data;$('player-trade-title').textContent='Trade with '+data.partnerName;
+ const newTrade=playerTrade?.tradeId!==data.tradeId;playerTrade=data;
+ if(newTrade){$('player-trade-gold').value='0';$('player-trade-qty').value='1';}
+ $('player-trade-title').textContent='Trade with '+data.partnerName;
  $('player-trade-own').textContent=playerTradeOfferText(data.ownOffer);
  $('player-trade-other').textContent=playerTradeOfferText(data.otherOffer);
- $('player-trade-status').textContent=(data.ownConfirmed?'You confirmed. ':'Waiting for your confirmation. ')+(data.otherConfirmed?'Partner confirmed.':'Waiting for partner confirmation.');
+ const waiting=data.status==='invited';
+ $('player-trade-status').textContent=waiting?'Waiting for '+data.partnerName+' to accept the request.':(data.ownConfirmed?'You confirmed. ':'Waiting for your confirmation. ')+(data.otherConfirmed?'Partner confirmed.':'Waiting for partner confirmation.');
  const select=$('player-trade-item'),selected=select.value;select.replaceChildren();
  const none=elem('option','','No item');none.value='';select.append(none);
  for(const entry of profile?.inventory||[]){const option=elem('option','',named(entry.id)+' · '+entry.qty+' owned');option.value=entry.id;select.append(option);}
  if([...select.options].some(option=>option.value===selected))select.value=selected;
- $('player-trade-confirm').disabled=!!data.ownConfirmed||!socket.connected;
+ $('player-trade-gold').disabled=waiting;$('player-trade-item').disabled=waiting;$('player-trade-qty').disabled=waiting;$('player-trade-update').disabled=waiting;
+ $('player-trade-confirm').disabled=waiting||!!data.ownConfirmed||!socket.connected;
  $('player-trade-confirm').textContent=data.ownConfirmed?'Confirmed':'Confirm trade';
  $('player-trade-backdrop').hidden=false;
 }

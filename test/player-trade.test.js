@@ -40,8 +40,7 @@ test('removing an equipped item clears its slot on the receiving character profi
 });
 test('local account trade persists both characters and rejects stale checkpoints',async t=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'player-trade-local-')),filename=path.join(dir,'players.json');
- t.after(()=>fs.rm(dir,{recursive:true,force:true}));
- const db=accountStore({filename,databaseUrl:''});await db.init();t.after(()=>db.close());
+ const db=accountStore({filename,databaseUrl:''});await db.init();t.after(async()=>{await db.close();await fs.rm(dir,{recursive:true,force:true});});
  const a=await db.register('TradeAlpha','StrongPassword_2026',profile(100,[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}]));
  const b=await db.register('TradeBravo','StrongPassword_2026',profile(100,[{id:'bread',qty:1},{id:'bread',qty:1}]));
  const result=await db.playerTrade(a.account.id,0,b.account.id,0,{gold:9,items:[{id:'iron_ore',qty:1}]},{gold:5,items:[{id:'bread',qty:1}]});
@@ -52,8 +51,7 @@ test('local account trade persists both characters and rejects stale checkpoints
 });
 test('concurrent replay with the same revisions can commit only once',async t=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'player-trade-race-')),filename=path.join(dir,'players.json');
- t.after(()=>fs.rm(dir,{recursive:true,force:true}));
- const db=accountStore({filename,databaseUrl:''});await db.init();t.after(()=>db.close());
+ const db=accountStore({filename,databaseUrl:''});await db.init();t.after(async()=>{await db.close();await fs.rm(dir,{recursive:true,force:true});});
  const a=await db.register('RaceAlpha','StrongPassword_2026',profile(100,[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}]));
  const b=await db.register('RaceBravo','StrongPassword_2026',profile(100,[{id:'bread',qty:1},{id:'bread',qty:1}]));
  const offerA={gold:1,items:[{id:'iron_ore',qty:1}]},offerB={gold:1,items:[{id:'bread',qty:1}]};

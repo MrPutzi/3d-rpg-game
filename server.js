@@ -95,7 +95,7 @@ function tradeEligible(p,now=Date.now()){
 }
 function playerTradeState(session,p){
  const otherId=session.a===p.id?session.b:session.a,other=players[otherId];
- return {tradeId:session.id,partnerName:other?.name||'Unknown player',ownOffer:structuredClone(session.offers[p.id]),otherOffer:structuredClone(session.offers[otherId]),ownConfirmed:!!session.confirmed[p.id],otherConfirmed:!!session.confirmed[otherId],expiresAt:session.expiresAt};
+ return {tradeId:session.id,status:session.status,partnerName:other?.name||'Unknown player',ownOffer:structuredClone(session.offers[p.id]),otherOffer:structuredClone(session.offers[otherId]),ownConfirmed:!!session.confirmed[p.id],otherConfirmed:!!session.confirmed[otherId],expiresAt:session.expiresAt};
 }
 function emitPlayerTradeState(session){
  for(const id of [session.a,session.b]){const p=players[id];if(p)io.to(id).emit('playerTradeState',playerTradeState(session,p));}
@@ -330,6 +330,8 @@ io.on('connection',socket=>{
   playerTradeSessions.set(id,session);playerTradeByPlayer.set(p.id,id);playerTradeByPlayer.set(target.id,id);
   p.path=[];p.intent=null;p.openBuilding=null;target.path=[];target.intent=null;target.openBuilding=null;
   socket.emit('playerTradeWaiting',{tradeId:id,partnerName:target.name});
+  pushProfile(p);pushProfile(target);
+  socket.emit('playerTradeState',playerTradeState(session,p));
   io.to(target.id).emit('playerTradeInvite',{tradeId:id,fromName:p.name,expiresAt:session.expiresAt});
  });
  onAction('respondPlayerTrade',data=>{
