@@ -27,6 +27,6 @@ test('marentill requires Farming 5, grows independently and preserves the crop w
  p.inventory=Array.from({length:28},()=>({id:'bronze_dagger',qty:1}));
  assert.equal(F.harvest(p,91000).ok,false);assert.equal(p.farmPatch.kind,'marentill');
  p.inventory=[];assert.ok(F.harvest(p,91000).ok);
- assert.equal(p.skills.farming.xp,75);assert.equal(p.inventory[0].id,'marentill_leaf');assert.equal(p.inventory[0].qty,2);
+ assert.equal(p.skills.farming.xp,75);assert.equal(p.inventory.filter(e=>e.id==='marentill_leaf').reduce((n,e)=>n+e.qty,0),2);assert.equal(p.inventory.filter(e=>e.id==='marentill_leaf').length,2);
  assert.equal(F.restore({kind:'marentill',readyAt:91000}).kind,'marentill');
 });
