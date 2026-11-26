@@ -5,8 +5,8 @@ const {planPlayerTrade,validateOffer}=require('../game/player-trade');
 const {accountStore}=require('../game/accounts');
 const profile=(gold,inventory,equipment={})=>({gold,inventory:structuredClone(inventory),equipment:{...equipment},combatStyle:'aggressive'});
 test('player trade transfers both offers and reconciles equipment atomically',()=>{
- const a=profile(100,[{id:'iron_ore',qty:2}],{weapon:'bronze_scimitar'});
- const b=profile(100,[{id:'bread',qty:2}],{weapon:'bronze_scimitar'});
+ const a=profile(100,[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}],{weapon:'bronze_scimitar'});
+ const b=profile(100,[{id:'bread',qty:1},{id:'bread',qty:1}],{weapon:'bronze_scimitar'});
  const result=planPlayerTrade(a,b,{gold:9,items:[{id:'iron_ore',qty:1}]},{gold:5,items:[{id:'bread',qty:1}]});
  assert.equal(result.ok,true);
  assert.equal(result.profileA.gold,96);assert.equal(result.profileB.gold,104);
@@ -40,8 +40,8 @@ test('local account trade persists both characters and rejects stale checkpoints
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'player-trade-local-')),filename=path.join(dir,'players.json');
  t.after(()=>fs.rm(dir,{recursive:true,force:true}));
  const db=accountStore({filename,databaseUrl:''});await db.init();t.after(()=>db.close());
- const a=await db.register('TradeAlpha','StrongPassword_2026',profile(100,[{id:'iron_ore',qty:2}]));
- const b=await db.register('TradeBravo','StrongPassword_2026',profile(100,[{id:'bread',qty:2}]));
+ const a=await db.register('TradeAlpha','StrongPassword_2026',profile(100,[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}]));
+ const b=await db.register('TradeBravo','StrongPassword_2026',profile(100,[{id:'bread',qty:1},{id:'bread',qty:1}]));
  const result=await db.playerTrade(a.account.id,0,b.account.id,0,{gold:9,items:[{id:'iron_ore',qty:1}]},{gold:5,items:[{id:'bread',qty:1}]});
  assert.equal(result.ok,true);assert.equal(result.tradeRevisionA,1);assert.equal(result.tradeRevisionB,1);
  const savedA=await db.resume(a.token),savedB=await db.resume(b.token);

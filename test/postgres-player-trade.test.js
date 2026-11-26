@@ -12,8 +12,8 @@ test('PostgreSQL player-to-player trades lock both accounts and roll back atomic
  const isolated=new URL(url);isolated.searchParams.set('options','-c search_path='+schema);
  query=new Pool({connectionString:isolated.toString()});
  db=accountStore({databaseUrl:isolated.toString()});await db.init();
- const a=await db.register('PgTraderAlpha','StrongPassword_2026',{gold:100,inventory:[{id:'iron_ore',qty:2}],equipment:{weapon:'bronze_scimitar'},combatStyle:'aggressive'});
- const b=await db.register('PgTraderBravo','StrongPassword_2026',{gold:100,inventory:[{id:'bread',qty:2}],equipment:{weapon:'bronze_scimitar'},combatStyle:'aggressive'});
+ const a=await db.register('PgTraderAlpha','StrongPassword_2026',{gold:100,inventory:[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}],equipment:{weapon:'bronze_scimitar'},combatStyle:'aggressive'});
+ const b=await db.register('PgTraderBravo','StrongPassword_2026',{gold:100,inventory:[{id:'bread',qty:1},{id:'bread',qty:1}],equipment:{weapon:'bronze_scimitar'},combatStyle:'aggressive'});
  const offerA={gold:9,items:[{id:'iron_ore',qty:1}]},offerB={gold:5,items:[{id:'bread',qty:1}]};
  const first=await db.playerTrade(a.account.id,0,b.account.id,0,offerA,offerB);
  assert.equal(first.ok,true);assert.equal(first.tradeRevisionA,1);assert.equal(first.tradeRevisionB,1);

@@ -335,7 +335,7 @@ io.on('connection',socket=>{
  onAction('respondPlayerTrade',data=>{
   const session=findPlayerTrade(p,data);
   if(!session||session.status!=='invited'||session.b!==p.id)return;
-  if(data.accept!==true){closePlayerTrade(session,'Player trade declined.');return;}
+  if(data?.accept!==true){closePlayerTrade(session,'Player trade declined.');return;}
   const requester=players[session.a],now=Date.now();
   if(!requester||!tradeEligible(p,now)||!tradeEligible(requester,now)||dist(p,requester)>160){closePlayerTrade(session,'Trade cancelled: both players must remain nearby and out of combat.');return;}
   session.status='open';session.expiresAt=now+120000;emitPlayerTradeState(session);
@@ -343,8 +343,8 @@ io.on('connection',socket=>{
  onAction('updatePlayerTradeOffer',data=>{
   const session=findPlayerTrade(p,data);
   if(!session||session.status!=='open'||session.committing)return;
-  const itemId=typeof data.itemId==='string'&&data.itemId?data.itemId:null;
-  const offer=PlayerTrade.validateOffer(p,{gold:Number(data.gold??0),items:itemId?[{id:itemId,qty:Number(data.qty)}]:[]});
+  const itemId=typeof data?.itemId==='string'&&data.itemId?data.itemId:null;
+  const offer=PlayerTrade.validateOffer(p,{gold:Number(data?.gold??0),items:itemId?[{id:itemId,qty:Number(data.qty)}]:[]});
   if(!offer.ok){send(p,offer.message);return;}
   session.offers[p.id]=offer.offer;session.confirmed[session.a]=false;session.confirmed[session.b]=false;
   session.expiresAt=Date.now()+120000;emitPlayerTradeState(session);
