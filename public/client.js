@@ -239,7 +239,7 @@ function updateUI(){
  $('health').textContent=profile.hp+' / '+profile.maxHp;
  $('hp-bar').style.width=(profile.hp/profile.maxHp*100)+'%';
  $('gold').textContent=profile.gold;
- $('player-trade-open').disabled=!entered||!socket.connected;
+ $('player-trade-open').disabled=!entered||!socket.connected||!profile.canPlayerTrade;
  const w=gear();$('weapon-name').textContent=w.name;$('weapon-icon').textContent=w.icon;
  $('weapon-info').textContent=(w.type||'crush').toUpperCase()+' · '+(w.speed||4)+' ticks';
  const s=profile.skills;
