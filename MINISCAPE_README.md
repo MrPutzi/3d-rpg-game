@@ -73,7 +73,7 @@ The `render.yaml` blueprint keeps database provisioning manual to avoid silently
 
 ## Known limitations and future development
 
-This is still an **alpha**, not a production MMO. Local account storage and Render Free Postgres are not durable long-term options. Shared economy stocks, drops and monsters live in one process. Add DB-backed transactions/locks for player trading, multi-server replication, production-grade IP limits, automated load tests, robust item identifiers and operational backups before large-scale deployment. Quests, maps, skills and monsters should keep growing incrementally; do not claim exact OSRS mechanical parity.
+This is still an **alpha**, not a production MMO. Local account storage and Render Free Postgres are not durable long-term options. Shared economy stocks, drops and monsters live in one process. Registered-player trades now use two-sided confirmation and an atomic transaction across both account profiles; guests cannot initiate them. Multi-server replication, shared-world persistence, production-grade IP limits, automated load tests, robust item identifiers and operational backups remain required before large-scale deployment. Quests, maps, skills and monsters should keep growing incrementally; do not claim exact OSRS mechanical parity.
 
 ## Timed production and frontier meals
 
@@ -93,9 +93,8 @@ meals are removed. Existing accounts whose First Catch is complete unlock this n
 login without changing their previous quests. This links Moonwater fishing, Cooking, food
 consumption and the frontier provisioning story. No database migration is required.
 
-Next priorities: crash-safe persistence for every inventory/loot/production mutation; durable
-player-to-player trade with account locks; richer recipe tools and station animations. Shared
-kill credit is already server-authoritative and tested. The old account/UI
+Next priorities: crash-safe persistence for every inventory/loot/production mutation; multi-server world and session coordination; richer recipe tools and station animations. Shared
+kill credit and single-instance registered-player trading are server-authoritative and tested. The old account/UI
 rewrite PR #7 is not part of this change: phase 2 already supplied the current account system.
 
 ## Shared encounters and target feedback
@@ -119,7 +118,7 @@ The Combat options panel shows the selected target's HP, your actual damage and 
 credit eligibility. Reward messages explain your coin share and drop ownership. Selection is
 server-confirmed for attacks, spells and auto-retaliation and clears when the target dies.
 These changes extend existing account-save behavior; crash-proof shared-world persistence,
-party membership and player trading remain future work. No schema migration is required.
+party membership and cross-server trading remain unavailable. Player trading is single-instance only. No schema migration is required.
 
 
 ### Food and combat pacing

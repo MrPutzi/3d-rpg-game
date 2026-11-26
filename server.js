@@ -3,6 +3,7 @@ const Slayer=require('./game/slayer');
 const Farming=require('./game/farming');
 const Thieving=require('./game/thieving');
 const Prayer=require('./game/prayer');
+const PlayerTrade=require('./game/player-trade');
 const express=require('express'),http=require('http'),path=require('path'),crypto=require('crypto');
 const {Server}=require('socket.io');
 const {TICK_MS,WORLD_SIZE,BAG_SLOTS,ITEMS,VILLAGE,SHOPS,ENEMY_TEMPLATES,RESOURCE_TEMPLATES}=require('./game/content');
@@ -25,6 +26,8 @@ let Economy=createEconomy();const guestEconomy=createEconomy(),marketQueue=seria
 let marketReady=false;
 const marketFor=p=>p.accountId?Economy:guestEconomy;
 const {accountStore}=require('./game/accounts');
+const playerTradeSessions=new Map(),playerTradeByPlayer=new Map();
+const PLAYER_TRADE_CONTROL_ACTIONS=new Set(['respondPlayerTrade','updatePlayerTradeOffer','confirmPlayerTrade','cancelPlayerTrade']);
 const accountDb=accountStore(),activeAccounts=new Map(),saving=serialQueue(),authQueue=serialQueue();
 const PAPER_SLOTS=['head','cape','neck','weapon','body','offhand','legs','hands','feet','ring','ammo'];
 const app=express();app.disable('x-powered-by');app.use(express.static(path.join(__dirname,'public')));
@@ -48,7 +51,7 @@ const safeId=id=>typeof id==='string'&&id.length<80;
 const has=(obj,id)=>safeId(id)&&Object.hasOwn(obj,id);
 const send=(p,msg)=>io.to(p.id).emit('serverMessage',msg);
 function playerProfile(p){
- return {nextThieve:p.nextThieve||0,prayerPoints:Prayer.points(p),maxPrayerPoints:Prayer.maxPoints(p),activePrayer:p.activePrayer||null,farmPatch:Farming.restore(p.farmPatch),slayerOptions:Slayer.options(p),slayerTask:Slayer.status(p),agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
+ return {canPlayerTrade:!!p.accountId,nextThieve:p.nextThieve||0,prayerPoints:Prayer.points(p),maxPrayerPoints:Prayer.maxPoints(p),activePrayer:p.activePrayer||null,farmPatch:Farming.restore(p.farmPatch),slayerOptions:Slayer.options(p),slayerTask:Slayer.status(p),agility:Agility.status(p),lootFilter:p.lootFilter||'all',id:p.id,name:p.name,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,equipment:p.equipment,
  bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextAttack:p.nextAttack||0,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
@@ -85,6 +88,65 @@ function persist(p){
  next.then(()=>io.to(p.id).emit('saveStatus',{state:'saved',at:Date.now()}),e=>{
   console.error('Profile save failed',e.message);io.to(p.id).emit('saveStatus',{state:'error'});
  });return next;
+}
+function tradeEligible(p,now=Date.now()){
+ if(!p?.loggedIn||!p.accountId||p.hp<=0||p.tradePending||p.tradeFailed||p.production||p.agility||p.intent?.type==='attack')return false;
+ return !Object.values(enemies).some(n=>n.hp>0&&(n.targetPlayer===p.id||Encounters.hasRecentContribution(n,p.id,now)));
+}
+function playerTradeState(session,p){
+ const otherId=session.a===p.id?session.b:session.a,other=players[otherId];
+ return {tradeId:session.id,status:session.status,partnerName:other?.name||'Unknown player',ownOffer:structuredClone(session.offers[p.id]),otherOffer:structuredClone(session.offers[otherId]),ownConfirmed:!!session.confirmed[p.id],otherConfirmed:!!session.confirmed[otherId],expiresAt:session.expiresAt};
+}
+function emitPlayerTradeState(session){
+ for(const id of [session.a,session.b]){const p=players[id];if(p)io.to(id).emit('playerTradeState',playerTradeState(session,p));}
+}
+function closePlayerTrade(session,message){
+ if(!session||!playerTradeSessions.has(session.id))return;
+ playerTradeSessions.delete(session.id);
+ for(const id of [session.a,session.b]){
+  playerTradeByPlayer.delete(id);
+  if(players[id])io.to(id).emit('playerTradeClosed',{message});
+ }
+}
+function cancelPlayerTradeFor(p,message){
+ const id=playerTradeByPlayer.get(p.id),session=playerTradeSessions.get(id);
+ if(session&&!session.committing)closePlayerTrade(session,message);
+}
+function findPlayerTrade(p,data){
+ const id=playerTradeByPlayer.get(p.id),session=playerTradeSessions.get(id);
+ return session&&session.id===data?.tradeId&&(session.a===p.id||session.b===p.id)?session:null;
+}
+async function commitPlayerTrade(session){
+ const a=players[session.a],b=players[session.b];
+ if(!a||!b||!a.loggedIn||!b.loggedIn){closePlayerTrade(session,'Trade cancelled because a player disconnected.');return;}
+ session.committing=true;a.tradePending=true;b.tradePending=true;
+ const first=a.accountId.localeCompare(b.accountId)<0?a:b,second=first===a?b:a;
+ let commitStarted=false;
+ const task=saving.run(first.accountId,()=>saving.run(second.accountId,async()=>{
+  try{
+   const revisionA=a.tradeRevision||0,revisionB=b.tradeRevision||0;
+   await accountDb.save(a.accountId,storedProfile(a),revisionA);
+   await accountDb.save(b.accountId,storedProfile(b),revisionB);
+   commitStarted=true;
+   const result=await accountDb.playerTrade(a.accountId,revisionA,b.accountId,revisionB,session.offers[a.id],session.offers[b.id]);
+   if(!result.ok){closePlayerTrade(session,result.message||'Trade could not be completed.');return;}
+   hydrate(a,{id:a.accountId,username:a.name,profile:result.profileA,tradeRevision:result.tradeRevisionA});
+   hydrate(b,{id:b.accountId,username:b.name,profile:result.profileB,tradeRevision:result.tradeRevisionB});
+   closePlayerTrade(session,'Trade completed.');
+   pushProfile(a);pushProfile(b);
+  }catch(error){
+   console.error('Player trade failed',error.message);
+   if(commitStarted){
+    a.tradeFailed=true;b.tradeFailed=true;
+    closePlayerTrade(session,'Trade result unknown. Reconnect both accounts to load the saved result.');
+    io.sockets.sockets.get(a.id)?.disconnect(true);io.sockets.sockets.get(b.id)?.disconnect(true);
+   }else closePlayerTrade(session,'Trade was not saved. Please try again.');
+  }finally{
+   a.tradePending=false;b.tradePending=false;a.tradeTask=null;b.tradeTask=null;
+  }
+ }));
+ a.tradeTask=task;b.tradeTask=task;
+ return task;
 }
 function newPlayer(id){
  const inventory=[];for(const [item,qty] of [['bronze_scimitar',1],['shortbow',1],['bronze_arrow',120],['bronze_axe',1],['bronze_pickaxe',1],['small_net',1],['bread',2]])addItem(inventory,item,qty);
@@ -210,6 +272,7 @@ io.on('connection',socket=>{
  function onAction(event,handler){
   socket.on(event,(...args)=>{
    if(p.tradePending||p.tradeFailed){send(p,'Wait for the current trade to finish.');return;}
+   if(playerTradeByPlayer.has(p.id)&&!PLAYER_TRADE_CONTROL_ACTIONS.has(event)){send(p,'Finish or cancel the player trade first.');return;}
    return handler(...args);
   });
  }
@@ -257,6 +320,50 @@ io.on('connection',socket=>{
   if(name.length<2){send(p,'Guest name must be at least two characters.');return;}
   p.name=name;p.loggedIn=true;socket.emit('loginSuccess',{id:p.id,username:name,guest:true});
   send(p,'Guest mode: progress will not be saved.');pushProfile(p);
+ });
+ onAction('requestPlayerTrade',targetId=>{
+  const now=Date.now(),target=typeof targetId==='string'?players[targetId]:null;
+  if(!target||target===p||playerTradeByPlayer.has(p.id)||playerTradeByPlayer.has(targetId)){send(p,'That player is unavailable for trading.');return;}
+  if(!tradeEligible(p,now)||!tradeEligible(target,now)){send(p,'Both players must be alive, registered and outside combat or production.');return;}
+  if(dist(p,target)>160){send(p,'Move within 160 units of that player to trade.');return;}
+  const id=crypto.randomUUID(),session={id,a:p.id,b:target.id,status:'invited',offers:{[p.id]:{gold:0,items:[]},[target.id]:{gold:0,items:[]}},confirmed:{[p.id]:false,[target.id]:false},expiresAt:now+30000,committing:false};
+  playerTradeSessions.set(id,session);playerTradeByPlayer.set(p.id,id);playerTradeByPlayer.set(target.id,id);
+  p.path=[];p.intent=null;p.openBuilding=null;target.path=[];target.intent=null;target.openBuilding=null;
+  socket.emit('playerTradeWaiting',{tradeId:id,partnerName:target.name});
+  pushProfile(p);pushProfile(target);
+  socket.emit('playerTradeState',playerTradeState(session,p));
+  io.to(target.id).emit('playerTradeInvite',{tradeId:id,fromName:p.name,expiresAt:session.expiresAt});
+ });
+ onAction('respondPlayerTrade',data=>{
+  const session=findPlayerTrade(p,data);
+  if(!session||session.status!=='invited'||session.b!==p.id)return;
+  if(data?.accept!==true){closePlayerTrade(session,'Player trade declined.');return;}
+  const requester=players[session.a],now=Date.now();
+  if(!requester||!tradeEligible(p,now)||!tradeEligible(requester,now)||dist(p,requester)>160){closePlayerTrade(session,'Trade cancelled: both players must remain nearby and out of combat.');return;}
+  session.status='open';session.expiresAt=now+120000;emitPlayerTradeState(session);
+ });
+ onAction('updatePlayerTradeOffer',data=>{
+  const session=findPlayerTrade(p,data);
+  if(!session||session.status!=='open'||session.committing)return;
+  const itemId=typeof data?.itemId==='string'&&data.itemId?data.itemId:null;
+  const offer=PlayerTrade.validateOffer(p,{gold:Number(data?.gold??0),items:itemId?[{id:itemId,qty:Number(data.qty)}]:[]});
+  if(!offer.ok){send(p,offer.message);return;}
+  session.offers[p.id]=offer.offer;session.confirmed[session.a]=false;session.confirmed[session.b]=false;
+  session.expiresAt=Date.now()+120000;emitPlayerTradeState(session);
+ });
+ onAction('confirmPlayerTrade',data=>{
+  const session=findPlayerTrade(p,data);
+  if(!session||session.status!=='open'||session.committing)return;
+  const other=players[session.a===p.id?session.b:session.a];
+  if(!other||!tradeEligible(p)||!tradeEligible(other)||dist(p,other)>160){closePlayerTrade(session,'Trade cancelled: a player is unavailable or too far away.');return;}
+  const own=PlayerTrade.validateOffer(p,session.offers[p.id]),theirs=PlayerTrade.validateOffer(other,session.offers[other.id]);
+  if(!own.ok||!theirs.ok){send(p,own.message||theirs.message);session.confirmed[session.a]=false;session.confirmed[session.b]=false;emitPlayerTradeState(session);return;}
+  session.confirmed[p.id]=true;emitPlayerTradeState(session);
+  if(session.confirmed[session.a]&&session.confirmed[session.b])commitPlayerTrade(session).catch(error=>console.error('Player trade task failed',error.message));
+ });
+ onAction('cancelPlayerTrade',data=>{
+  const session=findPlayerTrade(p,data);
+  if(session&&!session.committing)closePlayerTrade(session,'Player trade cancelled.');
  });
  onAction('saveProgress',()=>{
   if(!p.loggedIn||!p.accountId||Date.now()<nextManualSave)return;
@@ -404,6 +511,7 @@ io.on('connection',socket=>{
   if(result.ok){ensureEquipped(p);pushProfile(p);}
  });
  socket.on('disconnect',()=>{
+  cancelPlayerTradeFor(p,'Trade cancelled because a player disconnected.');
   if(p.accountId){
    if(activeAccounts.get(p.accountId)===p.id)activeAccounts.delete(p.accountId);
    persist(p);
@@ -414,6 +522,7 @@ io.on('connection',socket=>{
 let lastSnapshot=0,lastRestock=0,lastSave=0;
 setInterval(()=>{
  const now=Date.now();
+ for(const session of playerTradeSessions.values())if(!session.committing&&now>=session.expiresAt)closePlayerTrade(session,'Player trade expired.');
  for(const n of Object.values(enemies)){
   if(n.hp<=0){
    if(now>=n.respawnAt){n.hp=n.maxHp;n.lastHit=0;n.targetPlayer=null;n.x=n.homeX;n.y=n.homeY;Encounters.reset(n);}
@@ -471,7 +580,7 @@ setInterval(()=>{
    const rawDamage=Math.max(1,n.damage-Math.floor(p.skills.defence.level/12)-Math.floor(Object.values(p.equipment).reduce((a,id)=>a+(ITEMS[id]?.defenceBonus||0),0)/6));
    p.hp=Math.max(0,p.hp-Prayer.incomingDamage(p,rawDamage));
    if(p.autoRetaliate&&p.hp>0&&!p.intent){p.intent={type:'attack',id:n.id};p.selectedEnemyId=n.id;p.path=[];}
-   if(!p.hp){Prayer.deactivate(p);for(const enemy of Object.values(enemies))Encounters.forget(enemy,p.id);p.selectedEnemyId=null;p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
+   if(!p.hp){cancelPlayerTradeFor(p,'Trade cancelled because a participant died.');Prayer.deactivate(p);for(const enemy of Object.values(enemies))Encounters.forget(enemy,p.id);p.selectedEnemyId=null;p.hp=p.maxHp;p.x=SPAWN.x;p.y=SPAWN.y;stop(p);p.openBuilding=null;send(p,'You respawned in Oakvale.');}
    pushProfile(p);
   }
   if(Prayer.advance(p,now)){pushProfile(p);persist(p).catch(()=>{});}
