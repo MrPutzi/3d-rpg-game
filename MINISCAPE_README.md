@@ -93,9 +93,8 @@ meals are removed. Existing accounts whose First Catch is complete unlock this n
 login without changing their previous quests. This links Moonwater fishing, Cooking, food
 consumption and the frontier provisioning story. No database migration is required.
 
-Next priorities: crash-safe persistence for every inventory/loot/production mutation; durable
-player-to-player trade with account locks; richer recipe tools and station animations. Shared
-kill credit is already server-authoritative and tested. The old account/UI
+Next priorities: crash-safe persistence for every inventory/loot/production mutation; multi-server world and session coordination; richer recipe tools and station animations. Shared
+kill credit and single-instance registered-player trading are server-authoritative and tested. The old account/UI
 rewrite PR #7 is not part of this change: phase 2 already supplied the current account system.
 
 ## Shared encounters and target feedback
@@ -119,7 +118,7 @@ The Combat options panel shows the selected target's HP, your actual damage and 
 credit eligibility. Reward messages explain your coin share and drop ownership. Selection is
 server-confirmed for attacks, spells and auto-retaliation and clears when the target dies.
 These changes extend existing account-save behavior; crash-proof shared-world persistence,
-party membership and cross-server trading remains unavailable; the current player trade is single-instance only. No schema migration is required.
+party membership and cross-server trading remain unavailable. Player trading is single-instance only. No schema migration is required.
 
 
 ### Food and combat pacing

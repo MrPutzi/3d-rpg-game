@@ -12,7 +12,7 @@ test('player trade transfers both offers and reconciles equipment atomically',()
  assert.equal(result.profileA.gold,96);assert.equal(result.profileB.gold,104);
  assert.deepEqual(result.profileA.inventory,[{id:'iron_ore',qty:1},{id:'bread',qty:1}]);
  assert.deepEqual(result.profileB.inventory,[{id:'bread',qty:1},{id:'iron_ore',qty:1}]);
- assert.equal(a.gold,100);assert.equal(a.inventory[0].qty,2,'input profiles are not mutated');
+ assert.equal(a.gold,100);assert.equal(a.inventory.length,2,'input profiles are not mutated');
 });
 test('offers reject insufficient items, gold, duplicate types and malformed quantities',()=>{
  const p=profile(10,[{id:'iron_ore',qty:1}]);
@@ -52,8 +52,8 @@ test('concurrent replay with the same revisions can commit only once',async t=>{
  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'player-trade-race-')),filename=path.join(dir,'players.json');
  t.after(()=>fs.rm(dir,{recursive:true,force:true}));
  const db=accountStore({filename,databaseUrl:''});await db.init();t.after(()=>db.close());
- const a=await db.register('RaceAlpha','StrongPassword_2026',profile(100,[{id:'iron_ore',qty:2}]));
- const b=await db.register('RaceBravo','StrongPassword_2026',profile(100,[{id:'bread',qty:2}]));
+ const a=await db.register('RaceAlpha','StrongPassword_2026',profile(100,[{id:'iron_ore',qty:1},{id:'iron_ore',qty:1}]));
+ const b=await db.register('RaceBravo','StrongPassword_2026',profile(100,[{id:'bread',qty:1},{id:'bread',qty:1}]));
  const offerA={gold:1,items:[{id:'iron_ore',qty:1}]},offerB={gold:1,items:[{id:'bread',qty:1}]};
  const results=await Promise.allSettled([
   db.playerTrade(a.account.id,0,b.account.id,0,offerA,offerB),

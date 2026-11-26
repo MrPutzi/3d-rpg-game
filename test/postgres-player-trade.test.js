@@ -29,7 +29,7 @@ test('PostgreSQL player-to-player trades lock both accounts and roll back atomic
  assert.equal(concurrent.filter(x=>x.status==='rejected'&&/Stale/.test(x.reason.message)).length,1);
  savedA=await db.resume(a.token);savedB=await db.resume(b.token);
  const beforeA=savedA.profile,beforeB=savedB.profile,revA=savedA.tradeRevision,revB=savedB.tradeRevision;
- await query.query(`CREATE FUNCTION reject_trade_b() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='${b.account.id}' THEN RAISE EXCEPTION 'injected second-account failure'; END IF; RETURN NEW; END $$`);
+ await query.query(`CREATE FUNCTION reject_trade_b() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='${b.account.id}' THEN RAISE EXCEPTION 'injected second-account failure'; END IF; RETURN NEW; END; $`);
  await query.query('CREATE TRIGGER reject_trade_b BEFORE UPDATE ON game_accounts FOR EACH ROW EXECUTE FUNCTION reject_trade_b()');
  try{
   await assert.rejects(db.playerTrade(a.account.id,revA,b.account.id,revB,{gold:0,items:[]},{gold:0,items:[]}),/injected second-account failure/);
