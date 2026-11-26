@@ -44,3 +44,16 @@ test('rabbit provision guide follows hunt, cooking, then Rusk independently',()=
  a.inventory=[{id:'cooked_rabbit',qty:3}];a.quests.patrol_provisions.progress=3;
  assert.equal(targetFor(a,'patrol_provisions').kind,'npc');
 });
+
+test('new Thieving and marsh-herb quests point to their actual NPC and supply chain',()=>{
+ const p=player();
+ p.quests.quiet_hands={status:'active',progress:0,goal:3};
+ const thief=targetFor(p,'quiet_hands');
+ assert.equal(thief.kind,'npc');assert.equal(thief.x,2840);assert.equal(thief.y,1325);
+ p.quests.marsh_remedies={status:'active',progress:0,goal:2};
+ const source=targetFor(p,'marsh_remedies');
+ assert.equal(source.kind,'area');assert.match(source.label,/Swamp Troll/);
+ p.inventory=[{id:'marentill_seed',qty:1}];
+ const farm=targetFor(p,'marsh_remedies');
+ assert.equal(farm.kind,'station');assert.equal(farm.x,1010);assert.equal(farm.y,890);
+});

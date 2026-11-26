@@ -31,6 +31,7 @@ const RECIPES={
  bury_bones:{name:'Bury bones',skill:'prayer',level:1,xp:45,inputs:{bones:1},outputs:{},station:'any'},
  brew_tonic:{name:'Brew herbal tonic',skill:'herblore',level:1,xp:25,inputs:{guam_leaf:1,vial_of_water:1},outputs:{herbal_tonic:1},station:'tavern'},
  brew_potion:{name:'Brew healing potion',skill:'herblore',level:3,xp:60,inputs:{guam_leaf:1,vial_of_water:1},outputs:{healing_potion:1},station:'tavern'},
+ brew_marentill_tonic:{name:'Brew marentill tonic',skill:'herblore',level:5,xp:65,inputs:{marentill_leaf:1,vial_of_water:1},outputs:{marentill_tonic:1},station:'tavern'},
  craft_mind_runes:{name:'Craft mind runes',skill:'runecrafting',level:2,xp:35,inputs:{rune_essence:1},outputs:{mind_rune:3},station:'altar'},
  craft_air_runes:{name:'Craft air runes',skill:'runecrafting',level:1,xp:30,inputs:{rune_essence:1},outputs:{air_rune:5},station:'altar'},
  saw_plank:{name:'Saw a plank',skill:'construction',level:1,xp:10,inputs:{logs:2},outputs:{plank:1},station:'guild'},
@@ -58,7 +59,9 @@ const QUESTS={
  guard_supplies:{giver:'guard',name:'Points for the Patrol',type:'craft',target:'smith_arrowtips',goal:2,deliverItems:{bronze_arrowtips:30},rewardGold:25,rewardItems:{feathers:30},after:'goblin_hunt'},
  patrol_boots:{giver:'ranger',name:'Boots for the Border',type:'craft',target:'craft_boots',goal:2,deliverItems:{leather_boots:2},rewardGold:20,after:'patrol_provisions'},
  patrol_provisions:{giver:'ranger',name:'Provisions for Newhaven',type:'craft',target:'cook_rabbit',goal:3,deliverItems:{cooked_rabbit:3},rewardGold:30,after:'wilds_patrol'},
- wilds_patrol:{giver:'ranger',name:'Eastern Wilds Patrol',type:'kill',target:'wolf',goal:2,rewardGold:110,rewardItems:{iron_arrow:25},after:'goblin_hunt'}
+ wilds_patrol:{giver:'ranger',name:'Eastern Wilds Patrol',type:'kill',target:'wolf',goal:2,rewardGold:110,rewardItems:{iron_arrow:25},after:'goblin_hunt'},
+ quiet_hands:{giver:'ranger',name:'Quiet Hands',type:'thieve',target:'quartermaster',goal:3,rewardGold:35,rewardItems:{marentill_seed:1},after:'wilds_patrol'},
+ marsh_remedies:{giver:'ranger',name:'Remedies for the Marsh',type:'craft',target:'brew_marentill_tonic',goal:2,deliverItems:{marentill_tonic:2},rewardGold:45,after:'quiet_hands'}
 };
 const DROPS={
  rat:[{id:'bones',chance:.7,min:1,max:1},{id:'guam_seed',chance:.12,min:1,max:1},{id:'rune_essence',chance:.08,min:1,max:2}],
@@ -66,7 +69,7 @@ const DROPS={
  wolf:[{id:'bones',chance:1,min:1,max:2},{id:'leather',chance:.7,min:1,max:2},{id:'guam_leaf',chance:.15,min:1,max:1},{id:'steel_scimitar',chance:.025,min:1,max:1}],
  skeleton:[{id:'bones',chance:1,min:2,max:3},{id:'rune_essence',chance:.38,min:2,max:6},{id:'air_rune',chance:.55,min:3,max:15},{id:'mind_rune',chance:.48,min:3,max:12},{id:'mithril_dagger',chance:.035,min:1,max:1}],
  bandit:[{id:'bones',chance:.85,min:1,max:2},{id:'bronze_arrow',chance:.5,min:3,max:10},{id:'leather',chance:.35,min:1,max:2},{id:'mind_rune',chance:.25,min:2,max:8},{id:'iron_scimitar',chance:.04,min:1,max:1}],
- swamp_troll:[{id:'bones',chance:1,min:2,max:4},{id:'guam_leaf',chance:.6,min:1,max:3},{id:'rune_essence',chance:.4,min:2,max:5},{id:'mithril_scimitar',chance:.02,min:1,max:1},{id:'healing_potion',chance:.25,min:1,max:2}],
+ swamp_troll:[{id:'bones',chance:1,min:2,max:4},{id:'guam_leaf',chance:.6,min:1,max:3},{id:'marentill_seed',chance:.2,min:1,max:1},{id:'rune_essence',chance:.4,min:2,max:5},{id:'mithril_scimitar',chance:.02,min:1,max:1},{id:'healing_potion',chance:.25,min:1,max:2}],
  mountain_golem:[{id:'iron_ore',chance:1,min:2,max:5},{id:'rune_essence',chance:.5,min:4,max:9},{id:'adamant_scimitar',chance:.03,min:1,max:1},{id:'rune_shield',chance:.008,min:1,max:1}],
  orc:[{id:'bones',chance:1,min:2,max:4},{id:'iron_ore',chance:.8,min:1,max:3},{id:'iron_arrow',chance:.6,min:6,max:20},{id:'adamant_shield',chance:.025,min:1,max:1},{id:'rune_scimitar',chance:.006,min:1,max:1}]
 };

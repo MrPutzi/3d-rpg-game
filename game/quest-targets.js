@@ -14,12 +14,13 @@ function bankTarget(p,item){
  const bank=VILLAGE.buildings.find(b=>b.id==='bank');
  return bank?{x:bank.door.x,y:bank.door.y,kind:'station',label:'Withdraw '+ITEMS[item].name+' from '+bank.name}:null;
 }
-function herbTarget(p){
- if(p.farmPatch)return {...stationLocation.farm,kind:'station',label:'Grow and harvest your guam crop · Skills tab'};
- if(count(p.inventory,'guam_seed')>0)return {...stationLocation.farm,kind:'station',label:'Plant a guam seed, then harvest after 60 seconds · Skills tab'};
- const bank=bankTarget(p,'guam_seed');if(bank)return bank;
- const source=ENEMY_TEMPLATES.find(e=>DROPS[e.kind]?.some(d=>d.id==='guam_seed'));
- return source?area(source,'Defeat '+source.name+' for guam seeds, then plant at the herb patch'):null;
+function herbTarget(p,kind='guam'){
+ const seed=kind+'_seed',leaf=kind+'_leaf';
+ if(p.farmPatch)return {...stationLocation.farm,kind:'station',label:p.farmPatch.kind===kind?'Grow and harvest your '+kind+' crop · Skills tab':'Harvest your '+p.farmPatch.kind+' crop before planting '+kind+' · Skills tab'};
+ if(count(p.inventory,seed)>0)return {...stationLocation.farm,kind:'station',label:'Plant a '+kind+' seed, then harvest · Skills tab'};
+ const bank=bankTarget(p,seed);if(bank)return bank;
+ const source=ENEMY_TEMPLATES.find(e=>DROPS[e.kind]?.some(d=>d.id===seed));
+ return source?area(source,'Defeat '+source.name+' for '+kind+' seeds, then plant at the herb patch'):null;
 }
 function recipeTarget(p,id,visited=new Set()){
  if(typeof id!=='string'||!Object.hasOwn(RECIPES,id)||visited.has(id)||visited.size>=8)return null;
@@ -28,7 +29,8 @@ function recipeTarget(p,id,visited=new Set()){
  for(const [item,qty] of Object.entries(recipe.inputs)){
   if(count(p.inventory,item)>=qty)continue;
   const bank=bankTarget(p,item);if(bank)return bank;
-  if(item==='guam_leaf'&&(p.farmPatch||count(p.inventory,'guam_seed')>0||count(p.bank||[],'guam_seed')>0))return herbTarget(p);
+  if(item==='guam_leaf'&&(p.farmPatch||count(p.inventory,'guam_seed')>0||count(p.bank||[],'guam_seed')>0))return herbTarget(p,'guam');
+  if(item==='marentill_leaf')return herbTarget(p,'marentill');
   const resource=RESOURCE_TEMPLATES.find(r=>r.item===item);
   if(resource)return area(resource,'Gather '+ITEMS[item].name+' from '+resource.name+' · '+resource.skill+' Lv'+resource.level);
   const intermediate=Object.keys(RECIPES).find(key=>RECIPES[key].outputs[item]>0);
@@ -53,9 +55,13 @@ function targetFor(p,id){
  if(q.progress>=q.goal&&!missing||d.type==='talk'){
   const npc=VILLAGE.villagers.find(n=>n.id===d.giver);return npc?{x:npc.x,y:npc.y,label:'Return to '+npc.name,kind:'npc'}:null;
  }
+ if(d.type==='thieve'){
+  const npc=VILLAGE.villagers.find(n=>n.id===d.target);
+  return npc?{x:npc.x,y:npc.y,label:'Pickpocket '+npc.name+' · Thieving level '+(d.target==='quartermaster'?3:1),kind:'npc'}:null;
+ }
  if(d.type==='harvest'){
   if(q.progress>=q.goal){const bank=bankTarget(p,'guam_leaf');if(bank)return bank;}
-  return herbTarget(p);
+  return herbTarget(p,'guam');
  }
  if(d.type==='course')return Agility.status(p)?.target||{...Agility.START,kind:'station',label:'Start an Oakvale agility lap · Skills tab'};
  if(d.type==='craft'){
