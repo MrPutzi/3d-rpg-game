@@ -8,6 +8,8 @@ const PRAYERS=Object.freeze({
 function maxPoints(p){return Math.max(1,Math.min(99,p.skills?.prayer?.level||1));}
 function points(p){return Math.max(0,Math.min(maxPoints(p),Number.isSafeInteger(p.prayerPoints)?p.prayerPoints:maxPoints(p)));}
 function restore(value,p){return Number.isSafeInteger(value)?Math.max(0,Math.min(maxPoints(p),value)):maxPoints(p);}
+function restoreActive(value,p){return typeof value==='string'&&Object.hasOwn(PRAYERS,value)&&points(p)>0?value:null;}
+function restoreDeadline(value,now=Date.now()){return Number.isFinite(value)?Math.max(0,Math.min(value,now+PRAYER_DRAIN_MS)):0;}
 function deactivate(p){const changed=!!p.activePrayer;p.activePrayer=null;p.nextPrayerDrain=0;return changed;}
 function toggle(p,id,now=Date.now()){
  if(!p.loggedIn||p.hp<=0||typeof id!=='string'||!Object.hasOwn(PRAYERS,id))return {ok:false,message:'Prayer is unavailable.'};
@@ -38,4 +40,4 @@ function recharge(p,now=Date.now()){
  p.prayerPoints=maximum;deactivate(p);
  return {ok:true,message:'Prayer restored to '+maximum+' points at the Oakvale shrine.'};
 }
-module.exports={PRAYERS,PRAYER_DRAIN_MS,maxPoints,points,restore,deactivate,toggle,advance,incomingDamage,recharge};
+module.exports={PRAYERS,PRAYER_DRAIN_MS,maxPoints,points,restore,restoreActive,restoreDeadline,deactivate,toggle,advance,incomingDamage,recharge};

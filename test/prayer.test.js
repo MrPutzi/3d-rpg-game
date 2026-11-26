@@ -20,11 +20,15 @@ test('only the server-side Oakvale shrine position can recharge Prayer',()=>{
  const remote=player({x:100,y:100,prayerPoints:0});
  assert.equal(Prayer.recharge(remote,1000).ok,false);assert.equal(remote.prayerPoints,0);
 });
-test('points clamp to the Prayer level and players keep independent active states',()=>{
+test('points clamp to Prayer level and players keep independent active states',()=>{
  const a=player(),b=player();a.skills.prayer.level=4;b.skills.prayer.level=2;
  assert.equal(Prayer.restore(99,a),4);assert.equal(Prayer.restore(-1,a),0);
- a.prayerPoints=4;b.prayerPoints=1;
- Prayer.toggle(a,'stone_ward',1000);assert.equal(Prayer.advance(a,6000),true);
+ a.prayerPoints=4;b.prayerPoints=1;Prayer.toggle(a,'stone_ward',1000);assert.equal(Prayer.advance(a,6000),true);
  assert.equal(a.prayerPoints,3);assert.equal(b.prayerPoints,1);assert.equal(b.activePrayer,null);
  assert.equal(Prayer.maxPoints(a),4);
+});
+test('saved active prayer and its drain deadline restore safely',()=>{
+ const p=player({prayerPoints:2});assert.equal(Prayer.restoreActive('stone_ward',p),'stone_ward');
+ assert.equal(Prayer.restoreActive('unknown',p),null);assert.equal(Prayer.restoreDeadline(1000,2000),1000);
+ assert.equal(Prayer.restoreDeadline(Infinity,2000),0);
 });

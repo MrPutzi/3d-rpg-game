@@ -52,7 +52,7 @@ function playerProfile(p){
  bank:p.bank,quests:p.quests,questJournal:questJournal(p),skills:p.skills,combatStyle:p.combatStyle,openBuilding:p.openBuilding,autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,production:p.production||null,productionOptions:Production.options(p),nextAttack:p.nextAttack||0,nextEat:p.nextEat||0,serverNow:Date.now()};
 }
 function pushProfile(p){io.to(p.id).emit('profile',playerProfile(p));}
-function storedProfile(p){return{nextThieve:p.nextThieve||0,prayerPoints:Prayer.restore(p.prayerPoints,p),farmPatch:Farming.restore(p.farmPatch),slayerTask:Slayer.restore(p.slayerTask),...ActionTimers.snapshot(p),x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
+function storedProfile(p){return{nextThieve:p.nextThieve||0,prayerPoints:Prayer.restore(p.prayerPoints,p),activePrayer:Prayer.restoreActive(p.activePrayer,p),nextPrayerDrain:Prayer.restoreDeadline(p.nextPrayerDrain),farmPatch:Farming.restore(p.farmPatch),slayerTask:Slayer.restore(p.slayerTask),...ActionTimers.snapshot(p),x:p.x,y:p.y,hp:p.hp,maxHp:p.maxHp,gold:p.gold,inventory:p.inventory,
  equipment:p.equipment,bank:p.bank,quests:p.quests,skills:p.skills,combatStyle:p.combatStyle,
  autoRetaliate:p.autoRetaliate,slayerKills:p.slayerKills,nextEat:p.nextEat||0};}
 function hydrate(p,account){
@@ -65,7 +65,7 @@ function hydrate(p,account){
  fresh.slayerTask=Slayer.restore(d.slayerTask);
  fresh.farmPatch=Farming.restore(d.farmPatch);
  fresh.nextThieve=Thieving.restore(d.nextThieve);
- fresh.prayerPoints=Prayer.restore(d.prayerPoints,fresh);fresh.activePrayer=null;fresh.nextPrayerDrain=0;
+ fresh.prayerPoints=Prayer.restore(d.prayerPoints,fresh);fresh.activePrayer=Prayer.restoreActive(d.activePrayer,fresh);fresh.nextPrayerDrain=fresh.activePrayer?Prayer.restoreDeadline(d.nextPrayerDrain):0;
  fresh.equipment={...newPlayer(p.id).equipment,...fresh.equipment};
  fresh.x=Number.isFinite(fresh.x)?clamp(fresh.x,30,WORLD_SIZE-30):SPAWN.x;
  fresh.y=Number.isFinite(fresh.y)?clamp(fresh.y,30,WORLD_SIZE-30):SPAWN.y;
@@ -304,7 +304,7 @@ io.on('connection',socket=>{
   const outcome=equip(p,id);send(p,outcome.message);if(outcome.ok)pushProfile(p);
  });
  onAction('pickpocket',id=>{const result=Thieving.attempt(p,id);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
- onAction('togglePrayer',id=>{const result=Prayer.toggle(p,id,Date.now());send(p,result.message);if(result.ok)pushProfile(p);});
+ onAction('togglePrayer',id=>{const result=Prayer.toggle(p,id,Date.now());send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
  onAction('rechargePrayer',()=>{const result=Prayer.recharge(p,Date.now());send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
  onAction('plantHerb',kind=>{const result=Farming.plant(p,kind);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
  for(const [event,action] of [['plantGuam',Farming.plant],['harvestGuam',Farming.harvest]])onAction(event,()=>{const result=action(p);send(p,result.message);if(result.ok){pushProfile(p);persist(p).catch(()=>{});}});
